@@ -84,27 +84,27 @@ void main() {
     expect(platform.rejected, isEmpty);
   });
 
-  test('provider failure rejects native request without ending events', () async {
-    final errors = <Object>[];
-    var shouldThrow = true;
-    await InfobipMobileMessagingHuawei.setChatJwtProvider(
-      () async {
+  test(
+    'provider failure rejects native request without ending events',
+    () async {
+      final errors = <Object>[];
+      var shouldThrow = true;
+      await InfobipMobileMessagingHuawei.setChatJwtProvider(() async {
         if (shouldThrow) throw StateError('generation failed');
         return 'recovered-token';
-      },
-      errors.add,
-    );
+      }, errors.add);
 
-    platform.requestJwt();
-    await pumpEventQueue();
-    shouldThrow = false;
-    platform.requestJwt();
-    await pumpEventQueue();
+      platform.requestJwt();
+      await pumpEventQueue();
+      shouldThrow = false;
+      platform.requestJwt();
+      await pumpEventQueue();
 
-    expect(errors.single, isA<StateError>());
-    expect(platform.rejected, ['Unable to provide Chat JWT']);
-    expect(platform.resolved, ['recovered-token']);
-  });
+      expect(errors.single, isA<StateError>());
+      expect(platform.rejected, ['Unable to provide Chat JWT']);
+      expect(platform.resolved, ['recovered-token']);
+    },
+  );
 
   for (final jwt in ['', '   ']) {
     test('rejects ${jwt.isEmpty ? 'empty' : 'whitespace-only'} JWT', () async {

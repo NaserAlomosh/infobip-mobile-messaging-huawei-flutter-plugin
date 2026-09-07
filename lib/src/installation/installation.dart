@@ -42,13 +42,13 @@ class Installation {
     String? operatingSystemVersion,
     String? deviceTimezoneId,
     String? appUserId,
-  })  : isPushRegistrationEnabled =
-            isPushRegistrationEnabled ?? pushRegistrationEnabled,
-        appVersion = appVersion ?? applicationVersion,
-        os = os ?? operatingSystem,
-        osVersion = osVersion ?? operatingSystemVersion,
-        deviceTimezoneOffset = deviceTimezoneOffset ?? deviceTimezoneId,
-        applicationUserId = applicationUserId ?? appUserId;
+  }) : isPushRegistrationEnabled =
+           isPushRegistrationEnabled ?? pushRegistrationEnabled,
+       appVersion = appVersion ?? applicationVersion,
+       os = os ?? operatingSystem,
+       osVersion = osVersion ?? operatingSystemVersion,
+       deviceTimezoneOffset = deviceTimezoneOffset ?? deviceTimezoneId,
+       applicationUserId = applicationUserId ?? appUserId;
 
   final String? installationId;
   final String? pushRegistrationId;

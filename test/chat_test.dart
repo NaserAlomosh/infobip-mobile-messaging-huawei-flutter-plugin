@@ -256,15 +256,14 @@ void main() {
     });
 
     testWidgets('draft platform errors propagate', (tester) async {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
-        (call) async {
-          if (call.method == 'setChatDraftMessage') {
-            throw PlatformException(code: 'native_error');
-          }
-          return null;
-        },
-      );
+      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+        call,
+      ) async {
+        if (call.method == 'setChatDraftMessage') {
+          throw PlatformException(code: 'native_error');
+        }
+        return null;
+      });
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
 
@@ -305,18 +304,17 @@ void main() {
     testWidgets('thread list request forwards a native platform error', (
       tester,
     ) async {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
-        (call) async {
-          if (call.method == 'showThreadsList') {
-            throw PlatformException(
-              code: 'native_error',
-              message: 'Chat operation failed',
-            );
-          }
-          return null;
-        },
-      );
+      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+        call,
+      ) async {
+        if (call.method == 'showThreadsList') {
+          throw PlatformException(
+            code: 'native_error',
+            message: 'Chat operation failed',
+          );
+        }
+        return null;
+      });
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
 
@@ -332,13 +330,10 @@ void main() {
       );
     });
 
-    testWidgets('controller accepts a false navigation result', (
-      tester,
-    ) async {
+    testWidgets('controller accepts a false navigation result', (tester) async {
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
-        (call) async =>
-            call.method == 'navigateBackOrCloseChat' ? false : null,
+        (call) async => call.method == 'navigateBackOrCloseChat' ? false : null,
       );
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
@@ -440,27 +435,27 @@ void main() {
       }
     });
 
-    testWidgets('contextual data validation happens before channel invocation', (
-      tester,
-    ) async {
-      var invocationCount = 0;
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
-        (_) async {
+    testWidgets(
+      'contextual data validation happens before channel invocation',
+      (tester) async {
+        var invocationCount = 0;
+        messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+          _,
+        ) async {
           invocationCount++;
           return null;
-        },
-      );
-      final controller = InfobipHuaweiChatController();
-      await mountView(tester, controller: controller);
-      final attachmentInvocationCount = invocationCount;
+        });
+        final controller = InfobipHuaweiChatController();
+        await mountView(tester, controller: controller);
+        final attachmentInvocationCount = invocationCount;
 
-      await expectLater(
-        controller.sendContextualDataWithStrategy('  '),
-        throwsArgumentError,
-      );
-      expect(invocationCount, attachmentInvocationCount);
-    });
+        await expectLater(
+          controller.sendContextualDataWithStrategy('  '),
+          throwsArgumentError,
+        );
+        expect(invocationCount, attachmentInvocationCount);
+      },
+    );
 
     testWidgets('contextual data native failures propagate unchanged', (
       tester,

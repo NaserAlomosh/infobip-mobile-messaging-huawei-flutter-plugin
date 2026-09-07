@@ -39,14 +39,13 @@ class _ExampleAppState extends State<ExampleApp> {
           chatInputHintText: 'Type a message',
         ),
       );
-      await InfobipMobileMessagingHuawei.setChatExceptionHandler(
-        (exception) async {
-          debugPrint(
-            'Chat exception: name=${exception.name}, message=${exception.message}',
-          );
-        },
-        (_) => debugPrint('Chat exception handler failed'),
-      );
+      await InfobipMobileMessagingHuawei.setChatExceptionHandler((
+        exception,
+      ) async {
+        debugPrint(
+          'Chat exception: name=${exception.name}, message=${exception.message}',
+        );
+      }, (_) => debugPrint('Chat exception handler failed'));
       if (mounted) setState(() => _state = InitializationState.initialized);
     } on PlatformException catch (error) {
       if (mounted) {

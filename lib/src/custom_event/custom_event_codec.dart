@@ -15,7 +15,7 @@ abstract final class CustomEventCodec {
       );
     }
     if (event.eventId != null || event.createdAt != null) {
-      throw const PlatformException(
+      throw PlatformException(
         code: 'invalid_argument',
         message: 'eventId and createdAt are read-only',
       );

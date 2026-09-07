@@ -35,9 +35,10 @@ void main() {
         });
   });
 
-  tearDown(() => TestDefaultBinaryMessengerBinding.instance
-      .defaultBinaryMessenger
-      .setMockMethodCallHandler(channel, null));
+  tearDown(
+    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null),
+  );
 
   test('delegates local and server-backed installation reads', () async {
     final local = await platform.getInstallation();
@@ -66,10 +67,13 @@ void main() {
     );
     final arguments = calls.single.arguments as Map;
     final payload = arguments[ChannelContract.installation] as Map;
-    expect(payload.keys, containsAll(<String>[
-      ChannelContract.isPrimaryDevice,
-      ChannelContract.customAttributes,
-    ]));
+    expect(
+      payload.keys,
+      containsAll(<String>[
+        ChannelContract.isPrimaryDevice,
+        ChannelContract.customAttributes,
+      ]),
+    );
     expect(payload, isNot(contains(ChannelContract.pushRegistrationId)));
     expect(payload, isNot(contains(ChannelContract.deviceModel)));
     expect(payload, isNot(contains(ChannelContract.pushRegistrationEnabled)));
@@ -78,18 +82,24 @@ void main() {
 
   test('rejects malformed installation fields', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.isPushRegistrationEnabled: 'yes',
-        });
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{
+            ChannelContract.isPushRegistrationEnabled: 'yes',
+          },
+        );
     expect(platform.getInstallation(), throwsFormatException);
   });
 
-  test('rejects unsupported custom attribute values before delegation', () async {
-    expect(
-      platform.saveInstallation(
-        Installation(customAttributes: {'bad': Object()}),
-      ),
-      throwsA(isA<PlatformException>()),
-    );
-  });
+  test(
+    'rejects unsupported custom attribute values before delegation',
+    () async {
+      expect(
+        platform.saveInstallation(
+          Installation(customAttributes: {'bad': Object()}),
+        ),
+        throwsA(isA<PlatformException>()),
+      );
+    },
+  );
 }

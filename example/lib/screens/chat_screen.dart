@@ -161,9 +161,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 TextField(
                   controller: _draft,
-                  decoration: const InputDecoration(
-                    labelText: 'Chat draft',
-                  ),
+                  decoration: const InputDecoration(labelText: 'Chat draft'),
                 ),
                 Wrap(
                   spacing: 8,
@@ -203,10 +201,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     onPressed: _loading
                         ? null
                         : () => _run(() async {
-                            await _chatController.sendContextualDataWithStrategy(
-                              _contextualData.text,
-                              ChatMultithreadStrategies.ACTIVE,
-                            );
+                            await _chatController
+                                .sendContextualDataWithStrategy(
+                                  _contextualData.text,
+                                  ChatMultithreadStrategies.ACTIVE,
+                                );
                             _contextualData.clear();
                             return 'Contextual data sent.';
                           }),
@@ -288,8 +287,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (!mounted) return;
                   switch (event) {
                     case InfobipHuaweiChatLoadedEvent(:final success):
-                      setState(() => _result =
-                          success ? 'Chat loaded' : 'Chat failed to load');
+                      setState(
+                        () => _result = success
+                            ? 'Chat loaded'
+                            : 'Chat failed to load',
+                      );
                     case InfobipHuaweiChatExitPressedEvent():
                       setState(() => _result = 'Chat exit pressed');
                     case InfobipHuaweiChatRawMessageReceivedEvent():

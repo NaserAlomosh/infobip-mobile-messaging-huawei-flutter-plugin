@@ -49,15 +49,9 @@ void main() {
   tearDown(() => platform.eventsController.close());
 
   test('returns zero and positive unread message counts', () async {
-    expect(
-      await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(),
-      0,
-    );
+    expect(await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(), 0);
     platform.unreadResult = 4;
-    expect(
-      await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(),
-      4,
-    );
+    expect(await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(), 4);
   });
 
   for (final code in ['not_initialized', 'chat_unavailable', 'native_error']) {
@@ -65,7 +59,9 @@ void main() {
       platform.unreadResult = PlatformException(code: code);
       await expectLater(
         InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(),
-        throwsA(isA<PlatformException>().having((error) => error.code, 'code', code)),
+        throwsA(
+          isA<PlatformException>().having((error) => error.code, 'code', code),
+        ),
       );
     });
   }
@@ -78,39 +74,47 @@ void main() {
     );
   });
 
-  test('emits zero, positive, and duplicate updates to every listener', () async {
-    final first = <int>[];
-    final second = <int>[];
-    final subscriptions = [
-      InfobipMobileMessagingHuawei.chat.onUnreadMessageCounterUpdated.listen(
-        first.add,
-      ),
-      InfobipMobileMessagingHuawei.chat.onUnreadMessageCounterUpdated.listen(
-        second.add,
-      ),
-    ];
-    platform.eventsController
-      ..add(unreadEnvelope(0))
-      ..add(unreadEnvelope(3))
-      ..add(unreadEnvelope(3));
-    await Future<void>.delayed(Duration.zero);
-    expect(first, [0, 3, 3]);
-    expect(second, first);
-    for (final subscription in subscriptions) {
-      await subscription.cancel();
-    }
-  });
+  test(
+    'emits zero, positive, and duplicate updates to every listener',
+    () async {
+      final first = <int>[];
+      final second = <int>[];
+      final subscriptions = [
+        InfobipMobileMessagingHuawei.chat.onUnreadMessageCounterUpdated.listen(
+          first.add,
+        ),
+        InfobipMobileMessagingHuawei.chat.onUnreadMessageCounterUpdated.listen(
+          second.add,
+        ),
+      ];
+      platform.eventsController
+        ..add(unreadEnvelope(0))
+        ..add(unreadEnvelope(3))
+        ..add(unreadEnvelope(3));
+      await Future<void>.delayed(Duration.zero);
+      expect(first, [0, 3, 3]);
+      expect(second, first);
+      for (final subscription in subscriptions) {
+        await subscription.cancel();
+      }
+    },
+  );
 
-  test('ignores malformed, negative, and unrelated events and stays alive', () async {
-    final future = InfobipMobileMessagingHuawei
-        .chat
-        .onUnreadMessageCounterUpdated
-        .first;
-    platform.eventsController
-      ..add(unreadEnvelope(-1))
-      ..add(unreadEnvelope('3'))
-      ..add({'version': 1, 'type': ChannelContract.messageReceived, 'payload': {}})
-      ..add(unreadEnvelope(2));
-    expect(await future, 2);
-  });
+  test(
+    'ignores malformed, negative, and unrelated events and stays alive',
+    () async {
+      final future =
+          InfobipMobileMessagingHuawei.chat.onUnreadMessageCounterUpdated.first;
+      platform.eventsController
+        ..add(unreadEnvelope(-1))
+        ..add(unreadEnvelope('3'))
+        ..add({
+          'version': 1,
+          'type': ChannelContract.messageReceived,
+          'payload': {},
+        })
+        ..add(unreadEnvelope(2));
+      expect(await future, 2);
+    },
+  );
 }

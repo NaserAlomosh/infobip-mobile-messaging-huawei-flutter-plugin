@@ -39,8 +39,8 @@ void main() {
   tearDown(() => platform.eventsController.close());
 
   test('decodes message received events', () async {
-    final future = InfobipMobileMessagingHuawei.notifications.onMessageReceived
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onMessageReceived.first;
     platform.eventsController.add(
       envelope(ChannelContract.messageReceived, {
         'message': {
@@ -60,10 +60,8 @@ void main() {
   });
 
   test('decodes notification tapped events', () async {
-    final future = InfobipMobileMessagingHuawei
-        .notifications
-        .onNotificationTapped
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onNotificationTapped.first;
     platform.eventsController.add(
       envelope(ChannelContract.notificationTapped, {
         'message': {
@@ -84,10 +82,8 @@ void main() {
         .notifications
         .onNotificationActionTapped
         .first;
-    final registrationFuture = InfobipMobileMessagingHuawei
-        .notifications
-        .onRegistrationUpdated
-        .first;
+    final registrationFuture =
+        InfobipMobileMessagingHuawei.notifications.onRegistrationUpdated.first;
     platform.eventsController
       ..add(
         envelope(ChannelContract.notificationActionTapped, {
@@ -107,10 +103,8 @@ void main() {
   });
 
   test('decodes installation updated events', () async {
-    final future = InfobipMobileMessagingHuawei
-        .notifications
-        .onInstallationUpdated
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onInstallationUpdated.first;
     platform.eventsController.add(
       envelope(ChannelContract.installationUpdated, {
         ChannelContract.installation: {
@@ -125,23 +119,26 @@ void main() {
     expect(installation.isPrimaryDevice, isTrue);
   });
 
-  test('ignores malformed and unknown events without closing the stream', () async {
-    final future = InfobipMobileMessagingHuawei.notifications.onMessageReceived
-        .first;
-    platform.eventsController
-      ..add({'version': 1, 'type': 'future_event', 'payload': {}})
-      ..add(envelope(ChannelContract.messageReceived, {'message': 'bad'}))
-      ..add(
-        envelope(ChannelContract.messageReceived, {
-          'message': {'messageId': 'valid', 'silent': false},
-        }),
-      );
-    expect((await future).messageId, 'valid');
-  });
+  test(
+    'ignores malformed and unknown events without closing the stream',
+    () async {
+      final future =
+          InfobipMobileMessagingHuawei.notifications.onMessageReceived.first;
+      platform.eventsController
+        ..add({'version': 1, 'type': 'future_event', 'payload': {}})
+        ..add(envelope(ChannelContract.messageReceived, {'message': 'bad'}))
+        ..add(
+          envelope(ChannelContract.messageReceived, {
+            'message': {'messageId': 'valid', 'silent': false},
+          }),
+        );
+      expect((await future).messageId, 'valid');
+    },
+  );
 
   test('ignores malformed booleans and nested payloads', () async {
-    final future = InfobipMobileMessagingHuawei.notifications.onMessageReceived
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onMessageReceived.first;
     platform.eventsController
       ..add(
         envelope(ChannelContract.messageReceived, {
@@ -174,15 +171,21 @@ void main() {
     final personalized =
         InfobipMobileMessagingHuawei.notifications.onPersonalized.first;
     platform.eventsController
-      ..add(envelope(ChannelContract.userUpdated, {
-        ChannelContract.user: {ChannelContract.externalUserId: 'updated-user'},
-      }))
-      ..add(envelope(ChannelContract.personalized, {
-        ChannelContract.user: {
-          ChannelContract.externalUserId: 'personalized-user',
-          ChannelContract.firstName: 'Ada',
-        },
-      }));
+      ..add(
+        envelope(ChannelContract.userUpdated, {
+          ChannelContract.user: {
+            ChannelContract.externalUserId: 'updated-user',
+          },
+        }),
+      )
+      ..add(
+        envelope(ChannelContract.personalized, {
+          ChannelContract.user: {
+            ChannelContract.externalUserId: 'personalized-user',
+            ChannelContract.firstName: 'Ada',
+          },
+        }),
+      );
 
     expect((await updated).externalUserId, 'updated-user');
     expect((await personalized).firstName, 'Ada');
@@ -200,12 +203,16 @@ void main() {
       ..add(
         envelope(ChannelContract.personalized, {ChannelContract.user: null}),
       )
-      ..add(envelope(ChannelContract.userUpdated, {
-        ChannelContract.user: {ChannelContract.externalUserId: 'valid'},
-      }))
-      ..add(envelope(ChannelContract.personalized, {
-        ChannelContract.user: {ChannelContract.externalUserId: 'valid'},
-      }));
+      ..add(
+        envelope(ChannelContract.userUpdated, {
+          ChannelContract.user: {ChannelContract.externalUserId: 'valid'},
+        }),
+      )
+      ..add(
+        envelope(ChannelContract.personalized, {
+          ChannelContract.user: {ChannelContract.externalUserId: 'valid'},
+        }),
+      );
 
     expect((await updated).externalUserId, 'valid');
     expect((await personalized).externalUserId, 'valid');

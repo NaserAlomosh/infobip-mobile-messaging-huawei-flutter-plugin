@@ -47,37 +47,40 @@ void main() {
     expect(decoded['shouldHandleKeyboardAppearance'], isTrue);
   });
 
-  test('global API sends JSON and propagates native PlatformException', () async {
-    const channel = MethodChannel(ChannelContract.methodChannel);
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    MethodCall? received;
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      received = call;
-      return null;
-    });
-    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
-    InfobipMobileMessagingHuaweiPlatform.instance =
-        MethodChannelInfobipMobileMessagingHuawei();
+  test(
+    'global API sends JSON and propagates native PlatformException',
+    () async {
+      const channel = MethodChannel(ChannelContract.methodChannel);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      MethodCall? received;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        received = call;
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      InfobipMobileMessagingHuaweiPlatform.instance =
+          MethodChannelInfobipMobileMessagingHuawei();
 
-    await InfobipMobileMessagingHuawei.setChatCustomization(
-      const ChatCustomization(chatBackgroundColor: '#FFFFFF'),
-    );
+      await InfobipMobileMessagingHuawei.setChatCustomization(
+        const ChatCustomization(chatBackgroundColor: '#FFFFFF'),
+      );
 
-    expect(received?.method, ChannelContract.setChatCustomization);
-    expect(
-      jsonDecode(received!.arguments as String),
-      containsPair('chatBackgroundColor', '#FFFFFF'),
-    );
+      expect(received?.method, ChannelContract.setChatCustomization);
+      expect(
+        jsonDecode(received!.arguments as String),
+        containsPair('chatBackgroundColor', '#FFFFFF'),
+      );
 
-    messenger.setMockMethodCallHandler(channel, (_) async {
-      throw PlatformException(code: 'native_error');
-    });
-    await expectLater(
-      InfobipMobileMessagingHuawei.setChatCustomization(
-        const ChatCustomization(),
-      ),
-      throwsA(isA<PlatformException>()),
-    );
-  });
+      messenger.setMockMethodCallHandler(channel, (_) async {
+        throw PlatformException(code: 'native_error');
+      });
+      await expectLater(
+        InfobipMobileMessagingHuawei.setChatCustomization(
+          const ChatCustomization(),
+        ),
+        throwsA(isA<PlatformException>()),
+      );
+    },
+  );
 }

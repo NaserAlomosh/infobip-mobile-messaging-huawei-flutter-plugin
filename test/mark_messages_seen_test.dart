@@ -104,9 +104,10 @@ void main() {
     const channel = MethodChannel('mark-messages-seen-response-test');
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-      'unexpected': true,
-    });
+    messenger.setMockMethodCallHandler(
+      channel,
+      (_) async => <String, Object?>{'unexpected': true},
+    );
     addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
     final platform = MethodChannelInfobipMobileMessagingHuawei(
       methodChannel: channel,

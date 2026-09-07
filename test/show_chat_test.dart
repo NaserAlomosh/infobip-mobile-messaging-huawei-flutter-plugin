@@ -40,16 +40,19 @@ void main() {
     expect(platform.presentedModallyIOS, [true]);
   });
 
-  test('global API forwards explicit false without a Chat controller', () async {
-    final platform = ShowChatPlatform();
-    InfobipMobileMessagingHuaweiPlatform.instance = platform;
+  test(
+    'global API forwards explicit false without a Chat controller',
+    () async {
+      final platform = ShowChatPlatform();
+      InfobipMobileMessagingHuaweiPlatform.instance = platform;
 
-    await InfobipMobileMessagingHuawei.showChat(
-      shouldBePresentedModallyIOS: false,
-    );
+      await InfobipMobileMessagingHuawei.showChat(
+        shouldBePresentedModallyIOS: false,
+      );
 
-    expect(platform.presentedModallyIOS, [false]);
-  });
+      expect(platform.presentedModallyIOS, [false]);
+    },
+  );
 
   test('method channel sends the official boolean argument directly', () async {
     const channel = MethodChannel('show-chat-method-test');

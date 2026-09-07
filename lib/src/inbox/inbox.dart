@@ -10,8 +10,8 @@ class FilterOptions {
     this.limit,
     DateTime? from,
     DateTime? to,
-  })  : fromDateTime = fromDateTime ?? from,
-        toDateTime = toDateTime ?? to;
+  }) : fromDateTime = fromDateTime ?? from,
+       toDateTime = toDateTime ?? to;
 
   final DateTime? fromDateTime;
   final DateTime? toDateTime;

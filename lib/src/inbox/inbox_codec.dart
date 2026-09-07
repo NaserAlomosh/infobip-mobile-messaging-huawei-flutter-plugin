@@ -95,5 +95,4 @@ abstract final class InboxCodec {
     if (result < 0) throw FormatException('Invalid $name');
     return result;
   }
-
 }

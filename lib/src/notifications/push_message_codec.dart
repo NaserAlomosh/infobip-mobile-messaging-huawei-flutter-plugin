@@ -54,10 +54,9 @@ abstract final class PushMessageCodec {
   static Object? _value(Object? value) => switch (value) {
     null || String() || bool() || int() || double() => value,
     List() => List.unmodifiable(value.map(_value)),
-    Map() when value.keys.every((key) => key is String) =>
-      Map.unmodifiable(
-        value.map((key, item) => MapEntry(key as String, _value(item))),
-      ),
+    Map() when value.keys.every((key) => key is String) => Map.unmodifiable(
+      value.map((key, item) => MapEntry(key as String, _value(item))),
+    ),
     _ => throw const FormatException('Payload contains an invalid value'),
   };
 }

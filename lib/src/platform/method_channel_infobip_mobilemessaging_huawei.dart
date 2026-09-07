@@ -57,9 +57,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
   }
 
   @override
-  Future<void> resetChatMessageCounter() => methodChannel.invokeMethod<void>(
-    ChannelContract.resetChatMessageCounter,
-  );
+  Future<void> resetChatMessageCounter() =>
+      methodChannel.invokeMethod<void>(ChannelContract.resetChatMessageCounter);
 
   @override
   Future<void> initialize({
@@ -143,8 +142,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
       methodChannel.invokeMethod<void>(ChannelContract.depersonalize);
 
   @override
-  Future<void> submitEvent(InfobipHuaweiCustomEvent event) => methodChannel
-      .invokeMethod<void>(ChannelContract.submitEvent, {
+  Future<void> submitEvent(InfobipHuaweiCustomEvent event) =>
+      methodChannel.invokeMethod<void>(ChannelContract.submitEvent, {
         ChannelContract.customEvent: CustomEventCodec.encode(event),
       });
 
@@ -173,13 +172,11 @@ final class MethodChannelInfobipMobileMessagingHuawei
     required String pushRegistrationId,
     required bool isPrimary,
   }) async => _installationList(
-    await methodChannel.invokeMethod<Object?>(
-      ChannelContract.setInstallationAsPrimary,
-      {
-        ChannelContract.pushRegistrationId: pushRegistrationId,
-        ChannelContract.isPrimary: isPrimary,
-      },
-    ),
+    await methodChannel
+        .invokeMethod<Object?>(ChannelContract.setInstallationAsPrimary, {
+          ChannelContract.pushRegistrationId: pushRegistrationId,
+          ChannelContract.isPrimary: isPrimary,
+        }),
   );
 
   static List<Installation> _installationList(Object? value) {
@@ -196,15 +193,15 @@ final class MethodChannelInfobipMobileMessagingHuawei
   );
 
   @override
-  Future<void> setChatJwtProvider() => methodChannel.invokeMethod<void>(
-    ChannelContract.setChatJwtProvider,
-  );
+  Future<void> setChatJwtProvider() =>
+      methodChannel.invokeMethod<void>(ChannelContract.setChatJwtProvider);
 
   @override
-  Future<void> setChatExceptionHandler({required bool enabled}) => methodChannel
-      .invokeMethod<void>(ChannelContract.setChatExceptionHandler, {
-        ChannelContract.enabled: enabled,
-      });
+  Future<void> setChatExceptionHandler({required bool enabled}) =>
+      methodChannel.invokeMethod<void>(
+        ChannelContract.setChatExceptionHandler,
+        {ChannelContract.enabled: enabled},
+      );
 
   @override
   Future<void> setChatCustomization(ChatCustomization customization) =>

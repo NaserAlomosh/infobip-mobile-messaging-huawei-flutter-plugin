@@ -29,13 +29,12 @@ enum ChatMultithreadStrategies {
 
 typedef InfobipHuaweiChatErrorCallback =
     void Function(InfobipHuaweiChatError error);
-typedef InfobipHuaweiChatEventCallback = void Function(
-  InfobipHuaweiChatEvent event,
-);
+typedef InfobipHuaweiChatEventCallback =
+    void Function(InfobipHuaweiChatEvent event);
 
 final class _ChatViewBridge {
   _ChatViewBridge(this.viewId, this._onError, this._onEvent)
-      : channel = MethodChannel('${ChannelContract.chatViewChannel}$viewId') {
+    : channel = MethodChannel('${ChannelContract.chatViewChannel}$viewId') {
     channel.setMethodCallHandler(_handleMethodCall);
     unawaited(channel.invokeMethod<void>(ChannelContract.chatViewReady));
   }
@@ -206,7 +205,7 @@ InfobipHuaweiChatError _decodeError(Object? payload) {
     'not_initialized' => InfobipHuaweiChatErrorCode.notInitialized,
     'activity_unavailable' => InfobipHuaweiChatErrorCode.activityUnavailable,
     'activity_fragment_unavailable' =>
-    InfobipHuaweiChatErrorCode.activityFragmentUnavailable,
+      InfobipHuaweiChatErrorCode.activityFragmentUnavailable,
     'chat_unavailable' => InfobipHuaweiChatErrorCode.chatUnavailable,
     'native_error' => InfobipHuaweiChatErrorCode.nativeError,
     _ => InfobipHuaweiChatErrorCode.unknown,
@@ -274,8 +273,7 @@ final class InfobipHuaweiChatController {
       ChannelContract.chatSendContextualData,
       <String, Object>{
         ChannelContract.data: data,
-        ChannelContract.chatMultiThreadStrategy:
-            chatMultithreadStrategy.name,
+        ChannelContract.chatMultiThreadStrategy: chatMultithreadStrategy.name,
       },
     );
   }
@@ -474,9 +472,7 @@ class _InfobipHuaweiChatViewState extends State<InfobipHuaweiChatView> {
       creationParamsCodec: const StandardMessageCodec(),
 
       gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-        Factory<OneSequenceGestureRecognizer>(
-              () => EagerGestureRecognizer(),
-        ),
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
       },
 
       onPlatformViewCreated: (viewId) {
@@ -485,11 +481,7 @@ class _InfobipHuaweiChatViewState extends State<InfobipHuaweiChatView> {
 
         _viewId = viewId;
 
-        final bridge = _ChatViewBridge(
-          viewId,
-          widget.onError,
-          widget.onEvent,
-        );
+        final bridge = _ChatViewBridge(viewId, widget.onError, widget.onEvent);
 
         _bridge = bridge;
         widget.controller?._attach(bridge);

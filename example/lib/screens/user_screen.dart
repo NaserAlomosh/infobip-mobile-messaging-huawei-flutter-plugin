@@ -164,7 +164,8 @@ class _UserScreenState extends State<UserScreen> {
                                 await InfobipMobileMessagingHuawei.personalize(
                                   PersonalizeContext(
                                     userIdentity: UserIdentity(
-                                      externalUserId: _externalUserId.text.trim(),
+                                      externalUserId: _externalUserId.text
+                                          .trim(),
                                     ),
                                     userAttributes: UserAttributes(
                                       firstName: _firstName.text.trim().isEmpty

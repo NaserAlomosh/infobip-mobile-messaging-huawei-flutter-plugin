@@ -52,61 +52,55 @@ void main() {
     );
   });
 
-  test(
-    'forwards message storage configuration with initialization',
-    () async {
-      const channelName = 'initialization-method-test';
-      final calls = <MethodCall>[];
-      final messenger =
-          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      const channel = MethodChannel(channelName);
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        calls.add(call);
-        return null;
-      });
-      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+  test('forwards message storage configuration with initialization', () async {
+    const channelName = 'initialization-method-test';
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel(channelName);
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-      final platform = MethodChannelInfobipMobileMessagingHuawei(
-        methodChannel: channel,
-        eventChannel: const EventChannel('initialization-event-test'),
-      );
-      await platform.initialize(
-        applicationCode: 'test-code',
-        defaultMessageStorage: false,
-      );
+    final platform = MethodChannelInfobipMobileMessagingHuawei(
+      methodChannel: channel,
+      eventChannel: const EventChannel('initialization-event-test'),
+    );
+    await platform.initialize(
+      applicationCode: 'test-code',
+      defaultMessageStorage: false,
+    );
 
-      expect(calls.single.method, ChannelContract.initialize);
-      expect(calls.single.arguments, <String, Object>{
-        ChannelContract.applicationCode: 'test-code',
-        ChannelContract.defaultMessageStorage: false,
-      });
-    },
-  );
+    expect(calls.single.method, ChannelContract.initialize);
+    expect(calls.single.arguments, <String, Object>{
+      ChannelContract.applicationCode: 'test-code',
+      ChannelContract.defaultMessageStorage: false,
+    });
+  });
 
-  test(
-    'forwards cleanup over the method channel',
-    () async {
-      const channelName = 'cleanup-method-test';
-      final calls = <MethodCall>[];
-      final messenger =
-          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      const channel = MethodChannel(channelName);
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        calls.add(call);
-        return null;
-      });
-      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+  test('forwards cleanup over the method channel', () async {
+    const channelName = 'cleanup-method-test';
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel(channelName);
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-      final platform = MethodChannelInfobipMobileMessagingHuawei(
-        methodChannel: channel,
-        eventChannel: const EventChannel('cleanup-event-test'),
-      );
-      await platform.cleanup();
+    final platform = MethodChannelInfobipMobileMessagingHuawei(
+      methodChannel: channel,
+      eventChannel: const EventChannel('cleanup-event-test'),
+    );
+    await platform.cleanup();
 
-      expect(calls.single.method, ChannelContract.cleanup);
-      expect(calls.single.arguments, isNull);
-    },
-  );
+    expect(calls.single.method, ChannelContract.cleanup);
+    expect(calls.single.arguments, isNull);
+  });
 
   test('forwards nested WebRTC initialization configuration', () async {
     const channelName = 'webrtc-initialization-method-test';

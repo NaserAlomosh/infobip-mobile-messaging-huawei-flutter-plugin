@@ -28,8 +28,8 @@ class Message {
     this.topic,
     String? deepLink,
     bool? isSilent,
-  })  : silent = silent ?? isSilent,
-        deeplink = deeplink ?? deepLink;
+  }) : silent = silent ?? isSilent,
+       deeplink = deeplink ?? deepLink;
 
   final String? messageId;
   final String? title;

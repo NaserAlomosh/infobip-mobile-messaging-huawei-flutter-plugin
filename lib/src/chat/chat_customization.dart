@@ -162,8 +162,10 @@ final class ChatCustomization {
     'chatStatusBarIconsColorMode': chatStatusBarIconsColorMode,
     'chatToolbar': chatToolbar?.toJson(),
     'attachmentPreviewToolbar': attachmentPreviewToolbar?.toJson(),
-    'attachmentPreviewToolbarSaveMenuItemIcon': attachmentPreviewToolbarSaveMenuItemIcon,
-    'attachmentPreviewToolbarMenuItemsIconTint': attachmentPreviewToolbarMenuItemsIconTint,
+    'attachmentPreviewToolbarSaveMenuItemIcon':
+        attachmentPreviewToolbarSaveMenuItemIcon,
+    'attachmentPreviewToolbarMenuItemsIconTint':
+        attachmentPreviewToolbarMenuItemsIconTint,
     'networkErrorText': networkErrorText,
     'networkErrorTextColor': networkErrorTextColor,
     'networkErrorTextAppearance': networkErrorTextAppearance,
@@ -177,16 +179,22 @@ final class ChatCustomization {
     'chatBannerErrorIconTint': chatBannerErrorIconTint,
     'chatFullScreenErrorTitleText': chatFullScreenErrorTitleText,
     'chatFullScreenErrorTitleTextColor': chatFullScreenErrorTitleTextColor,
-    'chatFullScreenErrorTitleTextAppearance': chatFullScreenErrorTitleTextAppearance,
+    'chatFullScreenErrorTitleTextAppearance':
+        chatFullScreenErrorTitleTextAppearance,
     'chatFullScreenErrorDescriptionText': chatFullScreenErrorDescriptionText,
-    'chatFullScreenErrorDescriptionTextColor': chatFullScreenErrorDescriptionTextColor,
-    'chatFullScreenErrorDescriptionTextAppearance': chatFullScreenErrorDescriptionTextAppearance,
+    'chatFullScreenErrorDescriptionTextColor':
+        chatFullScreenErrorDescriptionTextColor,
+    'chatFullScreenErrorDescriptionTextAppearance':
+        chatFullScreenErrorDescriptionTextAppearance,
     'chatFullScreenErrorBackgroundColor': chatFullScreenErrorBackgroundColor,
     'chatFullScreenErrorIcon': chatFullScreenErrorIcon,
     'chatFullScreenErrorIconTint': chatFullScreenErrorIconTint,
-    'chatFullScreenErrorRefreshButtonText': chatFullScreenErrorRefreshButtonText,
-    'chatFullScreenErrorRefreshButtonTextColor': chatFullScreenErrorRefreshButtonTextColor,
-    'chatFullScreenErrorRefreshButtonVisible': chatFullScreenErrorRefreshButtonVisible,
+    'chatFullScreenErrorRefreshButtonText':
+        chatFullScreenErrorRefreshButtonText,
+    'chatFullScreenErrorRefreshButtonTextColor':
+        chatFullScreenErrorRefreshButtonTextColor,
+    'chatFullScreenErrorRefreshButtonVisible':
+        chatFullScreenErrorRefreshButtonVisible,
     'chatBackgroundColor': chatBackgroundColor,
     'chatProgressBarColor': chatProgressBarColor,
     'chatInputTextAppearance': chatInputTextAppearance,
@@ -197,7 +205,8 @@ final class ChatCustomization {
     'chatInputAttachmentIcon': chatInputAttachmentIcon,
     'chatInputAttachmentIconTint': chatInputAttachmentIconTint,
     'chatInputAttachmentDisabledIconTint': chatInputAttachmentDisabledIconTint,
-    'chatInputAttachmentBackgroundDrawable': chatInputAttachmentBackgroundDrawable,
+    'chatInputAttachmentBackgroundDrawable':
+        chatInputAttachmentBackgroundDrawable,
     'chatInputAttachmentBackgroundColor': chatInputAttachmentBackgroundColor,
     'chatInputSendIcon': chatInputSendIcon,
     'chatInputSendIconTint': chatInputSendIconTint,

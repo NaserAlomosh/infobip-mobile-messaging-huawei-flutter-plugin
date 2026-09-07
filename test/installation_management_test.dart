@@ -35,15 +35,19 @@ void main() {
   test(
     'depersonalizeInstallation trims id and maps all installations',
     () async {
-      respond((_) => [
-        {ChannelContract.pushRegistrationId: 'one'},
-        {
-          ChannelContract.pushRegistrationId: 'two',
-          ChannelContract.isPrimaryDevice: true,
-        },
-      ]);
-      final result = await InfobipMobileMessagingHuawei
-          .depersonalizeInstallation(' token ');
+      respond(
+        (_) => [
+          {ChannelContract.pushRegistrationId: 'one'},
+          {
+            ChannelContract.pushRegistrationId: 'two',
+            ChannelContract.isPrimaryDevice: true,
+          },
+        ],
+      );
+      final result =
+          await InfobipMobileMessagingHuawei.depersonalizeInstallation(
+            ' token ',
+          );
       expect(calls.single.method, ChannelContract.depersonalizeInstallation);
       expect(calls.single.arguments, {
         ChannelContract.pushRegistrationId: 'token',
@@ -69,14 +73,16 @@ void main() {
 
   for (final primary in [true, false]) {
     test('setInstallationAsPrimary forwards isPrimary=$primary', () async {
-      respond((_) => [
-        {
-          ChannelContract.pushRegistrationId: 'token',
-          ChannelContract.isPrimaryDevice: primary,
-        },
-      ]);
-      final result = await InfobipMobileMessagingHuawei
-          .setInstallationAsPrimary(
+      respond(
+        (_) => [
+          {
+            ChannelContract.pushRegistrationId: 'token',
+            ChannelContract.isPrimaryDevice: primary,
+          },
+        ],
+      );
+      final result =
+          await InfobipMobileMessagingHuawei.setInstallationAsPrimary(
             pushRegistrationId: ' token ',
             isPrimary: primary,
           );

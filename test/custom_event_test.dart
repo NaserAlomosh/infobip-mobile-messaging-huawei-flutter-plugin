@@ -70,12 +70,16 @@ void main() {
   });
 
   test('submitEventImmediately waits for and maps native result', () async {
-    _handler(channel, calls, (_) => {
-      ChannelContract.definitionId: 'purchase',
-      ChannelContract.eventId: 'event-1',
-      ChannelContract.createdAt: '2026-09-05T12:00:00Z',
-      ChannelContract.properties: {'amount': 20},
-    });
+    _handler(
+      channel,
+      calls,
+      (_) => {
+        ChannelContract.definitionId: 'purchase',
+        ChannelContract.eventId: 'event-1',
+        ChannelContract.createdAt: '2026-09-05T12:00:00Z',
+        ChannelContract.properties: {'amount': 20},
+      },
+    );
 
     final event = await InfobipMobileMessagingHuawei.submitEventImmediately(
       const InfobipHuaweiCustomEvent(definitionId: 'purchase'),

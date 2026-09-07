@@ -4,12 +4,18 @@ import 'package:infobip_mobilemessaging_huawei/src/chat/chat_view.dart';
 
 void main() {
   test('decodes successful and unsuccessful loaded events', () {
-    final successful = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'loaded', 'value': true},
-    ) as InfobipHuaweiChatLoadedEvent;
-    final unsuccessful = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'loaded', 'value': false},
-    ) as InfobipHuaweiChatLoadedEvent;
+    final successful =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'loaded',
+              'value': true,
+            })
+            as InfobipHuaweiChatLoadedEvent;
+    final unsuccessful =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'loaded',
+              'value': false,
+            })
+            as InfobipHuaweiChatLoadedEvent;
 
     expect(successful.success, isTrue);
     expect(unsuccessful.success, isFalse);
@@ -24,33 +30,38 @@ void main() {
 
   test('decodes widget theme exactly including whitespace', () {
     const theme = '  dark theme  ';
-    final event = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'widgetThemeChanged', 'value': theme},
-    ) as InfobipHuaweiChatWidgetThemeChangedEvent;
+    final event =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'widgetThemeChanged',
+              'value': theme,
+            })
+            as InfobipHuaweiChatWidgetThemeChangedEvent;
 
     expect(event.theme, theme);
   });
 
   test('decodes every widget info field and attachment configuration', () {
-    final event = decodeInfobipHuaweiChatEvent(<String, Object?>{
-      'event': 'widgetInfoUpdated',
-      'value': <String, Object?>{
-        'id': 'widget-id',
-        'title': 'Support',
-        'primaryColor': '#112233',
-        'backgroundColor': '#445566',
-        'primaryTextColor': '#778899',
-        'multiThread': true,
-        'multiChannelConversationEnabled': false,
-        'callsEnabled': true,
-        'themeNames': <String>['light', 'dark'],
-        'attachmentConfig': <String, Object?>{
-          'maxSize': 10485760,
-          'isEnabled': true,
-          'allowedExtensions': <String>['pdf', 'jpg'],
-        },
-      },
-    }) as InfobipHuaweiChatWidgetInfoUpdatedEvent;
+    final event =
+        decodeInfobipHuaweiChatEvent(<String, Object?>{
+              'event': 'widgetInfoUpdated',
+              'value': <String, Object?>{
+                'id': 'widget-id',
+                'title': 'Support',
+                'primaryColor': '#112233',
+                'backgroundColor': '#445566',
+                'primaryTextColor': '#778899',
+                'multiThread': true,
+                'multiChannelConversationEnabled': false,
+                'callsEnabled': true,
+                'themeNames': <String>['light', 'dark'],
+                'attachmentConfig': <String, Object?>{
+                  'maxSize': 10485760,
+                  'isEnabled': true,
+                  'allowedExtensions': <String>['pdf', 'jpg'],
+                },
+              },
+            })
+            as InfobipHuaweiChatWidgetInfoUpdatedEvent;
 
     final info = event.widgetInfo;
     expect(info.id, 'widget-id');
@@ -68,21 +79,23 @@ void main() {
   });
 
   test('decodes null widget info optional fields', () {
-    final event = decodeInfobipHuaweiChatEvent(<String, Object?>{
-      'event': 'widgetInfoUpdated',
-      'value': <String, Object?>{
-        'id': null,
-        'title': null,
-        'primaryColor': null,
-        'backgroundColor': null,
-        'primaryTextColor': null,
-        'multiThread': null,
-        'multiChannelConversationEnabled': null,
-        'callsEnabled': null,
-        'themeNames': null,
-        'attachmentConfig': null,
-      },
-    }) as InfobipHuaweiChatWidgetInfoUpdatedEvent;
+    final event =
+        decodeInfobipHuaweiChatEvent(<String, Object?>{
+              'event': 'widgetInfoUpdated',
+              'value': <String, Object?>{
+                'id': null,
+                'title': null,
+                'primaryColor': null,
+                'backgroundColor': null,
+                'primaryTextColor': null,
+                'multiThread': null,
+                'multiChannelConversationEnabled': null,
+                'callsEnabled': null,
+                'themeNames': null,
+                'attachmentConfig': null,
+              },
+            })
+            as InfobipHuaweiChatWidgetInfoUpdatedEvent;
 
     expect(event.widgetInfo.id, isNull);
     expect(event.widgetInfo.themeNames, isNull);
@@ -90,18 +103,26 @@ void main() {
   });
 
   test('decodes attachment preview values and null values', () {
-    final populated = decodeInfobipHuaweiChatEvent(<String, Object>{
-      'event': 'attachmentPreviewOpened',
-      'value': <String, Object>{
-        'url': 'https://example.com/a.pdf',
-        'type': 'application/pdf',
-        'caption': 'invoice',
-      },
-    }) as InfobipHuaweiChatAttachmentPreviewOpenedEvent;
-    final empty = decodeInfobipHuaweiChatEvent(<String, Object>{
-      'event': 'attachmentPreviewOpened',
-      'value': <String, Object?>{'url': null, 'type': null, 'caption': null},
-    }) as InfobipHuaweiChatAttachmentPreviewOpenedEvent;
+    final populated =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'attachmentPreviewOpened',
+              'value': <String, Object>{
+                'url': 'https://example.com/a.pdf',
+                'type': 'application/pdf',
+                'caption': 'invoice',
+              },
+            })
+            as InfobipHuaweiChatAttachmentPreviewOpenedEvent;
+    final empty =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'attachmentPreviewOpened',
+              'value': <String, Object?>{
+                'url': null,
+                'type': null,
+                'caption': null,
+              },
+            })
+            as InfobipHuaweiChatAttachmentPreviewOpenedEvent;
 
     expect(populated.attachment.url, 'https://example.com/a.pdf');
     expect(populated.attachment.type, 'application/pdf');
@@ -113,43 +134,69 @@ void main() {
 
   test('preserves raw JSON-looking messages without decoding', () {
     const rawMessage = ' {"message": [1, true]}\n';
-    final event = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'rawMessageReceived', 'value': rawMessage},
-    ) as InfobipHuaweiChatRawMessageReceivedEvent;
+    final event =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'rawMessageReceived',
+              'value': rawMessage,
+            })
+            as InfobipHuaweiChatRawMessageReceivedEvent;
 
     expect(event.rawMessage, rawMessage);
   });
 
   test('decodes every known view state and preserves order', () {
     const values = <String>[
-      'LOADING', 'THREAD_LIST', 'LOADING_THREAD', 'THREAD',
-      'CLOSED_THREAD', 'SINGLE_MODE_THREAD',
+      'LOADING',
+      'THREAD_LIST',
+      'LOADING_THREAD',
+      'THREAD',
+      'CLOSED_THREAD',
+      'SINGLE_MODE_THREAD',
     ];
-    final events = values.map((value) => decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'viewChanged', 'value': value},
-    )).whereType<InfobipHuaweiChatViewChangedEvent>().toList();
+    final events = values
+        .map(
+          (value) => decodeInfobipHuaweiChatEvent(<String, Object>{
+            'event': 'viewChanged',
+            'value': value,
+          }),
+        )
+        .whereType<InfobipHuaweiChatViewChangedEvent>()
+        .toList();
 
     expect(events.map((event) => event.rawValue), values);
-    expect(events.map((event) => event.state), InfobipHuaweiChatViewState.values
-        .where((state) => state != InfobipHuaweiChatViewState.unknown));
+    expect(
+      events.map((event) => event.state),
+      InfobipHuaweiChatViewState.values.where(
+        (state) => state != InfobipHuaweiChatViewState.unknown,
+      ),
+    );
   });
 
   test('decodes connection changes', () {
-    final connected = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'connectionChanged', 'value': 'CONNECTED'},
-    ) as InfobipHuaweiChatConnectionChangedEvent;
-    final disconnected = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'connectionChanged', 'value': 'DISCONNECTED'},
-    ) as InfobipHuaweiChatConnectionChangedEvent;
+    final connected =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'connectionChanged',
+              'value': 'CONNECTED',
+            })
+            as InfobipHuaweiChatConnectionChangedEvent;
+    final disconnected =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'connectionChanged',
+              'value': 'DISCONNECTED',
+            })
+            as InfobipHuaweiChatConnectionChangedEvent;
 
     expect(connected.state, InfobipHuaweiChatConnectionState.connected);
     expect(disconnected.state, InfobipHuaweiChatConnectionState.disconnected);
   });
 
   test('preserves unknown view values without throwing', () {
-    final event = decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'viewChanged', 'value': 'FUTURE_VIEW'},
-    ) as InfobipHuaweiChatViewChangedEvent;
+    final event =
+        decodeInfobipHuaweiChatEvent(<String, Object>{
+              'event': 'viewChanged',
+              'value': 'FUTURE_VIEW',
+            })
+            as InfobipHuaweiChatViewChangedEvent;
 
     expect(event.state, InfobipHuaweiChatViewState.unknown);
     expect(event.rawValue, 'FUTURE_VIEW');
@@ -157,16 +204,32 @@ void main() {
 
   test('ignores malformed and unknown events', () {
     expect(decodeInfobipHuaweiChatEvent(null), isNull);
-    expect(decodeInfobipHuaweiChatEvent(<String, Object>{'event': 'loaded'}), isNull);
-    expect(decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'viewChanged', 'value': 1},
-    ), isNull);
-    expect(decodeInfobipHuaweiChatEvent(
-      <String, Object>{'event': 'futureEvent', 'value': 'value'},
-    ), isNull);
-    expect(decodeInfobipHuaweiChatEvent(<String, Object>{
-      'event': 'widgetInfoUpdated',
-      'value': <String, Object>{'themeNames': <Object>['light', 1]},
-    }), isNull);
+    expect(
+      decodeInfobipHuaweiChatEvent(<String, Object>{'event': 'loaded'}),
+      isNull,
+    );
+    expect(
+      decodeInfobipHuaweiChatEvent(<String, Object>{
+        'event': 'viewChanged',
+        'value': 1,
+      }),
+      isNull,
+    );
+    expect(
+      decodeInfobipHuaweiChatEvent(<String, Object>{
+        'event': 'futureEvent',
+        'value': 'value',
+      }),
+      isNull,
+    );
+    expect(
+      decodeInfobipHuaweiChatEvent(<String, Object>{
+        'event': 'widgetInfoUpdated',
+        'value': <String, Object>{
+          'themeNames': <Object>['light', 1],
+        },
+      }),
+      isNull,
+    );
   });
 }

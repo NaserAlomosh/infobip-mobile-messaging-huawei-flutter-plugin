@@ -55,22 +55,30 @@ void main() {
 
   test('decodes and delivers a native Chat exception exactly once', () async {
     final received = <ChatException>[];
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler((exception) async {
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler((
+      exception,
+    ) async {
       received.add(exception);
     });
 
     platform.emit();
     await pumpEventQueue();
 
-    expect(received, const [ChatException(message: 'Connection failed', name: 'Error')]);
+    expect(received, const [
+      ChatException(message: 'Connection failed', name: 'Error'),
+    ]);
     expect(platform.registrations, [true]);
   });
 
   test('replacement invokes only the newest handler', () async {
     var oldCalls = 0;
     var newCalls = 0;
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler((_) async => oldCalls++);
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler((_) async => newCalls++);
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler(
+      (_) async => oldCalls++,
+    );
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler(
+      (_) async => newCalls++,
+    );
 
     platform.emit();
     await pumpEventQueue();
@@ -81,7 +89,9 @@ void main() {
 
   test('null handler unregisters and prevents callbacks', () async {
     var calls = 0;
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler((_) async => calls++);
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler(
+      (_) async => calls++,
+    );
     await InfobipMobileMessagingHuawei.setChatExceptionHandler(null);
     platform.emit();
     await pumpEventQueue();
@@ -92,7 +102,9 @@ void main() {
 
   test('cleanup clears handler state', () async {
     var calls = 0;
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler((_) async => calls++);
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler(
+      (_) async => calls++,
+    );
     await InfobipMobileMessagingHuawei.cleanup();
     platform.emit();
     await pumpEventQueue();
@@ -121,13 +133,10 @@ void main() {
 
   test('onError failure does not end exception delivery', () async {
     var calls = 0;
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler(
-      (_) async {
-        calls++;
-        throw StateError('handler');
-      },
-      (_) => throw StateError('onError'),
-    );
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler((_) async {
+      calls++;
+      throw StateError('handler');
+    }, (_) => throw StateError('onError'));
 
     platform.emit();
     platform.emit();
@@ -138,7 +147,9 @@ void main() {
 
   test('malformed payload is ignored without affecting later events', () async {
     final received = <ChatException>[];
-    await InfobipMobileMessagingHuawei.setChatExceptionHandler((exception) async {
+    await InfobipMobileMessagingHuawei.setChatExceptionHandler((
+      exception,
+    ) async {
       received.add(exception);
     });
 

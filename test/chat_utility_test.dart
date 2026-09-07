@@ -56,14 +56,20 @@ void main() {
     );
   });
 
-  test('message counter parity method shares the existing native query', () async {
-    expect(await InfobipMobileMessagingHuawei.chat.getMessageCounter(), 3);
-    expect(await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(), 3);
-    expect(
-      calls.map((call) => call.method),
-      everyElement(ChannelContract.getChatUnreadMessageCount),
-    );
-  });
+  test(
+    'message counter parity method shares the existing native query',
+    () async {
+      expect(await InfobipMobileMessagingHuawei.chat.getMessageCounter(), 3);
+      expect(
+        await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount(),
+        3,
+      );
+      expect(
+        calls.map((call) => call.method),
+        everyElement(ChannelContract.getChatUnreadMessageCount),
+      );
+    },
+  );
 
   test('resetMessageCounter completes after invoking native reset', () async {
     await InfobipMobileMessagingHuawei.chat.resetMessageCounter();

@@ -43,16 +43,14 @@ final class InfobipHuaweiNotifications {
       _typed(ChannelContract.installationUpdated, _installation);
 
   /// Emits the user delivered by the Huawei `USER_UPDATED` broadcast.
-  Stream<User> get onUserUpdated =>
-      _typed(ChannelContract.userUpdated, _user);
+  Stream<User> get onUserUpdated => _typed(ChannelContract.userUpdated, _user);
 
   /// Emits the user delivered by the Huawei `PERSONALIZED` broadcast.
   Stream<User> get onPersonalized =>
       _typed(ChannelContract.personalized, _user);
 
   /// Emits when the Huawei SDK reports that depersonalization completed.
-  Stream<void> get onDepersonalized =>
-      _signal(ChannelContract.depersonalized);
+  Stream<void> get onDepersonalized => _signal(ChannelContract.depersonalized);
 
   Stream<void> _signal(String type) => _events.transform(
     StreamTransformer<Object?, void>.fromHandlers(

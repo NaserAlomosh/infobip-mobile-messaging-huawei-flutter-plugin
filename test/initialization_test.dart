@@ -92,13 +92,18 @@ void main() {
     expect(InfobipMobileMessagingHuawei.defaultMessageStorage, isTrue);
   });
 
-  test('forwards disabled default message storage during initialization', () async {
-    InfobipMobileMessagingHuawei.defaultMessageStorage = false;
+  test(
+    'forwards disabled default message storage during initialization',
+    () async {
+      InfobipMobileMessagingHuawei.defaultMessageStorage = false;
 
-    await InfobipMobileMessagingHuawei.initialize(applicationCode: 'test-code');
+      await InfobipMobileMessagingHuawei.initialize(
+        applicationCode: 'test-code',
+      );
 
-    expect(platform.defaultMessageStorage, isFalse);
-  });
+      expect(platform.defaultMessageStorage, isFalse);
+    },
+  );
 
   test('delegates root cleanup to the platform', () async {
     await InfobipMobileMessagingHuawei.cleanup();

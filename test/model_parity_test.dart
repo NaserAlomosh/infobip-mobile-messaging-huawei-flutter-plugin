@@ -7,15 +7,26 @@ import 'package:infobip_mobilemessaging_huawei/src/user/user_codec.dart';
 void main() {
   test('maps the complete Huawei message contract', () {
     final message = PushMessageCodec.decode({
-      'messageId': 'm1', 'title': 'Title', 'body': 'Body', 'sound': 'default',
-      'vibrate': true, 'icon': 'push', 'silent': false, 'category': 'offer',
-      'customPayload': {'id': 7}, 'internalData': '{"campaignId":"c1"}',
+      'messageId': 'm1',
+      'title': 'Title',
+      'body': 'Body',
+      'sound': 'default',
+      'vibrate': true,
+      'icon': 'push',
+      'silent': false,
+      'category': 'offer',
+      'customPayload': {'id': 7},
+      'internalData': '{"campaignId":"c1"}',
       'receivedTimestamp': 1788264000000,
-      'seenDate': 1788264060000, 'seen': true,
+      'seenDate': 1788264060000,
+      'seen': true,
       'contentUrl': 'https://example.test/content',
-      'browserUrl': 'https://example.test', 'deeplink': 'app://offer',
-      'webViewUrl': 'https://example.test/web', 'inAppOpenTitle': 'Open',
-      'inAppDismissTitle': 'Dismiss', 'chat': false,
+      'browserUrl': 'https://example.test',
+      'deeplink': 'app://offer',
+      'webViewUrl': 'https://example.test/web',
+      'inAppOpenTitle': 'Open',
+      'inAppDismissTitle': 'Dismiss',
+      'chat': false,
     });
     expect(message.messageId, 'm1');
     expect(message.sound, 'default');
@@ -31,14 +42,24 @@ void main() {
 
   test('maps installation official names, HMS, and writable fields', () {
     final installation = InstallationCodec.decode({
-      'pushRegistrationId': 'registration', 'pushServiceToken': 'token',
-      'pushServiceType': 'HMS', 'isPrimaryDevice': false,
-      'isPushRegistrationEnabled': true, 'notificationsEnabled': true,
-      'sdkVersion': '8.14.0', 'appVersion': '1.0', 'os': 'Android',
-      'osVersion': '16', 'deviceManufacturer': 'Huawei',
-      'deviceModel': 'device', 'deviceSecure': true, 'language': 'en',
-      'deviceTimezoneOffset': '+00:00', 'applicationUserId': 'user',
-      'deviceName': 'phone', 'customAttributes': {'tier': 'gold'},
+      'pushRegistrationId': 'registration',
+      'pushServiceToken': 'token',
+      'pushServiceType': 'HMS',
+      'isPrimaryDevice': false,
+      'isPushRegistrationEnabled': true,
+      'notificationsEnabled': true,
+      'sdkVersion': '8.14.0',
+      'appVersion': '1.0',
+      'os': 'Android',
+      'osVersion': '16',
+      'deviceManufacturer': 'Huawei',
+      'deviceModel': 'device',
+      'deviceSecure': true,
+      'language': 'en',
+      'deviceTimezoneOffset': '+00:00',
+      'applicationUserId': 'user',
+      'deviceName': 'phone',
+      'customAttributes': {'tier': 'gold'},
     });
     expect(installation.pushServiceType, PushServiceType.HMS);
     expect(installation.isPushRegistrationEnabled, isTrue);
@@ -47,7 +68,14 @@ void main() {
       ..isPrimaryDevice = true
       ..isPushRegistrationEnabled = false;
     final writable = InstallationCodec.encodeWritable(installation);
-    expect(writable.keys, containsAll(['isPrimaryDevice', 'isPushRegistrationEnabled', 'customAttributes']));
+    expect(
+      writable.keys,
+      containsAll([
+        'isPrimaryDevice',
+        'isPushRegistrationEnabled',
+        'customAttributes',
+      ]),
+    );
     expect(writable, isNot(contains('notificationsEnabled')));
     expect(installation.pushRegistrationEnabled, isFalse);
   });
@@ -98,7 +126,9 @@ void main() {
 
   test('maps UserData type and nested installations', () {
     final user = UserCodec.decode({
-      'externalUserId': 'user', 'gender': 'female', 'type': 'customer',
+      'externalUserId': 'user',
+      'gender': 'female',
+      'type': 'customer',
       'installations': [
         {'pushServiceType': 'HMS', 'isPrimaryDevice': true},
       ],

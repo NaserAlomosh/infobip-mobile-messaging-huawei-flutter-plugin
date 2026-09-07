@@ -214,10 +214,7 @@ final class InfobipMobileMessagingHuawei {
       );
     }
     return InfobipMobileMessagingHuaweiPlatform.instance
-        .setInstallationAsPrimary(
-          pushRegistrationId: id,
-          isPrimary: isPrimary,
-        );
+        .setInstallationAsPrimary(pushRegistrationId: id, isPrimary: isPrimary);
   }
 
   /// Configures the memory-only Infobip JWT used by native SDK requests.

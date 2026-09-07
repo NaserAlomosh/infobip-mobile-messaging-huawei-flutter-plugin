@@ -52,9 +52,10 @@ void main() {
 
   test('decodes male gender', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.gender: 'male',
-        });
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{ChannelContract.gender: 'male'},
+        );
     expect((await platform.getUser()).gender, Gender.Male);
   });
 
@@ -123,88 +124,105 @@ void main() {
     expect(custom['text'], '2026-09-01T12:00:00Z');
   });
 
-  test('delegates personalization identity, attributes, and force option', () async {
-    await platform.personalize(
-      UserIdentity(externalUserId: 'sample-id'),
-      UserAttributes(firstName: 'Sample'),
-      forceDepersonalize: true,
-    );
-    final arguments = calls.single.arguments as Map<Object?, Object?>;
-    expect(arguments[ChannelContract.forceDepersonalize], true);
-    expect(
-      (arguments[ChannelContract.userIdentity] as Map)[ChannelContract.externalUserId],
-      'sample-id',
-    );
-  });
+  test(
+    'delegates personalization identity, attributes, and force option',
+    () async {
+      await platform.personalize(
+        UserIdentity(externalUserId: 'sample-id'),
+        UserAttributes(firstName: 'Sample'),
+        forceDepersonalize: true,
+      );
+      final arguments = calls.single.arguments as Map<Object?, Object?>;
+      expect(arguments[ChannelContract.forceDepersonalize], true);
+      expect(
+        (arguments[ChannelContract.userIdentity]
+            as Map)[ChannelContract.externalUserId],
+        'sample-id',
+      );
+    },
+  );
 
   test('delegates depersonalize', () async {
     await platform.depersonalize();
     expect(calls.single.method, ChannelContract.depersonalize);
   });
 
-  test('rejects unsupported custom attributes before invoking native code', () async {
-    await expectLater(
-      platform.saveUser(User(customAttributes: {'bad': Object()})),
-      throwsA(
-        isA<PlatformException>().having(
-          (error) => error.code,
-          'code',
-          'invalid_argument',
+  test(
+    'rejects unsupported custom attributes before invoking native code',
+    () async {
+      await expectLater(
+        platform.saveUser(User(customAttributes: {'bad': Object()})),
+        throwsA(
+          isA<PlatformException>().having(
+            (error) => error.code,
+            'code',
+            'invalid_argument',
+          ),
         ),
-      ),
-    );
-    expect(calls, isEmpty);
-  });
+      );
+      expect(calls, isEmpty);
+    },
+  );
 
   test('rejects malformed native user payloads', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.phones: <Object?>['valid', 2],
-        });
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{
+            ChannelContract.phones: <Object?>['valid', 2],
+          },
+        );
     await expectLater(platform.fetchUser(), throwsFormatException);
   });
 
   test('decodes an unknown future native gender as null', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.gender: 'unspecified',
-        });
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{ChannelContract.gender: 'unspecified'},
+        );
     expect((await platform.getUser()).gender, isNull);
   });
 
   test('decodes null gender as absent', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.gender: null,
-        });
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{ChannelContract.gender: null},
+        );
     expect((await platform.getUser()).gender, isNull);
   });
 
   test('rejects a malformed non-string native gender', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.gender: 1,
-        });
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{ChannelContract.gender: 1},
+        );
     await expectLater(platform.getUser(), throwsFormatException);
   });
 
   test('decodes tagged custom dates as UTC instants in nested lists', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.customAttributes: <String, Object?>{
-            'created': <String, Object>{
-              ChannelContract.customValueType: ChannelContract.customDateType,
-              ChannelContract.customValue: '2026-09-01T12:00:00Z',
-            },
-            'history': <Object?>[
-              <String, Object>{
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{
+            ChannelContract.customAttributes: <String, Object?>{
+              'created': <String, Object>{
                 ChannelContract.customValueType: ChannelContract.customDateType,
-                ChannelContract.customValue: '2026-09-01T12:00:00.000Z',
+                ChannelContract.customValue: '2026-09-01T12:00:00Z',
               },
-            ],
-            'text': '2026-09-01T12:00:00Z',
+              'history': <Object?>[
+                <String, Object>{
+                  ChannelContract.customValueType:
+                      ChannelContract.customDateType,
+                  ChannelContract.customValue: '2026-09-01T12:00:00.000Z',
+                },
+              ],
+              'text': '2026-09-01T12:00:00Z',
+            },
           },
-        });
+        );
 
     final custom = (await platform.getUser()).customAttributes!;
     expect(custom['created'], DateTime.utc(2026, 9, 1, 12));
@@ -214,14 +232,17 @@ void main() {
 
   test('rejects malformed tagged custom dates', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (_) async => <String, Object?>{
-          ChannelContract.customAttributes: <String, Object?>{
-            'created': <String, Object>{
-              ChannelContract.customValueType: ChannelContract.customDateType,
-              ChannelContract.customValue: 'not-a-date',
+        .setMockMethodCallHandler(
+          channel,
+          (_) async => <String, Object?>{
+            ChannelContract.customAttributes: <String, Object?>{
+              'created': <String, Object>{
+                ChannelContract.customValueType: ChannelContract.customDateType,
+                ChannelContract.customValue: 'not-a-date',
+              },
             },
           },
-        });
+        );
     await expectLater(platform.getUser(), throwsFormatException);
   });
 }
