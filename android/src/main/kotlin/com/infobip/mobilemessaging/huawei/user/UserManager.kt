@@ -123,7 +123,7 @@ internal class UserManager(
         fail(
             callback,
             error?.code?.toString() ?: fallbackCode,
-            error?.message ?: fallbackMessage,
+            fallbackMessage,
         )
     }
 

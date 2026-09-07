@@ -161,7 +161,7 @@ internal class ChatPlatformView(
                 .commit()
         } catch (error: RuntimeException) {
             fragment = null
-            Log.e(TAG, "Native Chat error while attaching InAppChatFragment", error)
+            Log.e(TAG, "Native Chat error while attaching InAppChatFragment")
             reportError(ChatViewError("native_error", "Chat fragment could not be attached"))
         }
     }
@@ -327,7 +327,7 @@ internal class ChatPlatformView(
                 if (manager.isStateSaved) transaction.commitAllowingStateLoss() else transaction.commit()
                 Log.d(TAG, "InAppChatFragment removed")
             } catch (error: RuntimeException) {
-                Log.w(TAG, "InAppChatFragment could not be removed", error)
+                Log.w(TAG, "InAppChatFragment could not be removed")
             }
         }
         Log.d(TAG, "ChatPlatformView disposed")

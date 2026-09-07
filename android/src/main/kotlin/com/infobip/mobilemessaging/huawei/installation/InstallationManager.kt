@@ -142,7 +142,7 @@ internal class InstallationManager(
         fail(
             callback,
             error?.code?.toString() ?: fallbackCode,
-            error?.message ?: fallbackMessage,
+            fallbackMessage,
         )
     }
 
@@ -193,8 +193,8 @@ internal class InstallationManager(
         fallbackMessage: String,
     ) {
         val code = error?.code?.toString() ?: fallbackCode
-        val message = error?.message ?: fallbackMessage
-        val details = error?.let { mapOf("code" to code, "message" to message) }
+        val message = fallbackMessage
+        val details = error?.let { mapOf("code" to code) }
         mainHandler.post { callback(null, InstallationFailure(code, message, details)) }
     }
 

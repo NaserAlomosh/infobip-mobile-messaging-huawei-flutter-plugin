@@ -36,7 +36,7 @@ internal class ChatManager(
             Log.d(TAG, "InAppChat activation succeeded")
             null
         } catch (error: Exception) {
-            Log.e(TAG, "InAppChat activation failed", error)
+            Log.e(TAG, "InAppChat activation failed")
             ChatFailure("chat_unavailable", "Chat activation failed")
         }
     }

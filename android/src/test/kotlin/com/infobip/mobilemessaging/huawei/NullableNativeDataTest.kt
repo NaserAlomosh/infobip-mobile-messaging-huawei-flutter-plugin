@@ -44,7 +44,7 @@ class NullableNativeDataTest {
         doAnswer { invocation ->
             @Suppress("UNCHECKED_CAST")
             val listener = invocation.arguments.single() as MobileMessaging.ResultListener<org.infobip.mobile.messaging.User>
-            listener.onResult(Result(null, MobileMessagingError("denied", "Safe failure")))
+            listener.onResult(Result(null, MobileMessagingError("denied", "secret-token personal attributes")))
             null
         }.`when`(sdk).fetchUser(any())
         val plugin = InfobipMobileMessagingHuaweiPlugin()
@@ -53,6 +53,8 @@ class NullableNativeDataTest {
         plugin.onMethodCall(MethodCall("fetchUser", null), result)
         shadowOf(Looper.getMainLooper()).idle()
         assertEquals(listOf("denied"), result.errors)
+        assertEquals(listOf("Unable to fetch user"), result.messages)
+        assertEquals(listOf(null), result.details)
         assertTrue(result.values.isEmpty())
     }
 
@@ -66,7 +68,7 @@ class NullableNativeDataTest {
                     val listener = invocation.arguments.last() as MobileMessaging.ResultListener<List<Installation>>
                     listener.onResult(Result<List<Installation>, MobileMessagingError>(
                         if (state == "populated") listOf(Installation()) else null,
-                        if (state == "error") MobileMessagingError("rejected", "Safe failure") else null))
+                        if (state == "error") MobileMessagingError("rejected", "secret-token personal attributes") else null))
                 }
                 doAnswer(answer).`when`(sdk).depersonalizeInstallation(anyString(), any())
                 doAnswer(answer).`when`(sdk).setInstallationAsPrimary(anyString(), anyBoolean(), any())
@@ -77,6 +79,8 @@ class NullableNativeDataTest {
                 shadowOf(Looper.getMainLooper()).idle()
                 if (state == "error") {
                     assertEquals(listOf("rejected"), result.errors)
+                    assertEquals(listOf(if (method == "depersonalizeInstallation") "Unable to depersonalize installation" else "Unable to update primary installation"), result.messages)
+                    assertEquals(listOf(mapOf("code" to "rejected")), result.details)
                     assertTrue(result.values.isEmpty())
                 } else {
                     assertTrue(result.errors.isEmpty())
@@ -90,8 +94,14 @@ class NullableNativeDataTest {
     private class RecordingResult : MethodChannel.Result {
         val values = mutableListOf<Any?>()
         val errors = mutableListOf<String>()
+        val messages = mutableListOf<String?>()
+        val details = mutableListOf<Any?>()
         override fun success(result: Any?) { values.add(result) }
-        override fun error(code: String, message: String?, details: Any?) { errors += code }
+        override fun error(code: String, message: String?, details: Any?) {
+            errors += code
+            messages += message
+            this.details.add(details)
+        }
         override fun notImplemented() { throw AssertionError("not implemented") }
     }
 }
