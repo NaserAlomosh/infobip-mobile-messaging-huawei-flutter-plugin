@@ -17,7 +17,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetResult
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetView
-import org.infobip.mobile.messaging.chat.core.widget.WidgetInfo
+import org.infobip.mobile.messaging.api.chat.WidgetInfo
 import org.infobip.mobile.messaging.chat.view.DefaultInAppChatFragmentEventsListener
 import org.infobip.mobile.messaging.chat.view.InAppChatFragment
 
@@ -26,7 +26,7 @@ internal class ChatPlatformView(
     viewId: Int,
     messenger: BinaryMessenger,
     activity: Activity?,
-    chatManager: ChatManager,
+    private val chatManager: ChatManager,
     private val options: ChatViewOptions,
 ) : PlatformView, MethodChannel.MethodCallHandler {
     private val channel = MethodChannel(messenger, ChannelContract.CHAT_VIEW_CHANNEL + viewId)
@@ -84,6 +84,7 @@ internal class ChatPlatformView(
         try {
             Log.d(TAG, "InAppChatFragment creation started")
             val created = InAppChatFragment().apply {
+                errorsHandler = chatManager.exceptionBridge
                 withInput = options.withInput
                 withToolbar = options.withToolbar
                 eventsListener = object : DefaultInAppChatFragmentEventsListener() {
@@ -96,9 +97,9 @@ internal class ChatPlatformView(
                     override fun onChatLoadingFinished(result: LivechatWidgetResult<Unit>) {
                         publishRuntimeEvent(
                             ChannelContract.CHAT_LOADED,
-                            result.isSuccess(),
+                            result.isSuccess,
                         )
-                        if (!result.isSuccess()) {
+                        if (!result.isSuccess) {
                             reportError(ChatViewError("chat_runtime_error", "Chat loading failed"))
                         }
                     }
@@ -189,7 +190,7 @@ internal class ChatPlatformView(
                 current.isMultiThread
             }
             ChannelContract.CHAT_SEND -> handleSend(call, result, current)
-            ChannelContract.CHAT_SET_DRAFT_MESSAGE -> handleDraftMessage(call, result, current)
+            ChannelContract.CHAT_SET_DRAFT_MESSAGE -> handleDraftMessage(call, result)
             ChannelContract.CHAT_SEND_CONTEXTUAL_DATA -> handleContextualData(call, result, current)
             ChannelContract.CHAT_SET_LANGUAGE -> handleLanguage(call, result, current)
             ChannelContract.CHAT_GET_LANGUAGE -> runOnFragment(current, result) {
@@ -256,15 +257,14 @@ internal class ChatPlatformView(
     private fun handleDraftMessage(
         call: MethodCall,
         result: MethodChannel.Result,
-        current: InAppChatFragment,
     ) {
-        val draftMessage = try {
+        try {
             ChatMapper.draftMessage(call.arguments)
         } catch (error: IllegalArgumentException) {
             result.error("invalid_argument", error.message, null)
             return
         }
-        runOnFragment(current, result) { current.setDraftMessage(draftMessage) }
+        result.error("not_available", "Composer draft messages are not available in Huawei SDK 8.14.0", null)
     }
 
     private fun handleContextualData(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {

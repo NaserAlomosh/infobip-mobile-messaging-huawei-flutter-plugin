@@ -239,8 +239,9 @@ final class InfobipHuaweiChatController {
 
   /// Sets the native composer draft for the active Chat conversation.
   ///
-  /// An empty string clears the draft. The value is forwarded unchanged and
-  /// the controller must be attached to a live native Chat view.
+  /// Huawei SDK 8.14.0 has no composer draft setter. On an attached native
+  /// view this retained API throws a PlatformException with code `not_available`.
+  /// The controller must be attached to a live native Chat view.
   Future<void> setChatDraftMessage(String draftMessage) async {
     final bridge = _requireBridge();
     await bridge.channel.invokeMethod<void>(
