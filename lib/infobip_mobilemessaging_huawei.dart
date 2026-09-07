@@ -17,3 +17,4 @@ export 'src/chat/chat_exception.dart';
 export 'src/chat/chat_event.dart';
 export 'src/chat/chat_message_payload.dart';
 export 'src/chat/chat.dart';
+export 'src/chat/chat_customization.dart';

@@ -33,6 +33,12 @@ class _ExampleAppState extends State<ExampleApp> {
       await InfobipMobileMessagingHuawei.initialize(
         applicationCode: ExampleConfig.applicationCode,
       );
+      await InfobipMobileMessagingHuawei.setChatCustomization(
+        const ChatCustomization(
+          chatBackgroundColor: '#FFFFFF',
+          chatInputHintText: 'Type a message',
+        ),
+      );
       await InfobipMobileMessagingHuawei.setChatExceptionHandler(
         (exception) async {
           debugPrint(
