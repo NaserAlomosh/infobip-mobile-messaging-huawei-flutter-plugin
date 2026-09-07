@@ -1,79 +1,78 @@
 package com.infobip.mobilemessaging.huawei.chat
 
-import java.util.ArrayDeque
+import java.util.UUID
 
 internal interface ChatJwtCallback {
     fun onJwtReady(jwt: String)
-
     fun onJwtError(error: Throwable)
 }
 
 internal class ChatJwtBridge(
-    private val requestDartJwt: () -> Boolean,
+    private val requestDartJwt: (String, Long) -> Boolean,
 ) {
-    private val pendingCallbacks = ArrayDeque<ChatJwtCallback>()
+    private data class PendingJwtRequest(val generation: Long, val callback: ChatJwtCallback)
+    private val pending = mutableMapOf<String, PendingJwtRequest>()
+    private var generation = 0L
     private var enabled = false
-    private var requestInFlight = false
 
     @Synchronized
-    fun enable() {
+    fun enable(): Long {
+        clear()
         enabled = true
+        return generation
     }
 
     @Synchronized
-    fun request(callback: ChatJwtCallback) {
-        if (!enabled) {
+    fun isCurrent(value: Long): Boolean = enabled && generation == value
+
+    @Synchronized
+    fun request(callback: ChatJwtCallback, providerGeneration: Long = generation) {
+        if (!isCurrent(providerGeneration)) {
             callback.onJwtError(IllegalStateException(PROVIDER_UNAVAILABLE))
             return
         }
-        pendingCallbacks.addLast(callback)
-        requestNext()
+        val requestId = UUID.randomUUID().toString()
+        pending[requestId] = PendingJwtRequest(generation, callback)
+        if (!runCatching { requestDartJwt(requestId, generation) }.getOrDefault(false)) {
+            pending.remove(requestId)?.callback?.onJwtError(IllegalStateException(PROVIDER_UNAVAILABLE))
+        }
     }
 
     @Synchronized
-    fun resolve(jwt: Any?): Boolean {
+    fun resolve(requestId: Any?, responseGeneration: Any?, jwt: Any?): Boolean {
         val value = (jwt as? String)?.trim()
         if (value.isNullOrEmpty()) return false
-        val callback = pendingCallbacks.pollFirst() ?: return false
-        requestInFlight = false
-        callback.onJwtReady(value)
-        requestNext()
+        val request = take(requestId, responseGeneration) ?: return false
+        request.callback.onJwtReady(value)
         return true
     }
 
     @Synchronized
-    fun reject(message: Any?): Boolean {
-        val callback = pendingCallbacks.pollFirst() ?: return false
-        requestInFlight = false
-        val safeMessage = (message as? String)?.takeIf { it.isNotBlank() } ?: JWT_UNAVAILABLE
-        callback.onJwtError(IllegalStateException(safeMessage))
-        requestNext()
+    fun reject(requestId: Any?, responseGeneration: Any?): Boolean {
+        val request = take(requestId, responseGeneration) ?: return false
+        // Never forward a provider's exception text: it may contain credentials.
+        request.callback.onJwtError(IllegalStateException(JWT_UNAVAILABLE))
         return true
+    }
+
+    private fun take(requestId: Any?, responseGeneration: Any?): PendingJwtRequest? {
+        if (requestId !is String || (responseGeneration !is Long && responseGeneration !is Int)) return null
+        val request = pending[requestId] ?: return null
+        if (!isCurrent(request.generation) || (responseGeneration as Number).toLong() != request.generation) return null
+        return pending.remove(requestId)
     }
 
     @Synchronized
     fun clear() {
         enabled = false
-        requestInFlight = false
-        while (pendingCallbacks.isNotEmpty()) {
-            pendingCallbacks.removeFirst().onJwtError(IllegalStateException(PROVIDER_UNAVAILABLE))
-        }
+        generation++
+        val invalidated = pending.values.toList()
+        pending.clear()
+        invalidated.forEach { runCatching { it.callback.onJwtError(IllegalStateException(PROVIDER_UNAVAILABLE)) } }
     }
 
     @Synchronized
-    internal fun pendingCount(): Int = pendingCallbacks.size
-
-    @Synchronized
-    internal fun isRequestInFlight(): Boolean = requestInFlight
-
-    private fun requestNext() {
-        while (!requestInFlight && pendingCallbacks.isNotEmpty()) {
-            requestInFlight = true
-            if (requestDartJwt()) return
-            requestInFlight = false
-            pendingCallbacks.removeFirst().onJwtError(IllegalStateException(PROVIDER_UNAVAILABLE))
-        }
-    }
+    internal fun pendingCount(): Int = pending.size
 
     private companion object {
         const val PROVIDER_UNAVAILABLE = "Chat JWT provider is unavailable"

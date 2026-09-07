@@ -57,7 +57,7 @@ class InfobipMobileMessagingHuaweiPlugin :
             ChatManager(
                 context = binding.applicationContext,
                 initialized = { initializer?.isInitialized == true },
-                requestDartJwt = { eventBridge?.emitChatJwtRequested() == true },
+                requestDartJwt = { id, generation -> eventBridge?.emitChatJwtRequested(id, generation) == true },
             )
         initializer =
             MobileMessagingInitializer(binding.applicationContext) {
@@ -326,14 +326,14 @@ class InfobipMobileMessagingHuaweiPlugin :
 
             ChannelContract.RESOLVE_CHAT_JWT -> {
                 val manager = chatManager ?: return detached(result)
-                val failure = manager.resolveJwt(call.argument<Any?>(ChannelContract.JWT))
+                val failure = manager.resolveJwt(call.argument<Any?>("requestId"), call.argument<Any?>("generation"), call.argument<Any?>(ChannelContract.JWT))
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.REJECT_CHAT_JWT -> {
                 val manager = chatManager ?: return detached(result)
-                val failure = manager.rejectJwt(call.argument<Any?>(ChannelContract.ERROR))
+                val failure = manager.rejectJwt(call.argument<Any?>("requestId"), call.argument<Any?>("generation"))
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }

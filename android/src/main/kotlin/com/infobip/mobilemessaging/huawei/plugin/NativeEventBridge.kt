@@ -79,9 +79,9 @@ internal class NativeEventBridge(
         sink = null
     }
 
-    fun emitChatJwtRequested(): Boolean {
+    fun emitChatJwtRequested(requestId: String, generation: Long): Boolean {
         val eventSink = sink ?: return false
-        val event = EventEnvelope.create(ChannelContract.CHAT_JWT_REQUESTED, emptyMap())
+        val event = EventEnvelope.create(ChannelContract.CHAT_JWT_REQUESTED, mapOf("requestId" to requestId, "generation" to generation))
         mainHandler.post {
             if (sink === eventSink) eventSink.success(event)
         }

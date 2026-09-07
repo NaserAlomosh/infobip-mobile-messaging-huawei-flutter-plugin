@@ -226,16 +226,26 @@ final class MethodChannelInfobipMobileMessagingHuawei
       );
 
   @override
-  Future<void> resolveChatJwt(String jwt) => methodChannel.invokeMethod<void>(
-    ChannelContract.resolveChatJwt,
-    {ChannelContract.jwt: jwt},
-  );
+  Future<void> resolveChatJwt(
+    String jwt, {
+    required String requestId,
+    required int generation,
+  }) => methodChannel.invokeMethod<void>(ChannelContract.resolveChatJwt, {
+    ChannelContract.jwt: jwt,
+    'requestId': requestId,
+    'generation': generation,
+  });
 
   @override
-  Future<void> rejectChatJwt(String error) => methodChannel.invokeMethod<void>(
-    ChannelContract.rejectChatJwt,
-    {ChannelContract.error: error},
-  );
+  Future<void> rejectChatJwt(
+    String error, {
+    required String requestId,
+    required int generation,
+  }) => methodChannel.invokeMethod<void>(ChannelContract.rejectChatJwt, {
+    ChannelContract.error: error,
+    'requestId': requestId,
+    'generation': generation,
+  });
 
   @override
   Future<Installation> getInstallation() async => InstallationCodec.decode(

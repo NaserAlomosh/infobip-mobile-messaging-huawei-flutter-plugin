@@ -14,7 +14,7 @@ internal data class ChatFailure(
 internal class ChatManager(
     context: Context,
     private val initialized: () -> Boolean,
-    requestDartJwt: () -> Boolean = { false },
+    requestDartJwt: (String, Long) -> Boolean = { _, _ -> false },
     private val mainHandler: Handler = Handler(Looper.getMainLooper()),
 ) {
     private val applicationContext = context.applicationContext
@@ -100,18 +100,22 @@ internal class ChatManager(
 
     @Synchronized
     fun setJwtProvider(): ChatFailure? = try {
-        jwtBridge.enable()
+        val generation = jwtBridge.enable()
         inAppChat.setWidgetJwtProvider { callback ->
             jwtBridge.request(
                 object : ChatJwtCallback {
                     override fun onJwtReady(jwt: String) {
-                        mainHandler.post { callback.onJwtReady(jwt) }
+                        mainHandler.post {
+                            if (jwtBridge.isCurrent(generation)) callback.onJwtReady(jwt)
+                            else callback.onJwtError(IllegalStateException("Chat JWT provider is unavailable"))
+                        }
                     }
 
                     override fun onJwtError(error: Throwable) {
                         mainHandler.post { callback.onJwtError(error) }
                     }
                 },
+                generation,
             )
         }
         checkNotNull(inAppChat.getWidgetJwtProvider())
@@ -140,13 +144,13 @@ internal class ChatManager(
         }
     }
 
-    fun resolveJwt(jwt: Any?): ChatFailure? =
-        if (jwtBridge.resolve(jwt)) null
-        else ChatFailure("invalid_argument", "No pending Chat JWT request or JWT is invalid")
+    fun resolveJwt(requestId: Any?, generation: Any?, jwt: Any?): ChatFailure? =
+        if (jwtBridge.resolve(requestId, generation, jwt)) null
+        else ChatFailure("stale_request", "Chat JWT request is stale or invalid")
 
-    fun rejectJwt(error: Any?): ChatFailure? =
-        if (jwtBridge.reject(error)) null
-        else ChatFailure("invalid_argument", "No pending Chat JWT request")
+    fun rejectJwt(requestId: Any?, generation: Any?): ChatFailure? =
+        if (jwtBridge.reject(requestId, generation)) null
+        else ChatFailure("stale_request", "Chat JWT request is stale or invalid")
 
     private fun <T> execute(
         failureMessage: String,

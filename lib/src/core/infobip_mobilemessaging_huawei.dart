@@ -60,6 +60,7 @@ final class InfobipMobileMessagingHuawei {
         shouldBePresentedModallyIOS: shouldBePresentedModallyIOS,
       );
 
+  static int _chatJwtGeneration = 0;
   static Future<String> Function()? _chatJwtProvider;
   static void Function(Object error)? _chatJwtProviderErrorHandler;
   static StreamSubscription<Object?>? _chatJwtSubscription;
@@ -94,6 +95,9 @@ final class InfobipMobileMessagingHuawei {
   /// Initialize the SDK again before further use. For signing a user out, use
   /// [depersonalize] instead.
   static Future<void> cleanup() async {
+    _chatJwtGeneration++;
+    _chatJwtProvider = null;
+    _chatJwtProviderErrorHandler = null;
     try {
       await InfobipMobileMessagingHuaweiPlatform.instance.cleanup();
     } finally {
@@ -235,15 +239,19 @@ final class InfobipMobileMessagingHuawei {
     Future<String> Function() jwtProvider, [
     void Function(Object error)? onError,
   ]) async {
+    final registration = ++_chatJwtGeneration;
     _chatJwtProvider = jwtProvider;
     _chatJwtProviderErrorHandler = onError;
     await _chatJwtSubscription?.cancel();
+    if (registration != _chatJwtGeneration) return;
     _chatJwtSubscription = InfobipMobileMessagingHuaweiPlatform.instance.events
         .where(_isChatJwtRequest)
-        .listen((_) => _provideChatJwt());
+        .listen(_provideChatJwt);
     try {
       await InfobipMobileMessagingHuaweiPlatform.instance.setChatJwtProvider();
     } on Object {
+      if (registration != _chatJwtGeneration) rethrow;
+      _chatJwtGeneration++;
       _chatJwtProvider = null;
       _chatJwtProviderErrorHandler = null;
       await _chatJwtSubscription?.cancel();
@@ -322,43 +330,51 @@ final class InfobipMobileMessagingHuawei {
       event['type'] == ChannelContract.chatJwtRequested &&
       event['payload'] is Map;
 
-  static Future<void> _provideChatJwt() async {
+  static Future<void> _provideChatJwt(Object? event) async {
+    final payload = (event as Map)['payload'] as Map;
+    final requestId = payload['requestId'];
+    final generation = payload['generation'];
+    if (requestId is! String || requestId.isEmpty || generation is! int) return;
+    final session = _chatJwtGeneration;
     final platform = InfobipMobileMessagingHuaweiPlatform.instance;
     final provider = _chatJwtProvider;
-    if (provider == null) {
-      await _rejectChatJwt(platform, 'Chat JWT provider is not registered');
-      return;
-    }
+    final onError = _chatJwtProviderErrorHandler;
+    if (provider == null) return;
     late final String jwt;
     try {
       jwt = (await provider()).trim();
+      if (session != _chatJwtGeneration) return;
       if (jwt.isEmpty) {
         throw const FormatException('Chat JWT must not be empty');
       }
     } on Object catch (error) {
+      if (session != _chatJwtGeneration) return;
       try {
-        _chatJwtProviderErrorHandler?.call(error);
+        onError?.call(error);
       } on Object {
-        // A host error handler must not prevent the native callback completing.
+        // Host error handlers must not prevent native completion.
       }
-      await _rejectChatJwt(platform, 'Unable to provide Chat JWT');
+      if (session != _chatJwtGeneration) return;
+      try {
+        await platform.rejectChatJwt(
+          'Unable to provide Chat JWT',
+          requestId: requestId,
+          generation: generation,
+        );
+      } on Object {
+        // Native teardown may race an in-flight provider failure.
+      }
       return;
     }
+    if (session != _chatJwtGeneration) return;
     try {
-      await platform.resolveChatJwt(jwt);
+      await platform.resolveChatJwt(
+        jwt,
+        requestId: requestId,
+        generation: generation,
+      );
     } on Object {
       // Native teardown may race an in-flight provider result.
-    }
-  }
-
-  static Future<void> _rejectChatJwt(
-    InfobipMobileMessagingHuaweiPlatform platform,
-    String error,
-  ) async {
-    try {
-      await platform.rejectChatJwt(error);
-    } on Object {
-      // Native teardown may race an in-flight provider failure.
     }
   }
 
