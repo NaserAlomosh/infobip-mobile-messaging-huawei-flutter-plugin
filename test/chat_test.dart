@@ -480,10 +480,16 @@ void main() {
     ) async {
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
-        (call) async => throw PlatformException(
-          code: 'native_error',
-          message: 'Chat operation failed',
-        ),
+        (call) async {
+          if (call.method == 'sendContextualData') {
+            throw PlatformException(
+              code: 'native_error',
+              message: 'Chat operation failed',
+            );
+          }
+
+          return call.method == 'navigateBackOrCloseChat' ? true : null;
+        },
       );
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
@@ -491,11 +497,13 @@ void main() {
       await expectLater(
         controller.sendContextualDataWithStrategy('{}'),
         throwsA(
-          isA<PlatformException>().having(
-            (error) => error.code,
-            'code',
-            'native_error',
-          ),
+          isA<PlatformException>()
+              .having((error) => error.code, 'code', 'native_error')
+              .having(
+                (error) => error.message,
+                'message',
+                'Chat operation failed',
+              ),
         ),
       );
     });
@@ -573,7 +581,13 @@ void main() {
     androidTest('controller command forwards a native error', (tester) async {
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
-        (call) async => throw PlatformException(code: 'native_error'),
+        (call) async {
+          if (call.method == 'send') {
+            throw PlatformException(code: 'native_error');
+          }
+
+          return call.method == 'navigateBackOrCloseChat' ? true : null;
+        },
       );
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
