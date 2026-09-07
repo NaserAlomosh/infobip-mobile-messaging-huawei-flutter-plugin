@@ -8,6 +8,7 @@ final class InitializationPlatform extends InfobipMobileMessagingHuaweiPlatform
     with MockPlatformInterfaceMixin {
   String? applicationCode;
   bool? defaultMessageStorage;
+  WebRTCUI? webRTCUI;
   Object? error;
   var registrationCalls = 0;
   var cleanupCalls = 0;
@@ -19,9 +20,11 @@ final class InitializationPlatform extends InfobipMobileMessagingHuaweiPlatform
   Future<void> initialize({
     required String applicationCode,
     bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
   }) async {
     this.applicationCode = applicationCode;
     this.defaultMessageStorage = defaultMessageStorage;
+    this.webRTCUI = webRTCUI;
     if (error case final Object error) throw error;
   }
 
@@ -59,6 +62,30 @@ void main() {
     await InfobipMobileMessagingHuawei.initialize(applicationCode: 'test-code');
     expect(platform.applicationCode, 'test-code');
     expect(platform.defaultMessageStorage, isTrue);
+    expect(platform.webRTCUI, isNull);
+  });
+
+  test('forwards optional WebRTC configuration unchanged', () async {
+    const configuration = WebRTCUI(configurationId: 'rtc-configuration');
+
+    await InfobipMobileMessagingHuawei.initialize(
+      applicationCode: 'test-code',
+      webRTCUI: configuration,
+    );
+
+    expect(platform.applicationCode, 'test-code');
+    expect(platform.webRTCUI, same(configuration));
+    expect(platform.webRTCUI?.configurationId, 'rtc-configuration');
+  });
+
+  test('accepts a WebRTC configuration with a null configuration ID', () async {
+    await InfobipMobileMessagingHuawei.initialize(
+      applicationCode: 'test-code',
+      webRTCUI: const WebRTCUI(),
+    );
+
+    expect(platform.webRTCUI, isNotNull);
+    expect(platform.webRTCUI?.configurationId, isNull);
   });
 
   test('uses the official default message storage value', () {

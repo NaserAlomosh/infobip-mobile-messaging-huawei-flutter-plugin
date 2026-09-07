@@ -13,6 +13,7 @@ import '../inbox/inbox_codec.dart';
 import '../custom_event/custom_event.dart';
 import '../custom_event/custom_event_codec.dart';
 import '../chat/chat_customization.dart';
+import '../configuration/web_rtc_ui.dart';
 
 final class MethodChannelInfobipMobileMessagingHuawei
     extends InfobipMobileMessagingHuaweiPlatform {
@@ -64,11 +65,21 @@ final class MethodChannelInfobipMobileMessagingHuawei
   Future<void> initialize({
     required String applicationCode,
     bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
   }) async {
-    await methodChannel.invokeMethod<void>(ChannelContract.initialize, {
+    final arguments = <String, Object?>{
       ChannelContract.applicationCode: applicationCode,
       ChannelContract.defaultMessageStorage: defaultMessageStorage,
-    });
+    };
+    if (webRTCUI != null) {
+      arguments[ChannelContract.webRTCUI] = <String, Object?>{
+        ChannelContract.configurationId: webRTCUI.configurationId,
+      };
+    }
+    await methodChannel.invokeMethod<void>(
+      ChannelContract.initialize,
+      arguments,
+    );
   }
 
   @override

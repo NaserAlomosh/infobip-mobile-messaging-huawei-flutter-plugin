@@ -40,4 +40,14 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.8.9")
+
+    val webRtcEnabled = providers.gradleProperty("infobipWebRtcEnabled")
+        .orNull?.toBooleanStrictOrNull() ?: false
+    if (webRtcEnabled) {
+        val rtcUiVersion = providers.gradleProperty("infobipRtcUiVersion").orNull
+            ?: error(
+                "infobipRtcUiVersion is required when infobipWebRtcEnabled=true",
+            )
+        implementation("com.infobip:infobip-rtc-ui:$rtcUiVersion")
+    }
 }

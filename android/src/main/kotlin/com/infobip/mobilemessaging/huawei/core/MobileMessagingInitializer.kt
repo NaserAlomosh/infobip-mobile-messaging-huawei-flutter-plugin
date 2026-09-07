@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import com.infobip.mobilemessaging.huawei.R
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfigurationState
 import org.infobip.mobile.messaging.MobileMessaging
 import org.infobip.mobile.messaging.NotificationSettings
 import org.infobip.mobile.messaging.mobileapi.InternalSdkError
@@ -14,10 +16,11 @@ internal class MobileMessagingInitializer(
     afterInitialization: () -> Unit = {},
 ) {
     private val application = context.applicationContext as Application
+    private val webRtcState = WebRtcConfigurationState()
 
     private val coordinator =
         InitializationCoordinator(
-            start = { applicationCode, defaultMessageStorage, complete ->
+            start = { applicationCode, defaultMessageStorage, webRtcConfiguration, complete ->
                 try {
                     Log.d(
                         TAG,
@@ -81,12 +84,16 @@ internal class MobileMessagingInitializer(
                     )
                 }
             },
-            afterSuccess = afterInitialization,
+            afterSuccess = { webRtcConfiguration ->
+                webRtcState.capture(webRtcConfiguration)
+                afterInitialization()
+            },
         )
 
     fun initialize(
         applicationCode: String,
         defaultMessageStorage: Boolean,
+        webRtcConfiguration: WebRtcConfiguration?,
         callback: (InitializationError?) -> Unit,
     ) {
         if (applicationCode.isBlank()) {
@@ -99,13 +106,24 @@ internal class MobileMessagingInitializer(
             return
         }
 
-        coordinator.initialize(applicationCode, defaultMessageStorage, callback)
+        coordinator.initialize(
+            applicationCode,
+            defaultMessageStorage,
+            webRtcConfiguration,
+            callback,
+        )
     }
 
     val isInitialized: Boolean
         get() = coordinator.isInitialized
 
-    fun reset() = coordinator.reset()
+    val webRtcConfiguration: WebRtcConfiguration?
+        get() = webRtcState.current
+
+    fun reset() {
+        coordinator.reset()
+        webRtcState.clear()
+    }
 
     fun registerForRemoteNotifications(callback: (InitializationError?) -> Unit) {
         if (!isInitialized) {

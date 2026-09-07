@@ -17,6 +17,7 @@ import com.infobip.mobilemessaging.huawei.installation.InstallationManager
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import com.infobip.mobilemessaging.huawei.plugin.NativeEventBridge
 import com.infobip.mobilemessaging.huawei.user.UserManager
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -508,8 +509,16 @@ class InfobipMobileMessagingHuaweiPlugin :
         }
         val defaultMessageStorage =
             call.argument<Boolean>(ChannelContract.DEFAULT_MESSAGE_STORAGE) ?: true
+        val webRtcConfiguration = try {
+            WebRtcConfiguration.fromMethodChannel(
+                call.argument<Any?>(ChannelContract.WEB_RTC_UI),
+            )
+        } catch (error: IllegalArgumentException) {
+            result.error("invalid_argument", error.message, null)
+            return
+        }
 
-        initializer?.initialize(applicationCode, defaultMessageStorage) { error ->
+        initializer?.initialize(applicationCode, defaultMessageStorage, webRtcConfiguration) { error ->
             mainHandler.post {
                 if (error == null) {
                     result.success(null)

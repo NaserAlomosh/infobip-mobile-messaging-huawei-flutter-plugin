@@ -1,5 +1,7 @@
 package com.infobip.mobilemessaging.huawei.core
 
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
+
 internal data class InitializationError(
     val code: String,
     val message: String,
@@ -7,14 +9,15 @@ internal data class InitializationError(
 )
 
 internal class InitializationCoordinator(
-    private val start: (String, Boolean, (InitializationError?) -> Unit) -> Unit,
-    private val afterSuccess: () -> Unit = {},
+    private val start: (String, Boolean, WebRtcConfiguration?, (InitializationError?) -> Unit) -> Unit,
+    private val afterSuccess: (WebRtcConfiguration?) -> Unit = {},
 ) {
     internal enum class State { NOT_INITIALIZED, INITIALIZING, INITIALIZED, FAILED }
 
     private var state = State.NOT_INITIALIZED
     private var applicationCode: String? = null
     private var attempt = 0
+    private var pendingWebRtcConfiguration: WebRtcConfiguration? = null
     private val callbacks = mutableListOf<(InitializationError?) -> Unit>()
 
     val isInitialized: Boolean
@@ -26,17 +29,19 @@ internal class InitializationCoordinator(
             applicationCode = null
             attempt++
             callbacks.clear()
+            pendingWebRtcConfiguration = null
         }
     }
 
     fun initialize(
         code: String,
         callback: (InitializationError?) -> Unit,
-    ) = initialize(code, true, callback)
+    ) = initialize(code, true, null, callback)
 
     fun initialize(
         code: String,
         defaultMessageStorage: Boolean,
+        webRtcConfiguration: WebRtcConfiguration? = null,
         callback: (InitializationError?) -> Unit,
     ) {
         var attemptToStart: Int? = null
@@ -65,6 +70,7 @@ internal class InitializationCoordinator(
                         state = State.INITIALIZING
                         callbacks += callback
                         attempt++
+                        pendingWebRtcConfiguration = webRtcConfiguration
                         attemptToStart = attempt
                     }
                 }
@@ -72,7 +78,9 @@ internal class InitializationCoordinator(
         }
         if (shouldCompleteImmediately) callback(immediateError)
         attemptToStart?.let { currentAttempt ->
-            start(code, defaultMessageStorage) { error -> complete(currentAttempt, error) }
+            start(code, defaultMessageStorage, webRtcConfiguration) { error ->
+                complete(currentAttempt, error)
+            }
         }
     }
 
@@ -81,15 +89,18 @@ internal class InitializationCoordinator(
         error: InitializationError?,
     ) {
         val pending: List<(InitializationError?) -> Unit>
+        val webRtcConfiguration: WebRtcConfiguration?
         synchronized(this) {
             if (state != State.INITIALIZING || completedAttempt != attempt) return
             state = if (error == null) State.INITIALIZED else State.FAILED
             pending = callbacks.toList()
             callbacks.clear()
+            webRtcConfiguration = pendingWebRtcConfiguration
+            pendingWebRtcConfiguration = null
         }
         if (error == null) {
             try {
-                afterSuccess()
+                afterSuccess(webRtcConfiguration)
             } catch (_: Exception) {
                 // Optional integrations must not change Mobile Messaging initialization state.
             }
