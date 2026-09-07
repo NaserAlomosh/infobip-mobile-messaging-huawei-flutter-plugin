@@ -50,6 +50,59 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Raw token injection | **Unsupported** | HMS and the Infobip SDK own token acquisition and refresh. |
 | Background Dart isolate callback | **Unsupported** | Native processing remains available, but no Dart background handler is registered. |
 
+### Regular Message Seen Status
+
+The official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d` exposes:
+
+```dart
+static Future<void> markMessagesSeen(List<String> messageIds)
+```
+
+It sends the list directly as the `markMessagesSeen` MethodChannel argument.
+The official native implementations validate the argument and call their core
+Mobile Messaging seen API synchronously; they do not wait for a server
+acknowledgement. An empty list is invalid. This package likewise leaves Dart
+validation to the native handler so invalid calls complete with a
+`PlatformException` rather than throwing an early Dart `ArgumentError`.
+
+Huawei Mobile Messaging SDK 8.14.0, at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`, exposes
+`MobileMessaging.setMessagesSeen(String... messageIds)`. The mapping is
+**MAPPABLE** with equivalent core semantics: the bridge accepts a direct
+`List<String>`, preserves every ID exactly (including ordering, duplicates,
+whitespace, numeric-looking values, and unusual Unicode), and invokes the
+native method once. Malformed arguments, non-string elements, and empty lists
+return `invalid_argument`; use before initialization returns
+`not_initialized`.
+
+`Future<void>` completes after `setMessagesSeen` returns locally. The native
+method has no per-call completion callback, so completion does not confirm that
+the Infobip backend has persisted the status. Huawei stores unreported seen
+IDs, marks matching messages in its configured `MessageStore` as seen, and
+schedules asynchronous reporting. Its internal reporter emits
+`Event.SEEN_REPORTS_SENT` after successful reporting; the pinned official
+Flutter API exposes no corresponding public event, so this package does not
+add one. The SDK must already be initialized, and the plugin does not manually
+change message models or storage.
+
+This regular Mobile Messaging API does not take an `externalUserId`, does not
+use an Inbox JWT, and is not the same operation as `MobileInbox.setSeen` or this
+package's `setInboxMessagesSeen`. In particular, it does not promise that a
+subsequent Mobile Inbox fetch reflects the same state. Huawei's automatic
+`NotificationSettings.markSeenOnTap()` behavior remains independent and is not
+changed by manual marking.
+
+Minimal usage:
+
+```dart
+await InfobipMobileMessagingHuawei.markMessagesSeen(
+  <String>[
+    message.messageId,
+  ],
+);
+```
+
 ---
 
 ## User Management

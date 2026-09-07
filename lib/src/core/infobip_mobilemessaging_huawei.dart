@@ -102,6 +102,15 @@ final class InfobipMobileMessagingHuawei {
       InfobipMobileMessagingHuaweiPlatform.instance
           .registerForRemoteNotifications();
 
+  /// Marks regular Mobile Messaging messages as seen.
+  ///
+  /// Completion means the command was accepted locally by the native SDK;
+  /// seen-status reporting to the backend may happen asynchronously.
+  static Future<void> markMessagesSeen(List<String> messageIds) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.markMessagesSeen(
+        messageIds,
+      );
+
   /// Returns the locally cached user without making a server request.
   static Future<UserData> getUser() =>
       InfobipMobileMessagingHuaweiPlatform.instance.getUser();
