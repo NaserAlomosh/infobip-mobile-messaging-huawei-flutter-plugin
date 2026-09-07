@@ -562,3 +562,45 @@ should use the official-style names.
 Drawable-valued strings may identify Flutter assets. Android resolves their Flutter asset lookup keys through the embedding's `FlutterAssets` API and safely returns `null` when an optional asset cannot be loaded. Other drawable, mipmap, raw, style, and text-appearance strings remain resource names interpreted by Huawei; Dart does not trim or reinterpret them. Color strings are also forwarded unchanged for Android parsing.
 
 The public API does not expose reset or `null` customization because the referenced Flutter API does not. `InAppChat.setTheme` is global and can be called before creating a Chat view. Huawei source does not guarantee that an already visible fragment redraws immediately; apply customization before showing Chat, or recreate the Chat UI when changing it at runtime.
+
+## Chat Push Notification Title / Body
+
+**Official reference:** `infobip/mobile-messaging-flutter-plugin` commit `8b630d0f736d400635317131d549c345349bd54d`
+
+**Huawei source:** `infobip/mobile-messaging-sdk-huawei` commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`
+
+**Classification:** **EXACT**, **ANDROID_ONLY**
+
+The official global APIs are
+`static Future<void> setChatPushTitle(String? title)` and
+`static Future<void> setChatPushBody(String? body)`. The official Android
+channel handlers pass each nullable string directly to the corresponding
+`InAppChat` setter; there is no iOS implementation. This plugin uses the same
+method names and direct nullable-string channel argument shape.
+
+| Official Flutter API | Huawei 8.14 native API | Classification |
+| --- | --- | --- |
+| `setChatPushTitle(String?)` | `InAppChat.setChatPushTitle(String?)` | EXACT, ANDROID_ONLY |
+| `setChatPushBody(String?)` | `InAppChat.setChatPushBody(String?)` | EXACT, ANDROID_ONLY |
+
+Both native setters store global Chat notification configuration. Huawei's
+nullable contract removes the stored override when `null` is supplied. Empty
+strings remain distinct from `null`, and the Flutter and Android bridges do not
+trim or otherwise transform either value. Huawei uses the configured strings
+as Chat notification title and body overrides; they are not Android resource
+keys. These APIs do not rewrite notification payloads and do not configure
+regular Mobile Messaging notifications.
+
+The setters only require an attached plugin context so that the global
+`InAppChat` instance can be obtained. They do not call Mobile Messaging
+initialization, Chat activation, `ChatManager.attach()`, `showChat()`, or
+`InAppChatScreen.show()`. They can therefore be configured before Chat is
+activated or presented. They do not create, require, or update an embedded
+`InfobipHuaweiChatView` or `InfobipHuaweiChatController`; an already displayed
+Chat UI is outside their scope. Changes apply when Huawei builds subsequent
+Chat notifications. The source does not establish retroactive effects for
+notifications that Android has already displayed.
+
+Known limitation: this is an Android-only capability, matching the official
+Flutter plugin. Native default and fallback content remains owned by Huawei SDK
+8.14.0 when an override is absent.

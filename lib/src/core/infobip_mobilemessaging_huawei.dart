@@ -28,6 +28,20 @@ final class InfobipMobileMessagingHuawei {
         customization,
       );
 
+  /// Sets the title override used by future Chat push notifications on Android.
+  ///
+  /// Passing `null` removes the override. Empty and whitespace-only strings are
+  /// forwarded unchanged.
+  static Future<void> setChatPushTitle(String? title) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.setChatPushTitle(title);
+
+  /// Sets the body override used by future Chat push notifications on Android.
+  ///
+  /// Passing `null` removes the override. Empty and whitespace-only strings are
+  /// forwarded unchanged.
+  static Future<void> setChatPushBody(String? body) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.setChatPushBody(body);
+
   /// Presents the standard native Chat screen.
   ///
   /// [shouldBePresentedModallyIOS] is retained for compatibility with the

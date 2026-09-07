@@ -87,6 +87,14 @@ internal class ChatManager(
         }
     }
 
+    fun setChatPushTitle(title: String?): ChatFailure? = configurePushNotification(
+        "Unable to set Chat push title",
+    ) { operations.setChatPushTitle(title) }
+
+    fun setChatPushBody(body: String?): ChatFailure? = configurePushNotification(
+        "Unable to set Chat push body",
+    ) { operations.setChatPushBody(body) }
+
     @Synchronized
     fun setJwtProvider(): ChatFailure? = try {
         jwtBridge.enable()
@@ -157,6 +165,16 @@ internal class ChatManager(
         } catch (_: Exception) {
             callback(null, ChatFailure("native_error", failureMessage))
         }
+    }
+
+    private fun configurePushNotification(
+        failureMessage: String,
+        operation: () -> Unit,
+    ): ChatFailure? = try {
+        operation()
+        null
+    } catch (_: Exception) {
+        ChatFailure("native_error", failureMessage)
     }
 
     fun detach() {
