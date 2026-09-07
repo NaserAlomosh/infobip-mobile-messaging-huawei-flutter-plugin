@@ -18,6 +18,8 @@ import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import com.infobip.mobilemessaging.huawei.plugin.NativeEventBridge
 import com.infobip.mobilemessaging.huawei.user.UserManager
 import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcFailure
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcOperations
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -43,6 +45,7 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var messageOperations: MessageOperations? = null
     private var inboxManager: InboxManager? = null
     private var chatManager: ChatManager? = null
+    private var webRtcOperations: WebRtcOperations? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
     private var drawableLoader: PluginChatCustomization.DrawableLoader? = null
@@ -60,6 +63,12 @@ class InfobipMobileMessagingHuaweiPlugin :
             MobileMessagingInitializer(binding.applicationContext) {
                 chatManager?.activate()
             }
+        webRtcOperations =
+            WebRtcOperations(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+                configuration = { initializer?.webRtcConfiguration },
+            )
         userManager =
             UserManager(
                 context = binding.applicationContext,
@@ -95,6 +104,7 @@ class InfobipMobileMessagingHuaweiPlugin :
                     chatManager?.clearExceptionHandler()
                 },
                 resetPluginState = {
+                    webRtcOperations?.reset()
                     initializer?.reset()
                     chatManager?.resetAfterCleanup()
                 },
@@ -135,6 +145,8 @@ class InfobipMobileMessagingHuaweiPlugin :
         messageOperations = null
         inboxManager = null
         chatManager = null
+        webRtcOperations?.reset()
+        webRtcOperations = null
         applicationContext = null
         drawableLoader = null
         activity = null
@@ -170,6 +182,29 @@ class InfobipMobileMessagingHuaweiPlugin :
                 val error = manager.cleanup()
                 if (error == null) result.success(null)
                 else result.error(error.code, error.message, error.details)
+            }
+
+            ChannelContract.ENABLE_CALLS -> {
+                val identity = call.arguments as? String
+                if (identity == null) {
+                    result.error("invalid_argument", "identity must be a string", null)
+                    return
+                }
+                webRtcOperations?.enableCalls(identity) { failure ->
+                    completeWebRtc(result, failure)
+                } ?: detached(result)
+            }
+
+            ChannelContract.ENABLE_CHAT_CALLS -> {
+                webRtcOperations?.enableChatCalls { failure ->
+                    completeWebRtc(result, failure)
+                } ?: detached(result)
+            }
+
+            ChannelContract.DISABLE_CALLS -> {
+                webRtcOperations?.disableCalls { failure ->
+                    completeWebRtc(result, failure)
+                } ?: detached(result)
             }
 
             ChannelContract.REGISTER_FOR_REMOTE_NOTIFICATIONS -> {
@@ -456,6 +491,16 @@ class InfobipMobileMessagingHuaweiPlugin :
 
     private fun detached(result: MethodChannel.Result) {
         result.error("native_error", "Plugin is not attached to an engine", null)
+    }
+
+    private fun completeWebRtc(
+        result: MethodChannel.Result,
+        failure: WebRtcFailure?,
+    ) {
+        mainHandler.post {
+            if (failure == null) result.success(null)
+            else result.error(failure.code, failure.message, failure.details)
+        }
     }
 
     private fun setChatCustomization(

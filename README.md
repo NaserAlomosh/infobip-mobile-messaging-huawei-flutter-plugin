@@ -113,6 +113,10 @@ changing the value does not alter the active SDK instance, but is used by the fi
 initialization after cleanup. This stores regular Mobile Messaging messages, not
 Mobile Inbox or Chat history.
 
+WebRTC calls use the optional `com.infobip:infobip-rtc-ui` Android artifact. See
+[`docs/webrtc-configuration.md`](docs/webrtc-configuration.md) for initialization,
+runtime usage, and dependency configuration.
+
 For deployments that require JWT authorization, set or clear the SDK's memory-only JWT without logging it:
 
 ```dart
