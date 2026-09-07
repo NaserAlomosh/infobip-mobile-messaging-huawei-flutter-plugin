@@ -100,12 +100,18 @@ Ensure the package declaration matches the host application's namespace.
 Initialize once before using any feature:
 
 ```dart
+InfobipMobileMessagingHuawei.defaultMessageStorage = true;
+
 await InfobipMobileMessagingHuawei.initialize(
   applicationCode: 'YOUR_APPLICATION_CODE',
 );
 ```
 
 Equivalent calls are idempotent. A conflicting application code is rejected after initialization begins; a failed call can be retried with the same code.
+The default message store is enabled by default. Configure it before initialization;
+changing the value does not alter the active SDK instance, but is used by the first
+initialization after cleanup. This stores regular Mobile Messaging messages, not
+Mobile Inbox or Chat history.
 
 For deployments that require JWT authorization, set or clear the SDK's memory-only JWT without logging it:
 

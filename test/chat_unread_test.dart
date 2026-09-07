@@ -24,7 +24,10 @@ final class ChatPlatform extends InfobipMobileMessagingHuaweiPlatform
   }
 
   @override
-  Future<void> initialize({required String applicationCode}) async {}
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {}
 }
 
 Map<String, Object?> unreadEnvelope(Object? count) => {

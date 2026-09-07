@@ -4,6 +4,62 @@ This document summarizes the public API coverage of
 `infobip_mobilemessaging_huawei` v1.0.0 against the Infobip Huawei
 Mobile Messaging Android SDK 8.14.0.
 
+## Default Message Storage
+
+The official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d` declares the following mutable
+static field:
+
+```dart
+static bool defaultMessageStorage = true;
+```
+
+It is a non-nullable Dart initialization option, not a getter/setter pair or a
+runtime native switch. Assigning the field performs no MethodChannel call. The
+official `init` call reads its current value and sends `defaultMessageStorage`
+with the other initialization arguments. On Android, the plugin conditionally
+adds `SQLiteMessageStore.class` to `MobileMessaging.Builder.withMessageStore`.
+It does not rebuild the active SDK merely because the Dart field changes, and
+the setting is not separately persisted by the plugin.
+
+Huawei Mobile Messaging SDK 8.14.0 at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` provides the equivalent builder
+API, `withMessageStore(Class<? extends MessageStore>)`, and bundles
+`org.infobip.mobile.messaging.storage.SQLiteMessageStore` in the core Huawei
+SDK artifact. The builder instantiates the supplied store class. No store is
+installed implicitly when `withMessageStore` is omitted, and there is no API
+for replacing the store after `build()`. SQLite initialization is lazy: the
+store object can be created during SDK construction without opening the
+database until a storage operation occurs.
+
+| Official Flutter | Official Android | Huawei 8.14 | Our plugin | Classification | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `static bool defaultMessageStorage = true` | During `init`, conditionally calls `withMessageStore(SQLiteMessageStore.class)` | `MobileMessaging.Builder.withMessageStore(Class<? extends MessageStore>)` and `SQLiteMessageStore` | Sends the field value with `initialize`; native initialization conditionally configures `SQLiteMessageStore::class.java` | **EXACT** | Selection occurs before `build()` and defaults to enabled. |
+
+The setting is captured by the native initialization attempt. Repeating
+`initialize` with the same application code remains idempotent and does not
+create a second SDK instance or change its store. Changing the Dart field while
+initialized only affects an initialization performed after `cleanup`. It does
+not migrate, expose, or delete already stored messages. Huawei's SDK cleanup
+clears Mobile Messaging state, including messages held by the configured
+store, before this plugin resets its initialization coordinator; a subsequent
+initialization can therefore select a different storage mode.
+
+`markMessagesSeen` remains independent at the plugin boundary. Huawei's
+`setMessagesSeen` updates matching records when a `MessageStore` is configured
+and also queues seen reporting, but this feature does not change that API.
+Default message storage is regular Mobile Messaging notification storage; it
+is not Mobile Inbox storage and does not involve `InboxManager`, Inbox JWTs, or
+`setInboxMessagesSeen`. It also does not control Chat transcripts, runtime
+events, customization, or push presentation. The pinned official Flutter
+commit exposes no general stored-message retrieval API, so this mapping adds
+none.
+
+Known limitation: disabling storage prevents local persistence for newly
+received regular Mobile Messaging messages, but changing the Dart field alone
+cannot reconfigure an already built native SDK. Applications must call
+`cleanup` before initializing with a different selection.
+
 The package is Android-only and targets Huawei Mobile Services (HMS).
 
 ## Status Legend

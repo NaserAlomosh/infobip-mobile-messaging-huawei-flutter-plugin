@@ -15,7 +15,10 @@ final class FakePlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => const Stream.empty();
 
   @override
-  Future<void> initialize({required String applicationCode}) async {
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {
     initializedWith = applicationCode;
   }
 }
@@ -46,6 +49,37 @@ void main() {
       'com.infobip.mobilemessaging.huawei/events',
     );
   });
+
+  test(
+    'forwards message storage configuration with initialization',
+    () async {
+      const channelName = 'initialization-method-test';
+      final calls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const channel = MethodChannel(channelName);
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+      final platform = MethodChannelInfobipMobileMessagingHuawei(
+        methodChannel: channel,
+        eventChannel: const EventChannel('initialization-event-test'),
+      );
+      await platform.initialize(
+        applicationCode: 'test-code',
+        defaultMessageStorage: false,
+      );
+
+      expect(calls.single.method, ChannelContract.initialize);
+      expect(calls.single.arguments, <String, Object>{
+        ChannelContract.applicationCode: 'test-code',
+        ChannelContract.defaultMessageStorage: false,
+      });
+    },
+  );
 
   test(
     'forwards cleanup over the method channel',

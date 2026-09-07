@@ -24,7 +24,10 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
 
   Stream<Object?> get events;
 
-  Future<void> initialize({required String applicationCode});
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  });
 
   Future<void> cleanup() => throw UnimplementedError();
 

@@ -35,6 +35,7 @@ abstract final class ChannelContract {
   static const widgetTheme = 'widgetTheme';
   static const initialize = 'initialize';
   static const cleanup = 'cleanup';
+  static const defaultMessageStorage = 'defaultMessageStorage';
   static const registerForRemoteNotifications =
       'registerForRemoteNotifications';
   static const markMessagesSeen = 'markMessagesSeen';

@@ -18,7 +18,10 @@ final class ChatJwtPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => eventsController.stream;
 
   @override
-  Future<void> initialize({required String applicationCode}) async {}
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {}
 
   @override
   Future<void> cleanup() async {}

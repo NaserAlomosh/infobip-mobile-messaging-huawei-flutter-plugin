@@ -10,8 +10,27 @@ import org.junit.Test
 
 class InitializationCoordinatorTest {
     @Test
+    fun `storage configuration is fixed for an initialized lifecycle`() {
+        val storageSelections = mutableListOf<Boolean>()
+        val coordinator = InitializationCoordinator { _, storageEnabled, complete ->
+            storageSelections += storageEnabled
+            complete(null)
+        }
+
+        coordinator.initialize("code", false) {}
+        coordinator.initialize("code", true) {}
+
+        assertEquals(listOf(false), storageSelections)
+
+        coordinator.reset()
+        coordinator.initialize("code", true) {}
+
+        assertEquals(listOf(false, true), storageSelections)
+    }
+
+    @Test
     fun `reset requires initialization again and accepts a new application code`() {
-        val coordinator = InitializationCoordinator(start = { _, complete -> complete(null) })
+        val coordinator = InitializationCoordinator(start = { _, _, complete -> complete(null) })
         coordinator.initialize("first") {}
         assertTrue(coordinator.isInitialized)
 
@@ -27,7 +46,7 @@ class InitializationCoordinatorTest {
     @Test
     fun `first initialization starts native build once`() {
         var starts = 0
-        val coordinator = InitializationCoordinator { code, _ ->
+        val coordinator = InitializationCoordinator { code, _, _ ->
             starts++
             assertEquals("code", code)
         }
@@ -42,7 +61,7 @@ class InitializationCoordinatorTest {
         lateinit var complete: (InitializationError?) -> Unit
         var starts = 0
         val results = mutableListOf<InitializationError?>()
-        val coordinator = InitializationCoordinator { _, completion ->
+        val coordinator = InitializationCoordinator { _, _, completion ->
             starts++
             complete = completion
         }
@@ -58,7 +77,7 @@ class InitializationCoordinatorTest {
     @Test
     fun `repeated same-code call after success does not rebuild`() {
         var starts = 0
-        val coordinator = InitializationCoordinator { _, complete ->
+        val coordinator = InitializationCoordinator { _, _, complete ->
             starts++
             complete(null)
         }
@@ -76,7 +95,7 @@ class InitializationCoordinatorTest {
         val events = mutableListOf<String>()
         val coordinator =
             InitializationCoordinator(
-                start = { _, complete ->
+                start = { _, _, complete ->
                     events += "mobile_messaging"
                     complete(null)
                 },
@@ -93,7 +112,7 @@ class InitializationCoordinatorTest {
     fun `optional integration failure does not fail initialization`() {
         val coordinator =
             InitializationCoordinator(
-                start = { _, complete -> complete(null) },
+                start = { _, _, complete -> complete(null) },
                 afterSuccess = { throw IllegalStateException("Chat unavailable") },
             )
         var result: InitializationError? = InitializationError("test", "test")
@@ -106,7 +125,7 @@ class InitializationCoordinatorTest {
 
     @Test
     fun `different code while initializing is rejected`() {
-        val coordinator = InitializationCoordinator { _, _ -> }
+        val coordinator = InitializationCoordinator { _, _, _ -> }
         var error: InitializationError? = null
 
         coordinator.initialize("first") {}
@@ -117,7 +136,7 @@ class InitializationCoordinatorTest {
 
     @Test
     fun `different code after success is rejected`() {
-        val coordinator = InitializationCoordinator { _, complete -> complete(null) }
+        val coordinator = InitializationCoordinator { _, _, complete -> complete(null) }
         var error: InitializationError? = null
 
         coordinator.initialize("first") {}
@@ -131,7 +150,7 @@ class InitializationCoordinatorTest {
         lateinit var complete: (InitializationError?) -> Unit
         val expected = InitializationError("initialization_failed", "Failed")
         val results = mutableListOf<InitializationError?>()
-        val coordinator = InitializationCoordinator { _, completion -> complete = completion }
+        val coordinator = InitializationCoordinator { _, _, completion -> complete = completion }
         coordinator.initialize("code", results::add)
         coordinator.initialize("code", results::add)
 
@@ -143,7 +162,7 @@ class InitializationCoordinatorTest {
     @Test
     fun `same-code call after failure starts a new native build`() {
         val completions = mutableListOf<(InitializationError?) -> Unit>()
-        val coordinator = InitializationCoordinator { _, complete -> completions += complete }
+        val coordinator = InitializationCoordinator { _, _, complete -> completions += complete }
         coordinator.initialize("code") {}
         completions.single()(InitializationError("initialization_failed", "Failed"))
 
@@ -156,7 +175,7 @@ class InitializationCoordinatorTest {
     fun `retry succeeds after previous failure`() {
         val completions = mutableListOf<(InitializationError?) -> Unit>()
         val results = mutableListOf<InitializationError?>()
-        val coordinator = InitializationCoordinator { _, complete -> completions += complete }
+        val coordinator = InitializationCoordinator { _, _, complete -> completions += complete }
         val failure = InitializationError("native_error", "Failed")
         coordinator.initialize("code", results::add)
         completions[0](failure)
@@ -173,7 +192,7 @@ class InitializationCoordinatorTest {
     fun `different code after failure is rejected`() {
         lateinit var complete: (InitializationError?) -> Unit
         var starts = 0
-        val coordinator = InitializationCoordinator { _, completion ->
+        val coordinator = InitializationCoordinator { _, _, completion ->
             starts++
             complete = completion
         }
@@ -191,7 +210,7 @@ class InitializationCoordinatorTest {
     fun `callbacks run after state mutation and outside coordinator monitor`() {
         lateinit var complete: (InitializationError?) -> Unit
         var starts = 0
-        val coordinator = InitializationCoordinator { _, completion ->
+        val coordinator = InitializationCoordinator { _, _, completion ->
             starts++
             complete = completion
         }
@@ -209,7 +228,7 @@ class InitializationCoordinatorTest {
     fun `completion clears pending callbacks`() {
         val completions = mutableListOf<(InitializationError?) -> Unit>()
         var callbackCount = 0
-        val coordinator = InitializationCoordinator { _, completion -> completions += completion }
+        val coordinator = InitializationCoordinator { _, _, completion -> completions += completion }
         coordinator.initialize("code") { callbackCount++ }
 
         completions[0](InitializationError("initialization_failed", "Failed"))
