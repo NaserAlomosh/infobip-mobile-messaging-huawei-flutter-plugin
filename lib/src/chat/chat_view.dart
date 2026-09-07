@@ -146,6 +146,18 @@ final class InfobipHuaweiChatController {
     );
   }
 
+  /// Sets the native composer draft for the active Chat conversation.
+  ///
+  /// An empty string clears the draft. The value is forwarded unchanged and
+  /// the controller must be attached to a live native Chat view.
+  Future<void> setChatDraftMessage(String draftMessage) async {
+    final bridge = _requireBridge();
+    await bridge.channel.invokeMethod<void>(
+      ChannelContract.chatSetDraftMessage,
+      <String, Object>{ChannelContract.message: draftMessage},
+    );
+  }
+
   /// Sends opaque contextual data through this embedded Chat component.
   ///
   /// Contextual data is not displayed as a normal Chat message.

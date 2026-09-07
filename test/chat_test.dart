@@ -27,6 +27,16 @@ void main() {
       throwsA(isA<PlatformException>()),
     );
     await expectLater(
+      controller.setChatDraftMessage('Draft'),
+      throwsA(
+        isA<PlatformException>().having(
+          (error) => error.code,
+          'code',
+          'chat_unavailable',
+        ),
+      ),
+    );
+    await expectLater(
       controller.getLanguage(),
       throwsA(isA<PlatformException>()),
     );
@@ -208,6 +218,66 @@ void main() {
 
       expect(controller.isAttached, isTrue);
       expect(await controller.navigateBackOrCloseChat(), isTrue);
+    });
+
+    testWidgets('draft message is forwarded unchanged', (tester) async {
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+        call,
+      ) async {
+        calls.add(call);
+        return null;
+      });
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await controller.setChatDraftMessage('  hello  ');
+
+      final call = calls.singleWhere(
+        (call) => call.method == 'setChatDraftMessage',
+      );
+      expect(call.arguments, <String, Object?>{'message': '  hello  '});
+    });
+
+    testWidgets('empty draft clears the native draft', (tester) async {
+      MethodCall? draftCall;
+      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+        call,
+      ) async {
+        if (call.method == 'setChatDraftMessage') draftCall = call;
+        return null;
+      });
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await controller.setChatDraftMessage('');
+
+      expect(draftCall?.arguments, <String, Object?>{'message': ''});
+    });
+
+    testWidgets('draft platform errors propagate', (tester) async {
+      messenger.setMockMethodCallHandler(
+        const MethodChannel(channelName),
+        (call) async {
+          if (call.method == 'setChatDraftMessage') {
+            throw PlatformException(code: 'native_error');
+          }
+          return null;
+        },
+      );
+      final controller = InfobipHuaweiChatController();
+      await mountView(tester, controller: controller);
+
+      await expectLater(
+        controller.setChatDraftMessage('Draft'),
+        throwsA(
+          isA<PlatformException>().having(
+            (error) => error.code,
+            'code',
+            'native_error',
+          ),
+        ),
+      );
     });
 
     testWidgets('controller requests the thread list on its view channel', (

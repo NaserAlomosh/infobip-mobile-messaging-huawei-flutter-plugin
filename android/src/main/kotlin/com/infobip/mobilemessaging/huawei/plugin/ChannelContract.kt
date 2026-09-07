@@ -10,6 +10,7 @@ internal object ChannelContract {
     const val CHAT_IS_MULTITHREAD = "isMultithread"
     const val CHAT_SEND = "send"
     const val CHAT_SEND_CONTEXTUAL_DATA = "sendContextualData"
+    const val CHAT_SET_DRAFT_MESSAGE = "setChatDraftMessage"
     const val CHAT_SET_LANGUAGE = "setLanguage"
     const val CHAT_GET_LANGUAGE = "getLanguage"
     const val CHAT_SET_WIDGET_THEME = "setWidgetTheme"

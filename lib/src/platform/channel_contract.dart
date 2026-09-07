@@ -9,6 +9,7 @@ abstract final class ChannelContract {
   static const chatIsMultithread = 'isMultithread';
   static const chatSend = 'send';
   static const chatSendContextualData = 'sendContextualData';
+  static const chatSetDraftMessage = 'setChatDraftMessage';
   static const chatSetLanguage = 'setLanguage';
   static const chatGetLanguage = 'getLanguage';
   static const chatSetWidgetTheme = 'setWidgetTheme';

@@ -16,6 +16,7 @@ class _ChatScreenState extends State<ChatScreen> {
       InfobipHuaweiChatController();
   final _message = TextEditingController();
   final _contextualData = TextEditingController();
+  final _draft = TextEditingController();
   final _theme = TextEditingController();
   StreamSubscription<int>? _unreadSubscription;
   int? _unreadCount;
@@ -86,6 +87,7 @@ class _ChatScreenState extends State<ChatScreen> {
     unawaited(_unreadSubscription?.cancel());
     _message.dispose();
     _contextualData.dispose();
+    _draft.dispose();
     _theme.dispose();
     super.dispose();
   }
@@ -143,6 +145,38 @@ class _ChatScreenState extends State<ChatScreen> {
                           }),
                     child: const Text('Send text'),
                   ),
+                ),
+                TextField(
+                  controller: _draft,
+                  decoration: const InputDecoration(
+                    labelText: 'Chat draft',
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    OutlinedButton(
+                      onPressed: _loading
+                          ? null
+                          : () => _run(() async {
+                              await _chatController.setChatDraftMessage(
+                                _draft.text,
+                              );
+                              return 'Draft set for the active conversation.';
+                            }),
+                      child: const Text('Set draft'),
+                    ),
+                    OutlinedButton(
+                      onPressed: _loading
+                          ? null
+                          : () => _run(() async {
+                              await _chatController.setChatDraftMessage('');
+                              _draft.clear();
+                              return 'Draft cleared.';
+                            }),
+                      child: const Text('Clear draft'),
+                    ),
+                  ],
                 ),
                 TextField(
                   controller: _contextualData,
