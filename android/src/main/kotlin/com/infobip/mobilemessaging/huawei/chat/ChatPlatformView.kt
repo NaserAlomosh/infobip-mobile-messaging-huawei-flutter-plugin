@@ -183,23 +183,23 @@ internal class ChatPlatformView(
         }
         when (call.method) {
             ChannelContract.CHAT_NAVIGATE_BACK -> handleNavigateBack(current, result)
-            ChannelContract.CHAT_SHOW_THREADS_LIST -> runOnFragment(current, result) {
+            ChannelContract.CHAT_SHOW_THREADS_LIST -> runCommand(current, result) {
                 current.showThreadList()
             }
-            ChannelContract.CHAT_IS_MULTITHREAD -> runOnFragment(current, result) {
+            ChannelContract.CHAT_IS_MULTITHREAD -> runQuery(current, result) {
                 current.isMultiThread
             }
             ChannelContract.CHAT_SEND -> handleSend(call, result, current)
             ChannelContract.CHAT_SET_DRAFT_MESSAGE -> handleDraftMessage(call, result)
             ChannelContract.CHAT_SEND_CONTEXTUAL_DATA -> handleContextualData(call, result, current)
             ChannelContract.CHAT_SET_LANGUAGE -> handleLanguage(call, result, current)
-            ChannelContract.CHAT_GET_LANGUAGE -> runOnFragment(current, result) {
+            ChannelContract.CHAT_GET_LANGUAGE -> runQuery(current, result) {
                 ChatLanguageMapper.toWidgetCode(current.getLanguage())
             }
             ChannelContract.CHAT_SET_WIDGET_THEME -> handleStringArgument(call, result, current) {
                 current.setWidgetTheme(it)
             }
-            ChannelContract.CHAT_GET_WIDGET_THEME -> runOnFragment(current, result) {
+            ChannelContract.CHAT_GET_WIDGET_THEME -> runQuery(current, result) {
                 current.getWidgetTheme()
             }
             else -> result.notImplemented()
@@ -208,7 +208,7 @@ internal class ChatPlatformView(
 
     private fun handleNavigateBack(current: InAppChatFragment, result: MethodChannel.Result) {
         Log.d(TAG, "Chat back navigation requested")
-        runOnFragment(current, result) {
+        runQuery(current, result) {
             val handled = ChatBackNavigation.isHandledInternally(current.isMultiThread, currentWidgetView)
             if (handled) {
                 current.showThreadList()
@@ -227,7 +227,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", "Unsupported Chat language", null)
             return
         }
-        runOnFragment(current, result) { current.setLanguage(language) }
+        runCommand(current, result) { current.setLanguage(language) }
     }
 
     private fun handleStringArgument(
@@ -241,7 +241,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", "widgetTheme must not be empty", null)
             return
         }
-        runOnFragment(current, result) { operation(value) }
+        runCommand(current, result) { operation(value) }
     }
 
     private fun handleSend(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {
@@ -251,7 +251,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", error.message, null)
             return
         }
-        runOnFragment(current, result) { current.send(payload) }
+        runCommand(current, result) { current.send(payload) }
     }
 
     private fun handleDraftMessage(
@@ -274,7 +274,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", error.message, null)
             return
         }
-        runOnFragment(current, result) {
+        runCommand(current, result) {
             current.sendContextualData(
                 data,
                 strategy,
@@ -282,7 +282,16 @@ internal class ChatPlatformView(
         }
     }
 
-    private fun runOnFragment(
+    private fun runCommand(
+        current: InAppChatFragment,
+        result: MethodChannel.Result,
+        operation: () -> Unit,
+    ) = runQuery(current, result) {
+        operation()
+        null
+    }
+
+    private fun runQuery(
         current: InAppChatFragment,
         result: MethodChannel.Result,
         operation: () -> Any?,
@@ -295,7 +304,7 @@ internal class ChatPlatformView(
             try {
                 result.success(operation())
             } catch (error: RuntimeException) {
-                Log.e(TAG, "Native Chat operation failed", error)
+                Log.e(TAG, "Native Chat operation failed")
                 result.error("native_error", "Chat operation failed", null)
             }
         }
