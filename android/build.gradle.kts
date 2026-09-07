@@ -12,6 +12,7 @@ android {
 
     defaultConfig {
         minSdk = 26
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     compileOptions {
@@ -51,6 +52,7 @@ repositories {
 dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:5.20.0")
+    testImplementation("org.ow2.asm:asm-tree:9.8")
     testImplementation("org.robolectric:robolectric:4.16")
     implementation("com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0@aar") {
         isTransitive = true
