@@ -217,8 +217,8 @@ class InfobipMobileMessagingHuaweiPlugin :
             }
 
             ChannelContract.MARK_MESSAGES_SEEN -> {
-                val failure = messageOperations?.markMessagesSeen(call.arguments)
-                    ?: return detached(result)
+                val manager = messageOperations ?: return detached(result)
+                val failure = manager.markMessagesSeen(call.arguments)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
@@ -284,16 +284,17 @@ class InfobipMobileMessagingHuaweiPlugin :
             }
 
             ChannelContract.SET_CHAT_JWT_PROVIDER -> {
-                val failure = chatManager?.setJwtProvider() ?: return detached(result)
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setJwtProvider()
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.SET_CHAT_EXCEPTION_HANDLER -> {
-                val failure = chatManager?.setExceptionHandler(
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setExceptionHandler(
                     call.argument<Any?>(ChannelContract.ENABLED),
                 ) { payload -> eventBridge?.emitChatException(payload) }
-                    ?: return detached(result)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
@@ -303,35 +304,36 @@ class InfobipMobileMessagingHuaweiPlugin :
             }
 
             ChannelContract.SET_CHAT_PUSH_TITLE -> {
-                val failure = chatManager?.setChatPushTitle(call.arguments as String?)
-                    ?: return detached(result)
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setChatPushTitle(call.arguments as String?)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.SET_CHAT_PUSH_BODY -> {
-                val failure = chatManager?.setChatPushBody(call.arguments as String?)
-                    ?: return detached(result)
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setChatPushBody(call.arguments as String?)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.SHOW_CHAT -> {
-                val failure = chatManager?.showChat() ?: return detached(result)
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.showChat()
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.RESOLVE_CHAT_JWT -> {
-                val failure = chatManager?.resolveJwt(call.argument<Any?>(ChannelContract.JWT))
-                    ?: return detached(result)
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.resolveJwt(call.argument<Any?>(ChannelContract.JWT))
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.REJECT_CHAT_JWT -> {
-                val failure = chatManager?.rejectJwt(call.argument<Any?>(ChannelContract.ERROR))
-                    ?: return detached(result)
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.rejectJwt(call.argument<Any?>(ChannelContract.ERROR))
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
             }
