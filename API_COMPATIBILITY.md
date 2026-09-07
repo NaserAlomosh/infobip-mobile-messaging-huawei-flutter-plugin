@@ -179,8 +179,8 @@ its existing native behavior.
 | Chat exception handler | **Adapted** | `setChatExceptionHandler` maps Huawei `InAppChat.setExceptionHandler` exceptions to nullable `message` and `name` fields. A custom handler replaces Huawei's default exception presentation; passing `null` restores it. Android/Huawei only. |
 | Programmatic attachments | **Unsupported** | The pinned official Flutter API has no public programmatic attachment contract to reproduce. Huawei 8.14.0 exposes attachment handling only through its native Chat component contract; the plugin does not invent a Dart file/URI model. |
 | Thread APIs | **Intentionally omitted** | Stable thread models are not exposed in v1. |
-| Raw Chat messages | **Intentionally omitted** | v1 does not expose raw component messages. |
-| Additional Chat runtime events | **Intentionally omitted** | Only stable v1 Chat events are exposed. |
+| Raw Chat messages | **Supported** | Exposed unchanged through a typed, view-scoped runtime event. |
+| Official Chat runtime events | **Adapted** | The official public event contract is exposed through typed, view-scoped events; connection callbacks share the existing connection-state event. |
 
 ### Contextual Data Audit
 
@@ -604,3 +604,40 @@ notifications that Android has already displayed.
 Known limitation: this is an Android-only capability, matching the official
 Flutter plugin. Native default and fallback content remains owned by Huawei SDK
 8.14.0 when an override is absent.
+
+## Chat Runtime Events
+
+The runtime-event contract was audited against the official Flutter plugin at
+commit `8b630d0f736d400635317131d549c345349bd54d` and Huawei SDK 8.14.0 at commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`. Events remain scoped to one
+embedded view and use the existing buffered `chatOnRuntimeEvent` channel path.
+
+| Official Flutter event | Huawei 8.14 callback | Our public event | Classification | Notes |
+| --- | --- | --- | --- | --- |
+| `chatLoaded` | `onChatLoadingFinished(result)` | `InfobipHuaweiChatLoadedEvent(success)` | **EXACT** | Emitted for success and failure; the boolean is `result.isSuccess()`. Loading failure also retains the existing error callback. The required `success` constructor argument is a source-breaking change only for callers that directly construct this event. |
+| `chatDisconnected` | `onChatConnectionPaused(result)` | `InfobipHuaweiChatConnectionChangedEvent(disconnected)` | **MAPPABLE** | Existing typed connection abstraction is retained and is emitted on successful callback results. |
+| `chatReconnected` | `onChatConnectionResumed(result)` | `InfobipHuaweiChatConnectionChangedEvent(connected)` | **MAPPABLE** | Existing typed connection abstraction is retained and is emitted on successful callback results. |
+| `exitChatPressed` | `onExitChatPressed()` | `InfobipHuaweiChatExitPressedEvent` | **EXACT** | Observational only; Flutter navigation is not changed. |
+| `chatWidgetThemeChanged` | `onChatWidgetThemeChanged(result)` | `InfobipHuaweiChatWidgetThemeChangedEvent(theme)` | **EXACT** | Emitted only when the result supplies a non-null theme. |
+| `chatWidgetInfoUpdated` | `onChatWidgetInfoUpdated(widgetInfo)` | `InfobipHuaweiChatWidgetInfoUpdatedEvent(widgetInfo)` | **EXACT** | All official widget and attachment configuration fields are mapped directly. |
+| `chatViewChanged` | `onChatViewChanged(view)` | `InfobipHuaweiChatViewChangedEvent` | **MAPPABLE** | Known `LivechatWidgetView` values are typed and the raw value has an unknown fallback. |
+| `attachmentPreviewOpened` | `onChatAttachmentPreviewOpened(url, type, caption)` | `InfobipHuaweiChatAttachmentPreviewOpenedEvent(attachment)` | **EXACT** | Nullable values are retained and the callback returns `false`, leaving preview handling native. |
+| `chatRawMessageReceived` | `onChatRawMessageReceived(rawMessage)` | `InfobipHuaweiChatRawMessageReceivedEvent(rawMessage)` | **EXACT** | The opaque string is forwarded unchanged and is not JSON-decoded. |
+
+The following callbacks exist in Huawei 8.14 but are not part of the official
+Flutter public `ChatViewEvent` contract at the reference commit. They are
+therefore `HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE` and are intentionally not
+exposed as Dart runtime events.
+
+| Huawei callback | Official Flutter public equivalent | Status |
+| --- | --- | --- |
+| `onChatSent` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatContextualDataSent` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadCreated` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadsReceived` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatActiveThreadReceived` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadShown` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadListShown` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatLanguageChanged` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatControlsVisibilityChanged` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatUrlInteracted` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE**; returns `false` and remains unexposed. |

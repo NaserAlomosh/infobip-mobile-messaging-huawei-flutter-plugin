@@ -284,6 +284,20 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               child: InfobipHuaweiChatView(
                 controller: _chatController,
+                onEvent: (event) {
+                  if (!mounted) return;
+                  switch (event) {
+                    case InfobipHuaweiChatLoadedEvent(:final success):
+                      setState(() => _result =
+                          success ? 'Chat loaded' : 'Chat failed to load');
+                    case InfobipHuaweiChatExitPressedEvent():
+                      setState(() => _result = 'Chat exit pressed');
+                    case InfobipHuaweiChatRawMessageReceivedEvent():
+                      setState(() => _result = 'Chat message received');
+                    default:
+                      break;
+                  }
+                },
                 onError: (error) {
                   if (mounted) {
                     setState(

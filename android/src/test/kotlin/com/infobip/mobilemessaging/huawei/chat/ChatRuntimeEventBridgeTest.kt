@@ -6,7 +6,7 @@ import org.junit.Test
 class ChatRuntimeEventBridgeTest {
     @Test
     fun `replays buffered events in order`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         val bridge = ChatRuntimeEventBridge(3, emitted::add)
         bridge.publish(mapOf("event" to "first"))
         bridge.publish(mapOf("event" to "second"))
@@ -18,7 +18,7 @@ class ChatRuntimeEventBridgeTest {
 
     @Test
     fun `buffer is bounded to newest events`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         val bridge = ChatRuntimeEventBridge(2, emitted::add)
         bridge.publish(mapOf("event" to "first"))
         bridge.publish(mapOf("event" to "second"))
@@ -31,7 +31,7 @@ class ChatRuntimeEventBridgeTest {
 
     @Test
     fun `dispose clears pending events and rejects future events`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         val bridge = ChatRuntimeEventBridge(2, emitted::add)
         bridge.publish(mapOf("event" to "pending"))
 
@@ -39,12 +39,12 @@ class ChatRuntimeEventBridgeTest {
         bridge.ready()
         bridge.publish(mapOf("event" to "late"))
 
-        assertEquals(emptyList<Map<String, String>>(), emitted)
+        assertEquals(emptyList<Map<String, Any?>>(), emitted)
     }
 
     @Test
     fun `publishes successful chat loading result`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
 
         bridge.publishResult(true, mapOf("event" to "chatLoaded")) { error("unexpected failure") }
@@ -54,7 +54,7 @@ class ChatRuntimeEventBridgeTest {
 
     @Test
     fun `publishes successful connection resumed result`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
 
         bridge.publishResult(
@@ -67,7 +67,7 @@ class ChatRuntimeEventBridgeTest {
 
     @Test
     fun `publishes successful connection paused result`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
 
         bridge.publishResult(
@@ -80,13 +80,13 @@ class ChatRuntimeEventBridgeTest {
 
     @Test
     fun `failed result reports error without publishing successful event`() {
-        val emitted = mutableListOf<Map<String, String>>()
+        val emitted = mutableListOf<Map<String, Any?>>()
         var failures = 0
         val bridge = ChatRuntimeEventBridge(emit = emitted::add).apply { ready() }
 
         bridge.publishResult(false, mapOf("event" to "chatLoaded")) { failures++ }
 
-        assertEquals(emptyList<Map<String, String>>(), emitted)
+        assertEquals(emptyList<Map<String, Any?>>(), emitted)
         assertEquals(1, failures)
     }
 }

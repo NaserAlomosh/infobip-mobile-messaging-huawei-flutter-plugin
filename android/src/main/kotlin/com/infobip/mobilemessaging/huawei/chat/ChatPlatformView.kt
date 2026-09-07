@@ -17,6 +17,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetResult
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetView
+import org.infobip.mobile.messaging.chat.core.widget.WidgetInfo
 import org.infobip.mobile.messaging.chat.view.DefaultInAppChatFragmentEventsListener
 import org.infobip.mobile.messaging.chat.view.InAppChatFragment
 
@@ -93,11 +94,13 @@ internal class ChatPlatformView(
                         }
                     }
                     override fun onChatLoadingFinished(result: LivechatWidgetResult<Unit>) {
-                        publishRuntimeResult(
-                            result,
+                        publishRuntimeEvent(
                             ChannelContract.CHAT_LOADED,
-                            failureMessage = "Chat loading failed",
+                            result.isSuccess(),
                         )
+                        if (!result.isSuccess()) {
+                            reportError(ChatViewError("chat_runtime_error", "Chat loading failed"))
+                        }
                     }
                     override fun onChatConnectionResumed(result: LivechatWidgetResult<Unit>) {
                         publishRuntimeResult(
@@ -119,8 +122,30 @@ internal class ChatPlatformView(
                         url: String?,
                         type: String?,
                         caption: String?,
-                    ): Boolean = false
-                    override fun onExitChatPressed() = Unit
+                    ): Boolean {
+                        publishRuntimeEvent(
+                            ChannelContract.CHAT_ATTACHMENT_PREVIEW_OPENED,
+                            ChatRuntimeEventMapper.attachment(url, type, caption),
+                        )
+                        return false
+                    }
+                    override fun onExitChatPressed() {
+                        publishRuntimeEvent(ChannelContract.CHAT_EXIT_PRESSED)
+                    }
+                    override fun onChatWidgetThemeChanged(result: LivechatWidgetResult<String?>) {
+                        result.getOrNull()?.let {
+                            publishRuntimeEvent(ChannelContract.CHAT_WIDGET_THEME_CHANGED, it)
+                        }
+                    }
+                    override fun onChatWidgetInfoUpdated(widgetInfo: WidgetInfo) {
+                        publishRuntimeEvent(
+                            ChannelContract.CHAT_WIDGET_INFO_UPDATED,
+                            ChatRuntimeEventMapper.widgetInfo(widgetInfo),
+                        )
+                    }
+                    override fun onChatRawMessageReceived(rawMessage: String) {
+                        publishRuntimeEvent(ChannelContract.CHAT_RAW_MESSAGE_RECEIVED, rawMessage)
+                    }
                 }
             }
             currentWidgetView = null
@@ -303,10 +328,8 @@ internal class ChatPlatformView(
         if (flutterReady) channel.invokeMethod(ChannelContract.CHAT_ON_ERROR, error.toMap()) else pendingError.set(error)
     }
 
-    private fun publishRuntimeEvent(event: String, value: String? = null) {
-        val payload = mutableMapOf(ChannelContract.EVENT to event)
-        value?.let { payload[ChannelContract.VALUE] = it }
-        runtimeEvents.publish(payload)
+    private fun publishRuntimeEvent(event: String, value: Any? = null) {
+        runtimeEvents.publish(ChatRuntimeEventMapper.event(event, value))
     }
 
     private fun publishRuntimeResult(
