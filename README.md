@@ -116,7 +116,7 @@ changing the value does not alter the active SDK instance, but is used by the fi
 initialization after cleanup. This stores regular Mobile Messaging messages, not
 Mobile Inbox or Chat history.
 
-WebRTC calls use the optional `com.infobip:infobip-rtc-ui` Android artifact. See
+WebRTC APIs are retained, but RTC UI 15.1.0 integration is disabled for Huawei-only production use because of unresolved Firebase linkage and transport support. See
 [`docs/webrtc-configuration.md`](docs/webrtc-configuration.md) for initialization,
 runtime usage, and dependency configuration.
 

@@ -180,9 +180,19 @@ class InfobipMobileMessagingHuaweiPlugin :
 
             ChannelContract.CLEANUP -> {
                 val manager = cleanupManager ?: return detached(result)
-                val error = manager.cleanup()
-                if (error == null) result.success(null)
-                else result.error(error.code, error.message, error.details)
+                val rtc = webRtcOperations ?: return detached(result)
+                rtc.cleanup { failure ->
+                    mainHandler.post {
+                        if (webRtcOperations !== rtc || cleanupManager !== manager) {
+                            detached(result)
+                        } else if (failure != null) result.error(failure.code, failure.message, null)
+                        else {
+                            val error = manager.cleanup()
+                            if (error == null) result.success(null)
+                            else result.error(error.code, error.message, error.details)
+                        }
+                    }
+                }
             }
 
             ChannelContract.ENABLE_CALLS -> {

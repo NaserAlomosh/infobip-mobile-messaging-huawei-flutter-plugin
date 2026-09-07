@@ -30,35 +30,60 @@ internal interface WebRtcRuntime {
     fun disableCalls(rtcUi: Any, success: () -> Unit, error: (String) -> Unit)
 }
 
+/** No supported HMS-only incoming-call integration exists in RTC UI 15.1.0. */
+internal class UnsupportedHuaweiWebRtcRuntime : WebRtcRuntime {
+    override fun enableCalls(context: Context?, configurationId: String, identity: String,
+        success: () -> Unit, error: (String) -> Unit): Any = throw UnsupportedOperationException()
+    override fun enableChatCalls(context: Context?, configurationId: String,
+        success: () -> Unit, error: (String) -> Unit): Any = throw UnsupportedOperationException()
+    override fun disableCalls(rtcUi: Any, success: () -> Unit, error: (String) -> Unit) =
+        throw UnsupportedOperationException()
+}
+
 internal class WebRtcOperations(
     private val context: Context?,
     private val isInitialized: () -> Boolean,
     private val configuration: () -> WebRtcConfiguration?,
-    private val runtime: WebRtcRuntime = ReflectiveWebRtcRuntime(),
+    private val runtime: WebRtcRuntime = UnsupportedHuaweiWebRtcRuntime(),
 ) {
-    private var rtcUi: Any? = null
+    private class Session(val key: Pair<String, String>, val complete: (WebRtcFailure?) -> Unit) {
+        var instance: Any? = null
+        var built = false
+        var enableDone = false
+        var enableFailure: WebRtcFailure? = null
+        var completed = false
+        var closing = false
+        var disabling = false
+        val waiters = mutableListOf<(WebRtcFailure?) -> Unit>()
+    }
+    private var session: Session? = null
 
     fun enableCalls(identity: String, complete: (WebRtcFailure?) -> Unit) =
-        enable(complete) { configurationId, success, error ->
-            runtime.enableCalls(context, configurationId, identity, success, error)
+        enable("calls:$identity", complete) { id, success, error ->
+            runtime.enableCalls(context, id, identity, success, error)
         }
 
     fun enableChatCalls(complete: (WebRtcFailure?) -> Unit) =
-        enable(complete) { configurationId, success, error ->
-            runtime.enableChatCalls(context, configurationId, success, error)
+        enable("chat", complete) { id, success, error ->
+            runtime.enableChatCalls(context, id, success, error)
         }
 
+    @Synchronized
     fun disableCalls(complete: (WebRtcFailure?) -> Unit) {
-        val current = rtcUi
-            ?: return complete(WebRtcFailure("webrtc_not_enabled", "Enable WebRTC calls first"))
-        reflect(complete) { success, error -> runtime.disableCalls(current, success, error) }
+        if (session == null) complete(WebRtcFailure("webrtc_not_enabled", "Enable WebRTC calls first"))
+        else close(complete)
     }
 
-    fun reset() {
-        rtcUi = null
-    }
+    /** Await native unregistration before allowing Mobile Messaging cleanup/account replacement. */
+    @Synchronized
+    fun cleanup(complete: (WebRtcFailure?) -> Unit) = close(complete)
 
+    /** Engine detach cannot await a Flutter result, but still owns the native teardown callback. */
+    fun reset() { cleanup {} }
+
+    @Synchronized
     private fun enable(
+        mode: String,
         complete: (WebRtcFailure?) -> Unit,
         operation: (String, () -> Unit, (String) -> Unit) -> Any,
     ) {
@@ -66,51 +91,102 @@ internal class WebRtcOperations(
             complete(WebRtcFailure("not_initialized", "Initialize the Infobip SDK first"))
             return
         }
-        val configurationId = configuration()?.configurationId
-        if (configurationId.isNullOrBlank()) {
-            complete(
-                WebRtcFailure(
-                    "webrtc_not_configured",
-                    "WebRTC configurationId is required before enabling calls",
-                ),
-            )
+        val id = configuration()?.configurationId
+        if (id.isNullOrBlank()) {
+            complete(WebRtcFailure("webrtc_not_configured", "WebRTC configurationId is required before enabling calls"))
             return
         }
-        reflect(complete) { success, error ->
-            rtcUi = operation(configurationId, success, error)
+        session?.let { current ->
+            val same = current.key == (mode to id)
+            complete(if (same && current.enableDone && current.enableFailure == null && !current.closing) null
+                else WebRtcFailure("webrtc_operation_in_progress", "Disable the current calls session before enabling another"))
+            return
+        }
+        val current = Session(mode to id, complete)
+        session = current
+        try {
+            current.instance = operation(id,
+                { enabled(current, null) },
+                { enabled(current, WebRtcFailure("webrtc_error", "WebRTC operation failed")) })
+            current.built = true
+            settle(current)
+        } catch (error: Exception) {
+            current.built = true
+            current.enableDone = true
+            current.enableFailure = failure(error)
+            settle(current)
+        } catch (_: LinkageError) {
+            current.built = true
+            current.enableDone = true
+            current.enableFailure = WebRtcFailure("webrtc_unavailable", "The Infobip RTC UI dependency is incompatible")
+            settle(current)
         }
     }
 
-    private fun reflect(
-        complete: (WebRtcFailure?) -> Unit,
-        operation: (() -> Unit, (String) -> Unit) -> Unit,
-    ) {
-        val completed = AtomicBoolean(false)
-        val finish: (WebRtcFailure?) -> Unit = { failure ->
-            if (completed.compareAndSet(false, true)) complete(failure)
+    @Synchronized
+    private fun enabled(current: Session, failure: WebRtcFailure?) {
+        if (session !== current || current.enableDone) return
+        current.enableDone = true
+        current.enableFailure = failure
+        settle(current)
+    }
+
+    private fun settle(current: Session) {
+        if (session !== current || !current.built || !current.enableDone) return
+        if (current.instance == null) session = null
+        if (!current.completed) {
+            current.completed = true
+            current.complete(current.enableFailure)
+        }
+        if (current.closing) unregister(current)
+    }
+
+    private fun close(complete: (WebRtcFailure?) -> Unit) {
+        val current = session ?: return complete(null)
+        current.closing = true
+        current.waiters += complete
+        if (!current.completed) {
+            current.completed = true
+            current.complete(WebRtcFailure("webrtc_cancelled", "WebRTC enable was cancelled by teardown"))
+        }
+        // The public SDK has no cancellation operation. A delayed enable must finish before disable.
+        if (current.built && current.enableDone) unregister(current)
+    }
+
+    private fun unregister(current: Session) {
+        if (current.disabling) return
+        val instance = current.instance
+        if (instance == null) {
+            finishClose(current, null)
+            return
+        }
+        current.disabling = true
+        val once = AtomicBoolean(false)
+        val finish: (WebRtcFailure?) -> Unit = { result ->
+            if (once.compareAndSet(false, true)) finishClose(current, result)
         }
         try {
-            operation(
-                { finish(null) },
-                { message -> finish(WebRtcFailure("webrtc_error", message)) },
-            )
-        } catch (_: ClassNotFoundException) {
-            finish(
-                WebRtcFailure(
-                    "webrtc_unavailable",
-                    "The Infobip RTC UI dependency is not available",
-                ),
-            )
-        } catch (error: ReflectiveOperationException) {
-            finish(
-                WebRtcFailure(
-                    "webrtc_error",
-                    error.cause?.message ?: error.message ?: "WebRTC operation failed",
-                ),
-            )
-        } catch (error: RuntimeException) {
-            finish(WebRtcFailure("webrtc_error", error.message ?: "WebRTC operation failed"))
-        }
+            runtime.disableCalls(instance, { finish(null) },
+                { finish(WebRtcFailure("webrtc_error", "Unable to disable WebRTC calls")) })
+        } catch (error: Exception) { finish(failure(error)) }
+        catch (_: LinkageError) { finish(WebRtcFailure("webrtc_unavailable", "The Infobip RTC UI dependency is incompatible")) }
+    }
+
+    @Synchronized
+    private fun finishClose(current: Session, failure: WebRtcFailure?) {
+        current.disabling = false
+        if (failure == null && session === current) session = null
+        // On failure retain the actual instance so a caller can retry unregistration.
+        val waiters = current.waiters.toList()
+        current.waiters.clear()
+        waiters.forEach { it(failure) }
+    }
+
+    private fun failure(error: Exception): WebRtcFailure = when (error) {
+        is UnsupportedOperationException -> WebRtcFailure("webrtc_unsupported",
+            "RTC UI 15.1.0 has no supported Huawei-only integration")
+        is ClassNotFoundException -> WebRtcFailure("webrtc_unavailable", "The Infobip RTC UI dependency is not available")
+        else -> WebRtcFailure("webrtc_error", "WebRTC operation failed")
     }
 }
 
@@ -125,7 +201,7 @@ internal class ReflectiveWebRtcRuntime : WebRtcRuntime {
         val listeners = listeners(success, error)
         if (identity.isNotBlank()) {
             val listenTypeClass = loadClass(LISTEN_TYPE_CLASS)
-            val push = listenTypeClass.enumConstants.first { (it as Enum<*>).name == "PUSH" }
+            val push = requireNotNull(listenTypeClass.enumConstants).first { (it as Enum<*>).name == "PUSH" }
             invoke(builder, "withCalls", identity, push, listeners.first, listeners.second)
         } else {
             invoke(builder, "withCalls", listeners.first, listeners.second)
@@ -144,7 +220,9 @@ internal class ReflectiveWebRtcRuntime : WebRtcRuntime {
 
     override fun disableCalls(rtcUi: Any, success: () -> Unit, error: (String) -> Unit) {
         val listeners = listeners(success, error)
-        invoke(rtcUi, "disableCalls", listeners.first, listeners.second)
+        loadClass(RTC_UI_CLASS).getMethod("disableCalls",
+            loadClass(SUCCESS_LISTENER_CLASS), loadClass(ERROR_LISTENER_CLASS))
+            .invoke(rtcUi, listeners.first, listeners.second)
     }
 
     private fun build(context: Context?, configurationId: String, enable: (Any) -> Any?): Any {
@@ -154,13 +232,13 @@ internal class ReflectiveWebRtcRuntime : WebRtcRuntime {
         val finalStep = requireNotNull(enable(builder)) {
             "InfobipRtcUi.Builder did not return a final step"
         }
-        return requireNotNull(invoke(finalStep, "build")) { "InfobipRtcUi was not created" }
+        return requireNotNull(loadClass(FINAL_STEP_CLASS).getMethod("build").invoke(finalStep)) { "InfobipRtcUi was not created" }
     }
 
     private fun listeners(success: () -> Unit, error: (String) -> Unit): Pair<Any, Any> =
         listener(SUCCESS_LISTENER_CLASS, "onSuccess") { success() } to
-            listener(ERROR_LISTENER_CLASS, "onError") { arguments ->
-                error(arguments.firstOrNull()?.toString() ?: "WebRTC operation failed")
+            listener(ERROR_LISTENER_CLASS, "onError") { _ ->
+                error("WebRTC operation failed")
             }
 
     private fun listener(
@@ -201,6 +279,8 @@ internal class ReflectiveWebRtcRuntime : WebRtcRuntime {
     private fun loadClass(name: String): Class<*> = Class.forName(name)
 
     private companion object {
+        const val RTC_UI_CLASS = "com.infobip.webrtc.ui.InfobipRtcUi"
+        const val FINAL_STEP_CLASS = "com.infobip.webrtc.ui.InfobipRtcUi\$BuilderFinalStep"
         const val BUILDER_CLASS = "com.infobip.webrtc.ui.InfobipRtcUi\$Builder"
         const val SUCCESS_LISTENER_CLASS = "com.infobip.webrtc.ui.SuccessListener"
         const val ERROR_LISTENER_CLASS = "com.infobip.webrtc.ui.ErrorListener"
