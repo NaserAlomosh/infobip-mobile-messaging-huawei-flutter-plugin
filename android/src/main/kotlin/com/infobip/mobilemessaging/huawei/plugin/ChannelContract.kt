@@ -49,6 +49,7 @@ internal object ChannelContract {
     const val SET_JWT = "setJwt"
     const val SET_CHAT_JWT_PROVIDER = "setChatJwtProvider"
     const val SET_CHAT_EXCEPTION_HANDLER = "setChatExceptionHandler"
+    const val SET_CHAT_CUSTOMIZATION = "setChatCustomization"
     const val RESOLVE_CHAT_JWT = "resolveChatJwt"
     const val REJECT_CHAT_JWT = "rejectChatJwt"
     const val JWT = "jwt"

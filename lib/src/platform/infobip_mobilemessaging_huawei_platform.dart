@@ -5,6 +5,7 @@ import '../user/user.dart';
 import '../installation/installation.dart';
 import '../inbox/inbox.dart';
 import '../custom_event/custom_event.dart';
+import '../chat/chat_customization.dart';
 
 abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   InfobipMobileMessagingHuaweiPlatform() : super(token: _token);
@@ -66,6 +67,9 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   Future<void> setChatJwtProvider() => throw UnimplementedError();
 
   Future<void> setChatExceptionHandler({required bool enabled}) =>
+      throw UnimplementedError();
+
+  Future<void> setChatCustomization(ChatCustomization customization) =>
       throw UnimplementedError();
 
   Future<void> resolveChatJwt(String jwt) => throw UnimplementedError();

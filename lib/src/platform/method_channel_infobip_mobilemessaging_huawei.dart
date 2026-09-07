@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 
 import 'channel_contract.dart';
@@ -10,6 +12,7 @@ import '../inbox/inbox.dart';
 import '../inbox/inbox_codec.dart';
 import '../custom_event/custom_event.dart';
 import '../custom_event/custom_event_codec.dart';
+import '../chat/chat_customization.dart';
 
 final class MethodChannelInfobipMobileMessagingHuawei
     extends InfobipMobileMessagingHuaweiPlatform {
@@ -171,6 +174,13 @@ final class MethodChannelInfobipMobileMessagingHuawei
       .invokeMethod<void>(ChannelContract.setChatExceptionHandler, {
         ChannelContract.enabled: enabled,
       });
+
+  @override
+  Future<void> setChatCustomization(ChatCustomization customization) =>
+      methodChannel.invokeMethod<void>(
+        ChannelContract.setChatCustomization,
+        jsonEncode(customization.toJson()),
+      );
 
   @override
   Future<void> resolveChatJwt(String jwt) => methodChannel.invokeMethod<void>(

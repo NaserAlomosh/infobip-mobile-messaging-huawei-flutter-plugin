@@ -2,8 +2,10 @@ package com.infobip.mobilemessaging.huawei
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.infobip.mobilemessaging.huawei.chat.ChatManager
 import com.infobip.mobilemessaging.huawei.chat.ChatPlatformViewFactory
 import com.infobip.mobilemessaging.huawei.core.CleanupManager
@@ -20,6 +22,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import org.infobip.mobile.messaging.chat.view.styles.PluginChatCustomization
 
 class InfobipMobileMessagingHuaweiPlugin :
     FlutterPlugin,
@@ -39,9 +42,11 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var chatManager: ChatManager? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
+    private var drawableLoader: PluginChatCustomization.DrawableLoader? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         applicationContext = binding.applicationContext
+        drawableLoader = FlutterAssetDrawableLoader(binding)
         chatManager =
             ChatManager(
                 context = binding.applicationContext,
@@ -122,6 +127,7 @@ class InfobipMobileMessagingHuaweiPlugin :
         inboxManager = null
         chatManager = null
         applicationContext = null
+        drawableLoader = null
         activity = null
     }
 
@@ -239,6 +245,10 @@ class InfobipMobileMessagingHuaweiPlugin :
                     ?: return detached(result)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SET_CHAT_CUSTOMIZATION -> {
+                setChatCustomization(call, result)
             }
 
             ChannelContract.RESOLVE_CHAT_JWT -> {
@@ -412,6 +422,38 @@ class InfobipMobileMessagingHuaweiPlugin :
         result.error("native_error", "Plugin is not attached to an engine", null)
     }
 
+    private fun setChatCustomization(
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val context = applicationContext ?: return detached(result)
+        val json = call.arguments as? String
+        val customization = json?.let(PluginChatCustomization::parseOrNull)
+        if (customization == null) {
+            Log.w(TAG, "Ignoring invalid Chat customization")
+            result.success(null)
+            return
+        }
+        val loader = drawableLoader ?: return detached(result)
+        val theme = customization.createTheme(context, loader)
+        org.infobip.mobile.messaging.chat.InAppChat.getInstance(context).setTheme(theme)
+        result.success(null)
+    }
+
+    private class FlutterAssetDrawableLoader(
+        binding: FlutterPlugin.FlutterPluginBinding,
+    ) : PluginChatCustomization.DrawableLoader {
+        private val context = binding.applicationContext
+        private val flutterAssets = binding.flutterAssets
+
+        override fun loadDrawable(path: String): Drawable? = try {
+            val assetKey = flutterAssets.getAssetFilePathByName(path)
+            context.assets.open(assetKey).use { Drawable.createFromStream(it, path) }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun initialize(
         call: MethodCall,
         result: MethodChannel.Result,
@@ -443,5 +485,9 @@ class InfobipMobileMessagingHuaweiPlugin :
     override fun onCancel(arguments: Any?) {
         eventBridge?.cancel()
         chatManager?.detach()
+    }
+
+    private companion object {
+        const val TAG = "InfobipHuaweiPlugin"
     }
 }

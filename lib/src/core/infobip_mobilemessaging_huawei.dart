@@ -8,6 +8,7 @@ import '../installation/installation.dart';
 import '../inbox/inbox.dart';
 import '../chat/chat.dart';
 import '../chat/chat_exception.dart';
+import '../chat/chat_customization.dart';
 import '../custom_event/custom_event.dart';
 
 /// Entry point for the Infobip Huawei Mobile Messaging plugin.
@@ -20,6 +21,12 @@ final class InfobipMobileMessagingHuawei {
 
   /// Global Chat state and events.
   static InfobipHuaweiChat get chat => InfobipHuaweiChat.instance;
+
+  /// Applies global customization to the native Chat interface.
+  static Future<void> setChatCustomization(ChatCustomization customization) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.setChatCustomization(
+        customization,
+      );
 
   static Future<String> Function()? _chatJwtProvider;
   static void Function(Object error)? _chatJwtProviderErrorHandler;

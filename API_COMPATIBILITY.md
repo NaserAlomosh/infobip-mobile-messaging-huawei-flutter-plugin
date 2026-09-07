@@ -475,3 +475,29 @@ Deprecated aliases preserve pre-v1 source compatibility for `PushMessage`,
 `pushRegistrationEnabled`, `applicationVersion`, `operatingSystem`,
 `operatingSystemVersion`, `deviceTimezoneId`, and `appUserId`. Canonical code
 should use the official-style names.
+
+## Chat Customization
+
+**Official reference:** `infobip/mobile-messaging-flutter-plugin` commit `8b630d0f736d400635317131d549c345349bd54d`
+**Huawei source:** `infobip/mobile-messaging-sdk-huawei` commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`
+**Classification:** **MAPPABLE**
+
+`InfobipMobileMessagingHuawei.setChatCustomization(ChatCustomization)` is a global API. It serializes the official-compatible Dart model and maps Huawei's `PluginChatCustomization` through `createTheme(...)` to `InAppChat.setTheme(...)`. It does not require a Chat view or controller. This is separate from the view-scoped Livechat `setWidgetTheme` and `getWidgetTheme` APIs.
+
+| Official field / API | Huawei 8.14 | Classification | Notes |
+| --- | --- | --- | --- |
+| `setChatCustomization` | `InAppChat.setTheme` | MAPPABLE | The native parser creates `InAppChatTheme`. |
+| `ToolbarCustomization` | `PluginChatToolbarCustomization` | EXACT | Includes Android subtitle fields. |
+| Status bar fields | Same fields | EXACT | Color strings remain native Android color strings. |
+| `chatToolbar` | Same field | EXACT | Nested JSON object. |
+| `attachmentPreviewToolbar` and menu item fields | Same fields | EXACT | Drawable paths use the Flutter-aware loader. |
+| Network error fields | Same fields | EXACT | Icon and icon tint are Android-only. |
+| Banner error fields | Same fields | EXACT | Text appearance is Android-only. |
+| Full-screen error fields | Same fields | EXACT | Includes title, description, icon, background, and refresh button. |
+| Chat background and progress fields | Same fields | EXACT | Forwarded without color conversion. |
+| Chat input fields | Same fields | EXACT | Includes attachment/send icons, backgrounds, separator, cursor, and counter. |
+| `shouldHandleKeyboardAppearance` | None | IOS_ONLY | Retained for public model parity and ignored by Huawei Android. |
+
+Drawable-valued strings may identify Flutter assets. Android resolves their Flutter asset lookup keys through the embedding's `FlutterAssets` API and safely returns `null` when an optional asset cannot be loaded. Other drawable, mipmap, raw, style, and text-appearance strings remain resource names interpreted by Huawei; Dart does not trim or reinterpret them. Color strings are also forwarded unchanged for Android parsing.
+
+The public API does not expose reset or `null` customization because the referenced Flutter API does not. `InAppChat.setTheme` is global and can be called before creating a Chat view. Huawei source does not guarantee that an already visible fragment redraws immediately; apply customization before showing Chat, or recreate the Chat UI when changing it at runtime.
