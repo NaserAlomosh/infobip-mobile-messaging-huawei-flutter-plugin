@@ -47,18 +47,29 @@ The official Flutter plugin at commit
 `8b630d0f736d400635317131d549c345349bd54d` establishes two relevant facts: RTC
 UI is a conditional dependency and its Maven coordinate is
 `com.infobip:infobip-rtc-ui`. The Huawei SDK source at commit
-`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` does not provide WebRTC and therefore
-does not establish an RTC UI version corresponding to Huawei SDK 8.14.0.
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` does not provide WebRTC itself, but
+declares Mobile Messaging Android SDK 15.1.0 as its corresponding core version.
 
-Because an exact compatible RTC UI version cannot be proven from those source
-commits, this plugin does not guess one or couple it to the Huawei SDK version.
-The dependency is disabled by default. A host build can opt in only after
-selecting and verifying a compatible published RTC UI version:
+Huawei SDK 8.14.0 is built against Mobile Messaging Android SDK 15.1.0, and the
+official Flutter plugin uses RTC UI 15.1.0 with that Mobile Messaging release.
+The recommended source-aligned version is therefore 15.1.0. The dependency
+remains disabled by default and configurable so applications can explicitly opt
+in:
 
 ```text
--PinfobipWebRtcEnabled=true -PinfobipRtcUiVersion=<verified-version>
+-PinfobipWebRtcEnabled=true -PinfobipRtcUiVersion=15.1.0
 ```
+
+RTC UI depends on the standard
+`com.infobip:infobip-mobile-messaging-android-sdk`. The plugin excludes that
+transitive module because its `org.infobip.mobile.messaging` classes conflict
+with the Huawei SDK classes. Other RTC UI transitive dependencies remain
+enabled.
 
 RTC classes are loaded through reflection only when a WebRTC API is called. If
 the optional artifact is absent, the call completes with a controlled platform
 error without affecting plugin registration or other Mobile Messaging APIs.
+
+RTC UI 15.1.0 includes Firebase-based incoming-call components. Incoming-call
+push behavior on an HMS-only device without GMS has not been verified and must
+be validated on representative devices before production use.
