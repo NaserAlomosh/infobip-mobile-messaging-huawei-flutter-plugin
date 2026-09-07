@@ -164,6 +164,7 @@ internal class ChatPlatformView(
                 current.isMultiThread
             }
             ChannelContract.CHAT_SEND -> handleSend(call, result, current)
+            ChannelContract.CHAT_SET_DRAFT_MESSAGE -> handleDraftMessage(call, result, current)
             ChannelContract.CHAT_SEND_CONTEXTUAL_DATA -> handleContextualData(call, result, current)
             ChannelContract.CHAT_SET_LANGUAGE -> handleLanguage(call, result, current)
             ChannelContract.CHAT_GET_LANGUAGE -> runOnFragment(current, result) {
@@ -225,6 +226,20 @@ internal class ChatPlatformView(
             return
         }
         runOnFragment(current, result) { current.send(payload) }
+    }
+
+    private fun handleDraftMessage(
+        call: MethodCall,
+        result: MethodChannel.Result,
+        current: InAppChatFragment,
+    ) {
+        val draftMessage = try {
+            ChatMapper.draftMessage(call.arguments)
+        } catch (error: IllegalArgumentException) {
+            result.error("invalid_argument", error.message, null)
+            return
+        }
+        runOnFragment(current, result) { current.setDraftMessage(draftMessage) }
     }
 
     private fun handleContextualData(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {

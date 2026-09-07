@@ -112,6 +112,7 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Unread count updates | **Adapted** | Exposed as a Flutter stream. |
 | Send text message | **Adapted** | Requires an attached Chat view. |
 | Send contextual data | **Adapted** | Requires an attached Chat view. |
+| Set draft message | **Adapted** | Sets the native composer draft for the active conversation; an empty string clears it. |
 | Language | **Adapted** | View-scoped native widget configuration. |
 | Widget theme | **Adapted** | View-scoped native widget configuration. |
 | Chat exception handler | **Adapted** | `setChatExceptionHandler` maps Huawei `InAppChat.setExceptionHandler` exceptions to nullable `message` and `name` fields. A custom handler replaces Huawei's default exception presentation; passing `null` restores it. Android/Huawei only. |
@@ -154,6 +155,51 @@ delegates to `ACTIVE`. Dart cannot overload that method with the official
 deprecated `sendContextualData(String, bool)` signature, so adding the boolean
 signature would break existing callers. `sendContextualDataWithStrategy` is the
 non-conflicting official-compatible API.
+
+### Chat Draft Messages
+
+The draft-message API was audited against the official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d` and Huawei Mobile Messaging SDK
+8.14.0 source commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` before the bridge was added.
+
+The official Flutter contract is the one-way
+`Future<void> setChatDraftMessage(String draftMessage)` operation. A draft is a
+plain, non-nullable `String`; there is no draft model, getter, thread identifier,
+timestamp, or separate clear API. The official Android implementation forwards
+the string to the Android Chat SDK's `setDraftMessage(String)` API. It does not
+trim or transform the value. An empty string clears the composer draft.
+
+Huawei 8.14.0 exposes `InAppChatFragment.setDraftMessage(String)`. The operation
+updates the native widget composer and is therefore view-scoped and
+active-conversation-scoped. In multithread mode it applies to the conversation
+currently displayed by the fragment. It cannot select a thread by identifier,
+set drafts for all threads, or retrieve drafts. On the thread list there is no
+active composer to update. A newly created or subsequently selected thread is
+not assigned a Flutter-maintained copy of an earlier draft.
+
+This package exposes the same method name and string contract on
+`InfobipHuaweiChatController`. Controller placement is an architectural
+adaptation because the package embeds `InAppChatFragment` instead of exposing
+the official plugin's global Chat presentation flow. The existing view channel
+and fragment lifecycle remain the source of truth; no Dart or Android duplicate
+draft state is retained.
+
+| Official API / field | Huawei 8.14 API | Classification | Notes |
+| --- | --- | --- | --- |
+| `setChatDraftMessage(String draftMessage)` | `InAppChatFragment.setDraftMessage(String)` | **MAPPABLE** | Same one-way value semantics, scoped to the attached embedded view. |
+| `draftMessage` (`String`, non-null) | `String` | **EXACT** | Whitespace and all other string content are preserved. |
+| Empty string clearing | `setDraftMessage("")` | **EXACT** | Clears the active native composer. |
+| Null draft | No nullable overload | **NOT_AVAILABLE** | Rejected by the Dart type system and by native channel validation. |
+| Draft getter/model | No official API | **NOT_AVAILABLE** | No getter or fabricated model is exposed. |
+| Explicit thread selection | No official API; active fragment conversation only | **NOT_AVAILABLE** | The bridge does not invent thread IDs or global storage. |
+| iOS implementation | No iOS implementation in this Huawei plugin | **IOS_ONLY** | Package remains Huawei Android-only. |
+
+Draft operations require an attached, non-disposed controller and a live added
+fragment. Calls made before attachment or after disposal fail with the existing
+`chat_unavailable` platform error. Native runtime failures use `native_error`
+and are returned to the caller; they are not sent through the Chat exception
+handler. Calls are posted through the existing view lifecycle guard, preventing
+a queued operation from targeting a replaced or disposed fragment.
 
 ---
 

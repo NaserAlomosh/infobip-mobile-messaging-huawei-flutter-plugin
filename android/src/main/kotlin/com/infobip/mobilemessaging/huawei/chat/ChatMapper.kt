@@ -5,6 +5,13 @@ import org.infobip.mobile.messaging.chat.core.MultithreadStrategy
 import org.infobip.mobile.messaging.chat.models.MessagePayload
 
 internal object ChatMapper {
+    fun draftMessage(arguments: Any?): String {
+        val map = arguments as? Map<*, *>
+            ?: throw IllegalArgumentException("Arguments must be a map")
+        return map[ChannelContract.MESSAGE] as? String
+            ?: throw IllegalArgumentException("message must be a string")
+    }
+
     fun messagePayload(arguments: Any?): MessagePayload {
         val text = value(arguments, ChannelContract.TEXT)
         require(text.isNotBlank()) { "Message text must not be empty" }
