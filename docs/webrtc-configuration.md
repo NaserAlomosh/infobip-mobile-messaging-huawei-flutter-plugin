@@ -1,5 +1,12 @@
 # WebRTC status for Huawei
 
+The direct RTC Core investigation is recorded in
+[WebRTC Core feasibility](webrtc-core-research.md), with an explicit
+[Huawei device plan](webrtc-core-device-validation.md). Core avoids the conflicting
+Mobile Messaging core, but its inspected push transport and public session lifecycle
+cannot safely implement the current incoming-call APIs. The requested stop condition
+was reached before production changes; the safeguards below remain in effect.
+
 **RTC UI 15.1.0 is unsupported for Huawei-only production use in this plugin.**
 The optional Dart configuration and call APIs remain source-visible, but call enablement
 returns `webrtc_unsupported`. `-PinfobipWebRtcEnabled=true` fails Gradle configuration

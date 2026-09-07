@@ -117,6 +117,7 @@ initialization after cleanup. This stores regular Mobile Messaging messages, not
 Mobile Inbox or Chat history.
 
 WebRTC APIs are retained, but RTC UI 15.1.0 integration is disabled for Huawei-only production use because of unresolved Firebase linkage and transport support. See
+[the direct RTC Core investigation](docs/webrtc-core-research.md) for verified API/dependency limitations, and
 [`docs/webrtc-configuration.md`](docs/webrtc-configuration.md) for initialization,
 runtime usage, and dependency configuration.
 

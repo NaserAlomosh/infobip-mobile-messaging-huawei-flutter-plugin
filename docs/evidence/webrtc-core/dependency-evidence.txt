@@ -1,0 +1,29 @@
+baseline-debug
+  artifact records: 125 unique artifact files: 119
+  org.infobip.mobile.messaging classes: 718 duplicate classes: 0
+  all duplicate class names: META-INF/versions/9/module-info.class
+  modules: com.infobip:infobip-mobile-messaging-android-resources:15.1.0, com.infobip:infobip-mobile-messaging-api-java:15.1.0, com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0
+  dependency isolation assertions: PASS
+baseline-release
+  artifact records: 125 unique artifact files: 119
+  org.infobip.mobile.messaging classes: 718 duplicate classes: 0
+  all duplicate class names: META-INF/versions/9/module-info.class
+  modules: com.infobip:infobip-mobile-messaging-android-resources:15.1.0, com.infobip:infobip-mobile-messaging-api-java:15.1.0, com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0
+  dependency isolation assertions: PASS
+candidate-debug
+  artifact records: 153 unique artifact files: 147
+  org.infobip.mobile.messaging classes: 718 duplicate classes: 0
+  all duplicate class names: META-INF/versions/9/module-info.class
+  modules: com.google.android.gms:play-services-basement:17.0.0, com.google.android.gms:play-services-cloud-messaging:16.0.0, com.google.android.gms:play-services-stats:17.0.0, com.google.android.gms:play-services-tasks:17.0.0, com.google.firebase:firebase-annotations:16.0.0, com.google.firebase:firebase-common:20.0.0, com.google.firebase:firebase-components:17.0.0, com.google.firebase:firebase-datatransport:18.0.0, com.google.firebase:firebase-encoders-json:18.0.0, com.google.firebase:firebase-encoders:17.0.0, com.google.firebase:firebase-iid-interop:17.1.0, com.google.firebase:firebase-installations-interop:17.0.0, com.google.firebase:firebase-installations:17.0.0, com.google.firebase:firebase-measurement-connector:19.0.0, com.google.firebase:firebase-messaging:22.0.0, com.infobip:google-webrtc:1.0.45036, com.infobip:infobip-mobile-messaging-android-resources:15.1.0, com.infobip:infobip-mobile-messaging-api-java:15.1.0, com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0, com.infobip:infobip-rtc:2.5.28
+  dependency isolation assertions: PASS
+candidate-release
+  artifact records: 153 unique artifact files: 147
+  org.infobip.mobile.messaging classes: 718 duplicate classes: 0
+  all duplicate class names: META-INF/versions/9/module-info.class
+  modules: com.google.android.gms:play-services-basement:17.0.0, com.google.android.gms:play-services-cloud-messaging:16.0.0, com.google.android.gms:play-services-stats:17.0.0, com.google.android.gms:play-services-tasks:17.0.0, com.google.firebase:firebase-annotations:16.0.0, com.google.firebase:firebase-common:20.0.0, com.google.firebase:firebase-components:17.0.0, com.google.firebase:firebase-datatransport:18.0.0, com.google.firebase:firebase-encoders-json:18.0.0, com.google.firebase:firebase-encoders:17.0.0, com.google.firebase:firebase-iid-interop:17.1.0, com.google.firebase:firebase-installations-interop:17.0.0, com.google.firebase:firebase-installations:17.0.0, com.google.firebase:firebase-measurement-connector:19.0.0, com.google.firebase:firebase-messaging:22.0.0, com.infobip:google-webrtc:1.0.45036, com.infobip:infobip-mobile-messaging-android-resources:15.1.0, com.infobip:infobip-mobile-messaging-api-java:15.1.0, com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0, com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0, com.infobip:infobip-rtc:2.5.28
+  dependency isolation assertions: PASS
+Artifact SHA-256:
+infobip-rtc-2.5.20.aar a06015390d8fa00e0dd36eaae0fc4bc86723147f4c5d23dcf7ba660861cd5e43
+infobip-rtc-2.5.28.aar 9303984b90dd14cb31458d94d35b26f5b494ae42017e3174ae135030c01314a4
+rtc-2.5.41.aar 42760d5e339d0fa421f41e9812e190e24acb2806884a998570d5abe05130c44a
+PASS: inspected Core archives contain no Mobile Messaging class definitions
