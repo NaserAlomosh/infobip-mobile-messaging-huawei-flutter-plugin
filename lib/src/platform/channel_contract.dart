@@ -35,6 +35,9 @@ abstract final class ChannelContract {
   static const widgetTheme = 'widgetTheme';
   static const initialize = 'initialize';
   static const cleanup = 'cleanup';
+  static const enableCalls = 'enableCalls';
+  static const enableChatCalls = 'enableChatCalls';
+  static const disableCalls = 'disableCalls';
   static const defaultMessageStorage = 'defaultMessageStorage';
   static const webRTCUI = 'webRTCUI';
   static const configurationId = 'configurationId';

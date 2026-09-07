@@ -1,4 +1,4 @@
-# WebRTC configuration plumbing
+# WebRTC calls
 
 WebRTC configuration is optional and independent from Huawei Mobile Messaging.
 The RTC implementation is supplied by the separate
@@ -13,8 +13,8 @@ await InfobipMobileMessagingHuawei.initialize(
 );
 ```
 
-An application can provide initialization-time configuration for future call
-APIs:
+An application can provide initialization-time configuration and then enable
+calls:
 
 ```dart
 await InfobipMobileMessagingHuawei.initialize(
@@ -23,6 +23,10 @@ await InfobipMobileMessagingHuawei.initialize(
     configurationId: 'YOUR_WEBRTC_CONFIGURATION_ID',
   ),
 );
+
+await InfobipMobileMessagingHuawei.enableCalls('identity');
+await InfobipMobileMessagingHuawei.enableChatCalls();
+await InfobipMobileMessagingHuawei.disableCalls();
 ```
 
 Both `webRTCUI` and `WebRTCUI.configurationId` may be null. Empty and whitespace
@@ -55,8 +59,6 @@ selecting and verifying a compatible published RTC UI version:
 -PinfobipWebRtcEnabled=true -PinfobipRtcUiVersion=<verified-version>
 ```
 
-No RTC classes are loaded or instantiated by this configuration-only change.
-The `enableCalls`, `enableChatCalls`, and `disableCalls` APIs and their reflection
-implementation are intentionally not included. Runtime WebRTC behavior and HMS
-incoming-call delivery still require verification on an HMS-only device in a
-later implementation task.
+RTC classes are loaded through reflection only when a WebRTC API is called. If
+the optional artifact is absent, the call completes with a controlled platform
+error without affecting plugin registration or other Mobile Messaging APIs.

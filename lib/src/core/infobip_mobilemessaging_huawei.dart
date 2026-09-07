@@ -108,6 +108,18 @@ final class InfobipMobileMessagingHuawei {
     }
   }
 
+  /// Enables incoming calls for [identity].
+  static Future<void> enableCalls(String identity) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.enableCalls(identity);
+
+  /// Enables calls initiated from the in-app Chat interface.
+  static Future<void> enableChatCalls() =>
+      InfobipMobileMessagingHuaweiPlatform.instance.enableChatCalls();
+
+  /// Disables calls on the currently enabled WebRTC UI instance.
+  static Future<void> disableCalls() =>
+      InfobipMobileMessagingHuaweiPlatform.instance.disableCalls();
+
   /// Asks the Infobip SDK to register this installation for remote
   /// notifications.
   ///
