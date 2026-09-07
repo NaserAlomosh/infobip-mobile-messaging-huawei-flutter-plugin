@@ -443,14 +443,22 @@ class InfobipMobileMessagingHuaweiPlugin :
     private class FlutterAssetDrawableLoader(
         binding: FlutterPlugin.FlutterPluginBinding,
     ) : PluginChatCustomization.DrawableLoader {
-        private val context = binding.applicationContext
         private val flutterAssets = binding.flutterAssets
 
-        override fun loadDrawable(path: String): Drawable? = try {
-            val assetKey = flutterAssets.getAssetFilePathByName(path)
-            context.assets.open(assetKey).use { Drawable.createFromStream(it, path) }
-        } catch (_: Exception) {
-            null
+        override fun loadDrawable(
+            context: Context,
+            drawableSrc: String?,
+        ): Drawable? {
+            if (drawableSrc.isNullOrBlank()) return null
+
+            return try {
+                val assetKey = flutterAssets.getAssetFilePathByName(drawableSrc)
+                context.assets.open(assetKey).use {
+                    Drawable.createFromStream(it, drawableSrc)
+                }
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
