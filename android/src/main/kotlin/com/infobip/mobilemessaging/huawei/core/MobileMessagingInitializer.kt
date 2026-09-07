@@ -22,10 +22,12 @@ internal class MobileMessagingInitializer(
         InitializationCoordinator(
             start = { applicationCode, defaultMessageStorage, webRtcConfiguration, complete ->
                 try {
-                    Log.d(
-                        TAG,
-                        "Starting Infobip initialization. applicationCode length=${applicationCode.length}",
-                    )
+                    val appId = HmsConfiguration.appId(application)
+                    if (appId == null) {
+                        complete(HmsConfiguration.failure())
+                        return@InitializationCoordinator
+                    }
+                    Log.d(TAG, "Starting Infobip initialization")
 
                     val notificationSettings =
                         NotificationSettings
@@ -37,6 +39,7 @@ internal class MobileMessagingInitializer(
                     val builder = MobileMessaging
                         .Builder(application)
                         .withApplicationCode(applicationCode)
+                        .withSenderId(appId)
                         .withFullFeaturedInApps()
                         .withDisplayNotification(notificationSettings)
 
@@ -70,16 +73,12 @@ internal class MobileMessagingInitializer(
                         },
                     )
                 } catch (e: Exception) {
-                    Log.e(
-                        TAG,
-                        "Exception while initializing Infobip SDK",
-                        e,
-                    )
+                    Log.e(TAG, "Exception while initializing Infobip SDK")
 
                     complete(
                         InitializationError(
                             "native_error",
-                            "Unable to initialize the Infobip SDK: ${e.message}",
+                            "Unable to initialize the Infobip SDK",
                         ),
                     )
                 }
@@ -139,11 +138,11 @@ internal class MobileMessagingInitializer(
             MobileMessaging.getInstance(application).registerForRemoteNotifications()
             callback(null)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to register for remote notifications", e)
+            Log.e(TAG, "Unable to register for remote notifications")
             callback(
                 InitializationError(
                     "registration_failed",
-                    e.message ?: "Unable to register for remote notifications",
+                    "Unable to register for remote notifications",
                 ),
             )
         }
