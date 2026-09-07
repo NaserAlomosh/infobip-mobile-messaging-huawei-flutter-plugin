@@ -50,6 +50,8 @@ internal object ChannelContract {
     const val SET_CHAT_JWT_PROVIDER = "setChatJwtProvider"
     const val SET_CHAT_EXCEPTION_HANDLER = "setChatExceptionHandler"
     const val SET_CHAT_CUSTOMIZATION = "setChatCustomization"
+    const val SET_CHAT_PUSH_TITLE = "setChatPushTitle"
+    const val SET_CHAT_PUSH_BODY = "setChatPushBody"
     const val SHOW_CHAT = "showChat"
     const val RESOLVE_CHAT_JWT = "resolveChatJwt"
     const val REJECT_CHAT_JWT = "rejectChatJwt"

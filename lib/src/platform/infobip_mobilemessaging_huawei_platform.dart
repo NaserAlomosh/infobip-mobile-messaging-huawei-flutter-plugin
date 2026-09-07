@@ -72,6 +72,10 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   Future<void> setChatCustomization(ChatCustomization customization) =>
       throw UnimplementedError();
 
+  Future<void> setChatPushTitle(String? title) => throw UnimplementedError();
+
+  Future<void> setChatPushBody(String? body) => throw UnimplementedError();
+
   Future<void> showChat({required bool shouldBePresentedModallyIOS}) =>
       throw UnimplementedError();
 

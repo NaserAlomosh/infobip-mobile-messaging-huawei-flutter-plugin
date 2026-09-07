@@ -251,6 +251,20 @@ class InfobipMobileMessagingHuaweiPlugin :
                 setChatCustomization(call, result)
             }
 
+            ChannelContract.SET_CHAT_PUSH_TITLE -> {
+                val failure = chatManager?.setChatPushTitle(call.arguments as String?)
+                    ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SET_CHAT_PUSH_BODY -> {
+                val failure = chatManager?.setChatPushBody(call.arguments as String?)
+                    ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
             ChannelContract.SHOW_CHAT -> {
                 val failure = chatManager?.showChat() ?: return detached(result)
                 if (failure == null) result.success(null)

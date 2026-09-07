@@ -183,6 +183,14 @@ final class MethodChannelInfobipMobileMessagingHuawei
       );
 
   @override
+  Future<void> setChatPushTitle(String? title) =>
+      methodChannel.invokeMethod<void>(ChannelContract.setChatPushTitle, title);
+
+  @override
+  Future<void> setChatPushBody(String? body) =>
+      methodChannel.invokeMethod<void>(ChannelContract.setChatPushBody, body);
+
+  @override
   Future<void> showChat({required bool shouldBePresentedModallyIOS}) =>
       methodChannel.invokeMethod<void>(
         ChannelContract.showChat,

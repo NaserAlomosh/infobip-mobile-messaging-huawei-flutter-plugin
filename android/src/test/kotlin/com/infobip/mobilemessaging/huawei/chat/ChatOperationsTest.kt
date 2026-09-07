@@ -80,4 +80,48 @@ class ChatOperationsTest {
 
         assertTrue(invoked)
     }
+
+    @Test
+    fun `Chat push title delegates without changing nullable string values`() {
+        val received = mutableListOf<String?>()
+        var screenOpened = false
+        val operations = ChatOperations(
+            availability = { true },
+            messageCounter = { 0 },
+            resetCounter = {},
+            showScreen = { screenOpened = true },
+            setPushTitle = { received.add(it) },
+        )
+
+        operations.setChatPushTitle("Support")
+        operations.setChatPushTitle(null)
+        operations.setChatPushTitle("")
+        operations.setChatPushTitle("  Support  ")
+
+        assertTrue(received == listOf("Support", null, "", "  Support  "))
+        assertFalse(screenOpened)
+    }
+
+    @Test
+    fun `Chat push body delegates without changing nullable string values`() {
+        val received = mutableListOf<String?>()
+        var screenOpened = false
+        val operations = ChatOperations(
+            availability = { true },
+            messageCounter = { 0 },
+            resetCounter = {},
+            showScreen = { screenOpened = true },
+            setPushBody = { received.add(it) },
+        )
+
+        operations.setChatPushBody("You have a new message")
+        operations.setChatPushBody(null)
+        operations.setChatPushBody("")
+        operations.setChatPushBody("  New message  ")
+
+        assertTrue(
+            received == listOf("You have a new message", null, "", "  New message  "),
+        )
+        assertFalse(screenOpened)
+    }
 }
