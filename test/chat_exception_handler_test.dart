@@ -15,6 +15,13 @@ final class ChatExceptionPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => eventsController.stream;
 
   @override
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
+  }) async {}
+
+  @override
   Future<void> cleanup() async {}
 
   @override
