@@ -183,6 +183,13 @@ final class MethodChannelInfobipMobileMessagingHuawei
       );
 
   @override
+  Future<void> showChat({required bool shouldBePresentedModallyIOS}) =>
+      methodChannel.invokeMethod<void>(
+        ChannelContract.showChat,
+        shouldBePresentedModallyIOS,
+      );
+
+  @override
   Future<void> resolveChatJwt(String jwt) => methodChannel.invokeMethod<void>(
     ChannelContract.resolveChatJwt,
     {ChannelContract.jwt: jwt},

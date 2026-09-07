@@ -15,6 +15,7 @@ class ChatOperationsTest {
             },
             messageCounter = { 0 },
             resetCounter = {},
+            showScreen = {},
         )
 
         assertTrue(operations.isChatAvailable())
@@ -27,6 +28,7 @@ class ChatOperationsTest {
             availability = { false },
             messageCounter = { 0 },
             resetCounter = {},
+            showScreen = {},
         )
 
         assertFalse(operations.isChatAvailable())
@@ -39,6 +41,7 @@ class ChatOperationsTest {
             availability = { true },
             messageCounter = { 0 },
             resetCounter = { invoked = true },
+            showScreen = {},
         )
 
         operations.resetMessageCounter()
@@ -56,9 +59,25 @@ class ChatOperationsTest {
                 7
             },
             resetCounter = {},
+            showScreen = {},
         )
 
         assertTrue(operations.getMessageCounter() == 7)
+        assertTrue(invoked)
+    }
+
+    @Test
+    fun `show Chat delegates to native screen without a fragment`() {
+        var invoked = false
+        val operations = ChatOperations(
+            availability = { true },
+            messageCounter = { 0 },
+            resetCounter = {},
+            showScreen = { invoked = true },
+        )
+
+        operations.showChat()
+
         assertTrue(invoked)
     }
 }

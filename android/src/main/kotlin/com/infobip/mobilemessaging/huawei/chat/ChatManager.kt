@@ -76,6 +76,17 @@ internal class ChatManager(
         callback,
     ) { operations.resetMessageCounter() }
 
+    fun showChat(): ChatFailure? {
+        val failure = attach()
+        if (failure != null) return failure
+        return try {
+            operations.showChat()
+            null
+        } catch (_: Exception) {
+            ChatFailure("native_error", "Unable to show Chat")
+        }
+    }
+
     @Synchronized
     fun setJwtProvider(): ChatFailure? = try {
         jwtBridge.enable()

@@ -123,6 +123,19 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: _loading
+                        ? null
+                        : () => _run(() async {
+                            await InfobipMobileMessagingHuawei.showChat();
+                            return 'Native Chat screen opened.';
+                          }),
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('Open native Chat'),
+                  ),
+                ),
                 TextField(
                   controller: _message,
                   decoration: const InputDecoration(

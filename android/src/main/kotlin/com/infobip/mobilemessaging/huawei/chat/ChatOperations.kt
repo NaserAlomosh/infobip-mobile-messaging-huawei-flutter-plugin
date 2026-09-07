@@ -6,6 +6,7 @@ internal class ChatOperations(
     private val availability: () -> Boolean,
     private val messageCounter: () -> Int,
     private val resetCounter: () -> Unit,
+    private val showScreen: () -> Unit,
 ) {
     fun isChatAvailable(): Boolean = availability()
 
@@ -13,11 +14,14 @@ internal class ChatOperations(
 
     fun resetMessageCounter() = resetCounter()
 
+    fun showChat() = showScreen()
+
     companion object {
         fun from(chat: InAppChat) = ChatOperations(
             availability = { chat.isChatAvailable },
             messageCounter = { chat.getMessageCounter() },
             resetCounter = { chat.resetMessageCounter() },
+            showScreen = { chat.inAppChatScreen().show() },
         )
     }
 }

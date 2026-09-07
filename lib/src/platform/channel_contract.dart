@@ -52,6 +52,7 @@ abstract final class ChannelContract {
   static const setChatJwtProvider = 'setChatJwtProvider';
   static const setChatExceptionHandler = 'setChatExceptionHandler';
   static const setChatCustomization = 'setChatCustomization';
+  static const showChat = 'showChat';
   static const resolveChatJwt = 'resolveChatJwt';
   static const rejectChatJwt = 'rejectChatJwt';
   static const jwt = 'jwt';

@@ -28,6 +28,15 @@ final class InfobipMobileMessagingHuawei {
         customization,
       );
 
+  /// Presents the standard native Chat screen.
+  ///
+  /// [shouldBePresentedModallyIOS] is retained for compatibility with the
+  /// official Flutter API and is ignored on Huawei Android.
+  static Future<void> showChat({bool shouldBePresentedModallyIOS = true}) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.showChat(
+        shouldBePresentedModallyIOS: shouldBePresentedModallyIOS,
+      );
+
   static Future<String> Function()? _chatJwtProvider;
   static void Function(Object error)? _chatJwtProviderErrorHandler;
   static StreamSubscription<Object?>? _chatJwtSubscription;
