@@ -189,9 +189,7 @@ final class InfobipMobileMessagingHuawei {
   );
 
   /// Depersonalizes the installation identified by [pushRegistrationId].
-  static Future<List<Installation>> depersonalizeInstallation(
-    String pushRegistrationId,
-  ) {
+  static Future<void> depersonalizeInstallation(String pushRegistrationId) {
     final id = pushRegistrationId.trim();
     if (id.isEmpty) {
       throw ArgumentError.value(
@@ -205,7 +203,7 @@ final class InfobipMobileMessagingHuawei {
   }
 
   /// Changes primary status for the installation identified by its push ID.
-  static Future<List<Installation>> setInstallationAsPrimary({
+  static Future<List<Installation>?> setInstallationAsPrimary({
     required String pushRegistrationId,
     required bool isPrimary,
   }) {

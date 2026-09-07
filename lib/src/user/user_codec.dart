@@ -160,7 +160,9 @@ abstract final class UserCodec {
       };
     }
     if (value is List) {
-      return value.map((item) => _encodeCustomValue(item, key)).toList();
+      return value
+          .map((item) => _customRecord(item, key, encode: true))
+          .toList();
     }
     throw PlatformException(
       code: 'invalid_argument',
@@ -187,10 +189,44 @@ abstract final class UserCodec {
       return value;
     }
     if (value is List) {
-      return List<Object?>.unmodifiable(value.map(_decodeCustomValue));
+      return List<Object?>.unmodifiable(
+        value.map(
+          (item) =>
+              item is Map && !item.containsKey(ChannelContract.customValueType)
+              ? _customRecord(item, 'CustomList', encode: false)
+              : _decodeCustomValue(item),
+        ),
+      );
     }
     if (value is Map) return _decodeTaggedCustomValue(value);
     throw const FormatException('Unsupported custom attribute value.');
+  }
+
+  static Map<String, Object?> _customRecord(
+    Object? value,
+    String key, {
+    required bool encode,
+  }) {
+    if (value is! Map ||
+        value.isEmpty ||
+        value.keys.any((key) => key is! String)) {
+      throw const FormatException(
+        'CustomList must contain non-empty records with string keys.',
+      );
+    }
+    return Map<String, Object?>.unmodifiable(
+      value.map((field, item) {
+        if (item is List || (item is Map && encode)) {
+          throw const FormatException(
+            'CustomList fields must be scalar values or DateTime.',
+          );
+        }
+        return MapEntry(
+          field as String,
+          encode ? _encodeCustomValue(item, key) : _decodeCustomValue(item),
+        );
+      }),
+    );
   }
 
   static DateTime _decodeTaggedCustomValue(Map<Object?, Object?> value) {

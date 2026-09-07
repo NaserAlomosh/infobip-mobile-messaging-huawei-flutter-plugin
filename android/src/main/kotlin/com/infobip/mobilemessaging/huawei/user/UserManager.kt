@@ -23,7 +23,7 @@ internal class UserManager(
         execute("native_error", callback) {
             val user = mobileMessaging.user
             if (user == null) {
-                mainHandler.post { callback(null, null) }
+                mainHandler.post { callback(emptyMap(), null) }
             } else {
                 complete(callback, user)
             }

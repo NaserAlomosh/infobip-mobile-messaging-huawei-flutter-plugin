@@ -33,7 +33,7 @@ void main() {
   }
 
   test(
-    'depersonalizeInstallation trims id and maps all installations',
+    'depersonalizeInstallation accepts populated response without requiring a list result',
     () async {
       respond(
         (_) => [
@@ -44,16 +44,11 @@ void main() {
           },
         ],
       );
-      final result =
-          await InfobipMobileMessagingHuawei.depersonalizeInstallation(
-            ' token ',
-          );
+      await InfobipMobileMessagingHuawei.depersonalizeInstallation(' token ');
       expect(calls.single.method, ChannelContract.depersonalizeInstallation);
       expect(calls.single.arguments, {
         ChannelContract.pushRegistrationId: 'token',
       });
-      expect(result.map((item) => item.pushRegistrationId), ['one', 'two']);
-      expect(result.last.isPrimaryDevice, isTrue);
     },
   );
 
@@ -90,9 +85,21 @@ void main() {
         ChannelContract.pushRegistrationId: 'token',
         ChannelContract.isPrimary: primary,
       });
-      expect(result.single.isPrimaryDevice, primary);
+      expect(result!.single.isPrimaryDevice, primary);
     });
   }
+
+  test('successful null installation mutations stay successful', () async {
+    respond((_) => null);
+    await InfobipMobileMessagingHuawei.depersonalizeInstallation('token');
+    expect(
+      await InfobipMobileMessagingHuawei.setInstallationAsPrimary(
+        pushRegistrationId: 'token',
+        isPrimary: true,
+      ),
+      isNull,
+    );
+  });
 
   test('installation operation preserves native error', () async {
     respond((_) => throw PlatformException(code: '17', message: 'Rejected'));

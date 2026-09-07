@@ -1,6 +1,5 @@
 import 'inbox.dart';
 import '../platform/channel_contract.dart';
-import '../notifications/message.dart';
 import '../notifications/push_message_codec.dart';
 
 abstract final class InboxCodec {
@@ -70,15 +69,42 @@ abstract final class InboxCodec {
     messages: [],
   );
 
-  static Message _decodeMessage(Object? value) {
+  static InboxMessage _decodeMessage(Object? value) {
     final map = _map(value, 'Inbox message');
     final message = PushMessageCodec.decode(map);
     if (message.messageId == null ||
         message.messageId!.isEmpty ||
-        message.seen == null) {
+        message.seen == null ||
+        message.topic == null) {
       throw const FormatException('Invalid Inbox message');
     }
-    return message;
+    final sentTimestamp = map['sentTimestamp'];
+    if (sentTimestamp != null &&
+        (sentTimestamp is! num || !sentTimestamp.isFinite)) {
+      throw const FormatException('Invalid Inbox sentTimestamp');
+    }
+    return InboxMessage(
+      messageId: message.messageId!,
+      topic: message.topic!,
+      seen: message.seen!,
+      title: message.title,
+      body: message.body,
+      sound: message.sound,
+      vibrate: message.vibrate,
+      silent: message.silent,
+      category: message.category,
+      customPayload: message.customPayload,
+      internalData: message.internalData,
+      contentUrl: message.contentUrl,
+      originalPayload: null,
+      browserUrl: message.browserUrl,
+      deeplink: message.deeplink,
+      webViewUrl: message.webViewUrl,
+      inAppOpenTitle: message.inAppOpenTitle,
+      inAppDismissTitle: message.inAppDismissTitle,
+      receivedTimestamp: message.receivedTimestamp,
+      sentTimestamp: sentTimestamp as num?,
+    );
   }
 
   static Map<Object?, Object?> _map(Object? value, String name) {

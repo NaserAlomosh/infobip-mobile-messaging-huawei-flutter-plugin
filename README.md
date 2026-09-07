@@ -166,7 +166,11 @@ final personalized = await InfobipMobileMessagingHuawei.personalize(
 await InfobipMobileMessagingHuawei.depersonalize();
 ```
 
-`UserIdentity` supports an external user ID, phones, and emails. User attributes support names, gender, a date-only `String?` birthday in `YYYY-MM-DD` format, tags, and SDK-compatible custom attributes. Message `receivedTimestamp` and `seenDate` values are numeric Unix epoch milliseconds, matching the official Flutter model.
+`UserIdentity` supports an external user ID, phones, and emails. User attributes support names, gender, a date-only `String?` birthday in `YYYY-MM-DD` format, tags, and SDK-compatible custom attributes. Huawei custom lists use lists of records with consistent field names and scalar types; arbitrary nested JSON and scalar lists are not supported for writes. Record fields accept strings, numbers, booleans, and `DateTime`; Huawei serializes record dates as `YYYY-MM-DD` strings and date-times as ISO UTC strings, which remain strings when read back. Null values are retained where the native attribute container supports them.
+
+Inbox results use `InboxMessage`, including rich content fields and the SDK's `sentTimestamp`. The separate `receivedTimestamp` remains available for compatibility. `depersonalizeInstallation` returns `Future<void>` and `setInstallationAsPrimary` returns `Future<List<Installation>?>`, matching official successful-null semantics.
+
+Message `receivedTimestamp` and `seenDate` values are numeric Unix epoch milliseconds, matching the official Flutter model.
 
 ## Installation
 

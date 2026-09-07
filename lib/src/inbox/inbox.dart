@@ -40,8 +40,41 @@ class Inbox {
   final int countUnread;
   final int countTotalFiltered;
   final int countUnreadFiltered;
-  final List<Message> messages;
+  final List<InboxMessage> messages;
 }
 
-@Deprecated('Use Message')
-typedef InboxMessage = Message;
+/// A Mobile Inbox message. Its sent time is independent of push receipt time.
+class InboxMessage extends Message {
+  const InboxMessage({
+    required String messageId,
+    required String topic,
+    required bool seen,
+    super.title,
+    super.body,
+    super.sound,
+    super.vibrate,
+    super.silent,
+    super.category,
+    super.customPayload,
+    super.internalData,
+    super.contentUrl,
+    super.originalPayload,
+    super.browserUrl,
+    super.deeplink,
+    super.webViewUrl,
+    super.inAppOpenTitle,
+    super.inAppDismissTitle,
+    super.receivedTimestamp,
+    this.sentTimestamp,
+  }) : super(messageId: messageId, topic: topic, seen: seen);
+
+  @override
+  String get messageId => super.messageId!;
+  @override
+  String get topic => super.topic!;
+  @override
+  bool get seen => super.seen!;
+
+  /// Milliseconds since epoch supplied by Huawei's sentTimestamp field.
+  final num? sentTimestamp;
+}
