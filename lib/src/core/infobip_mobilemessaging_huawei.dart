@@ -15,6 +15,14 @@ import '../custom_event/custom_event.dart';
 final class InfobipMobileMessagingHuawei {
   InfobipMobileMessagingHuawei._();
 
+  /// Whether the SDK's SQLite-backed default message store is used by the
+  /// next native initialization.
+  ///
+  /// Configure this before [initialize]. Changing it does not reconfigure an
+  /// already initialized SDK; it takes effect after [cleanup] and a subsequent
+  /// initialization.
+  static bool defaultMessageStorage = true;
+
   /// Notification and registration lifecycle events.
   static InfobipHuaweiNotifications get notifications =>
       InfobipHuaweiNotifications.instance;
@@ -72,6 +80,7 @@ final class InfobipMobileMessagingHuawei {
     }
     return InfobipMobileMessagingHuaweiPlatform.instance.initialize(
       applicationCode: applicationCode,
+      defaultMessageStorage: defaultMessageStorage,
     );
   }
 

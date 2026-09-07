@@ -17,7 +17,10 @@ final class ChatPushPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => const Stream.empty();
 
   @override
-  Future<void> initialize({required String applicationCode}) async {}
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {}
 
   @override
   Future<void> setChatPushTitle(String? title) async => titles.add(title);

@@ -14,7 +14,10 @@ final class NotificationsPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => eventsController.stream;
 
   @override
-  Future<void> initialize({required String applicationCode}) async {}
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {}
 }
 
 Map<String, Object?> envelope(String type, Map<String, Object?> payload) => {

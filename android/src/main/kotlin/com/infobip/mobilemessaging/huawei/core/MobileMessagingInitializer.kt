@@ -17,7 +17,7 @@ internal class MobileMessagingInitializer(
 
     private val coordinator =
         InitializationCoordinator(
-            start = { applicationCode, complete ->
+            start = { applicationCode, defaultMessageStorage, complete ->
                 try {
                     Log.d(
                         TAG,
@@ -31,37 +31,41 @@ internal class MobileMessagingInitializer(
                             .withDefaultIcon(R.drawable.ic_notification)
                             .build()
 
-                    MobileMessaging
+                    val builder = MobileMessaging
                         .Builder(application)
                         .withApplicationCode(applicationCode)
-                        .withMessageStore(SQLiteMessageStore::class.java)
                         .withFullFeaturedInApps()
                         .withDisplayNotification(notificationSettings)
-                        .build(
-                            object : MobileMessaging.InitListener {
-                                override fun onSuccess() {
-                                    Log.d(CHAT_TAG, "MobileMessaging initialization completed")
-                                    complete(null)
-                                }
 
-                                override fun onError(
-                                    error: InternalSdkError,
-                                    errorCode: Int?,
-                                ) {
-                                    Log.e(
-                                        TAG,
-                                        "Infobip initialization failed. error=$error, errorCode=$errorCode",
-                                    )
+                    if (defaultMessageStorage) {
+                        builder.withMessageStore(SQLiteMessageStore::class.java)
+                    }
 
-                                    complete(
-                                        InitializationError(
-                                            "initialization_failed",
-                                            "Infobip SDK initialization failed: $error",
-                                        ),
-                                    )
-                                }
-                            },
-                        )
+                    builder.build(
+                        object : MobileMessaging.InitListener {
+                            override fun onSuccess() {
+                                Log.d(CHAT_TAG, "MobileMessaging initialization completed")
+                                complete(null)
+                            }
+
+                            override fun onError(
+                                error: InternalSdkError,
+                                errorCode: Int?,
+                            ) {
+                                Log.e(
+                                    TAG,
+                                    "Infobip initialization failed. error=$error, errorCode=$errorCode",
+                                )
+
+                                complete(
+                                    InitializationError(
+                                        "initialization_failed",
+                                        "Infobip SDK initialization failed: $error",
+                                    ),
+                                )
+                            }
+                        },
+                    )
                 } catch (e: Exception) {
                     Log.e(
                         TAG,
@@ -82,6 +86,7 @@ internal class MobileMessagingInitializer(
 
     fun initialize(
         applicationCode: String,
+        defaultMessageStorage: Boolean,
         callback: (InitializationError?) -> Unit,
     ) {
         if (applicationCode.isBlank()) {
@@ -94,7 +99,7 @@ internal class MobileMessagingInitializer(
             return
         }
 
-        coordinator.initialize(applicationCode, callback)
+        coordinator.initialize(applicationCode, defaultMessageStorage, callback)
     }
 
     val isInitialized: Boolean

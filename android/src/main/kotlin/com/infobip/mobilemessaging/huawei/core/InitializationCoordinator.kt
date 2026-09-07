@@ -7,7 +7,7 @@ internal data class InitializationError(
 )
 
 internal class InitializationCoordinator(
-    private val start: (String, (InitializationError?) -> Unit) -> Unit,
+    private val start: (String, Boolean, (InitializationError?) -> Unit) -> Unit,
     private val afterSuccess: () -> Unit = {},
 ) {
     internal enum class State { NOT_INITIALIZED, INITIALIZING, INITIALIZED, FAILED }
@@ -31,6 +31,12 @@ internal class InitializationCoordinator(
 
     fun initialize(
         code: String,
+        callback: (InitializationError?) -> Unit,
+    ) = initialize(code, true, callback)
+
+    fun initialize(
+        code: String,
+        defaultMessageStorage: Boolean,
         callback: (InitializationError?) -> Unit,
     ) {
         var attemptToStart: Int? = null
@@ -66,7 +72,7 @@ internal class InitializationCoordinator(
         }
         if (shouldCompleteImmediately) callback(immediateError)
         attemptToStart?.let { currentAttempt ->
-            start(code) { error -> complete(currentAttempt, error) }
+            start(code, defaultMessageStorage) { error -> complete(currentAttempt, error) }
         }
     }
 

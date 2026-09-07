@@ -506,8 +506,10 @@ class InfobipMobileMessagingHuaweiPlugin :
             result.error("invalid_argument", "applicationCode must not be empty", null)
             return
         }
+        val defaultMessageStorage =
+            call.argument<Boolean>(ChannelContract.DEFAULT_MESSAGE_STORAGE) ?: true
 
-        initializer?.initialize(applicationCode) { error ->
+        initializer?.initialize(applicationCode, defaultMessageStorage) { error ->
             mainHandler.post {
                 if (error == null) {
                     result.success(null)

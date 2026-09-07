@@ -61,9 +61,13 @@ final class MethodChannelInfobipMobileMessagingHuawei
   );
 
   @override
-  Future<void> initialize({required String applicationCode}) async {
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {
     await methodChannel.invokeMethod<void>(ChannelContract.initialize, {
       ChannelContract.applicationCode: applicationCode,
+      ChannelContract.defaultMessageStorage: defaultMessageStorage,
     });
   }
 

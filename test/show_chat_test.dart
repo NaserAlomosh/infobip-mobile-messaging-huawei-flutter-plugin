@@ -16,7 +16,10 @@ final class ShowChatPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => const Stream.empty();
 
   @override
-  Future<void> initialize({required String applicationCode}) async {}
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {}
 
   @override
   Future<void> showChat({required bool shouldBePresentedModallyIOS}) async {

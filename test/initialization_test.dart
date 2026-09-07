@@ -7,6 +7,7 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 final class InitializationPlatform extends InfobipMobileMessagingHuaweiPlatform
     with MockPlatformInterfaceMixin {
   String? applicationCode;
+  bool? defaultMessageStorage;
   Object? error;
   var registrationCalls = 0;
   var cleanupCalls = 0;
@@ -15,8 +16,12 @@ final class InitializationPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => const Stream.empty();
 
   @override
-  Future<void> initialize({required String applicationCode}) async {
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+  }) async {
     this.applicationCode = applicationCode;
+    this.defaultMessageStorage = defaultMessageStorage;
     if (error case final Object error) throw error;
   }
 
@@ -37,6 +42,7 @@ void main() {
   late InitializationPlatform platform;
 
   setUp(() {
+    InfobipMobileMessagingHuawei.defaultMessageStorage = true;
     platform = InitializationPlatform();
     InfobipMobileMessagingHuaweiPlatform.instance = platform;
   });
@@ -52,6 +58,19 @@ void main() {
   test('delegates initialization to the platform', () async {
     await InfobipMobileMessagingHuawei.initialize(applicationCode: 'test-code');
     expect(platform.applicationCode, 'test-code');
+    expect(platform.defaultMessageStorage, isTrue);
+  });
+
+  test('uses the official default message storage value', () {
+    expect(InfobipMobileMessagingHuawei.defaultMessageStorage, isTrue);
+  });
+
+  test('forwards disabled default message storage during initialization', () async {
+    InfobipMobileMessagingHuawei.defaultMessageStorage = false;
+
+    await InfobipMobileMessagingHuawei.initialize(applicationCode: 'test-code');
+
+    expect(platform.defaultMessageStorage, isFalse);
   });
 
   test('delegates root cleanup to the platform', () async {
