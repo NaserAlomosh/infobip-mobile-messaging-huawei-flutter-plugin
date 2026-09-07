@@ -98,17 +98,19 @@ final class InfobipMobileMessagingHuawei {
     _chatJwtGeneration++;
     _chatJwtProvider = null;
     _chatJwtProviderErrorHandler = null;
+    final jwtCancellation = _chatJwtSubscription?.cancel();
+    _chatJwtSubscription = null;
+    _chatExceptionHandler = null;
+    _chatExceptionErrorHandler = null;
+    final exceptionCancellation = _chatExceptionSubscription?.cancel();
+    _chatExceptionSubscription = null;
     try {
       await InfobipMobileMessagingHuaweiPlatform.instance.cleanup();
     } finally {
-      _chatJwtProvider = null;
-      _chatJwtProviderErrorHandler = null;
-      await _chatJwtSubscription?.cancel();
-      _chatJwtSubscription = null;
-      _chatExceptionHandler = null;
-      _chatExceptionErrorHandler = null;
-      await _chatExceptionSubscription?.cancel();
-      _chatExceptionSubscription = null;
+      // Cancel only subscriptions owned by this cleanup. A later registration
+      // must not be erased when the native cleanup future completes.
+      await jwtCancellation;
+      await exceptionCancellation;
     }
   }
 
@@ -240,7 +242,9 @@ final class InfobipMobileMessagingHuawei {
     final registration = ++_chatJwtGeneration;
     _chatJwtProvider = jwtProvider;
     _chatJwtProviderErrorHandler = onError;
-    await _chatJwtSubscription?.cancel();
+    final previousSubscription = _chatJwtSubscription;
+    _chatJwtSubscription = null;
+    await previousSubscription?.cancel();
     if (registration != _chatJwtGeneration) return;
     _chatJwtSubscription = InfobipMobileMessagingHuaweiPlatform.instance.events
         .where(_isChatJwtRequest)
@@ -252,8 +256,9 @@ final class InfobipMobileMessagingHuawei {
       _chatJwtGeneration++;
       _chatJwtProvider = null;
       _chatJwtProviderErrorHandler = null;
-      await _chatJwtSubscription?.cancel();
+      final failedSubscription = _chatJwtSubscription;
       _chatJwtSubscription = null;
+      await failedSubscription?.cancel();
       rethrow;
     }
   }

@@ -16,6 +16,7 @@ final class ChatJwtPlatform extends InfobipMobileMessagingHuaweiPlatform
   var nextRequest = 0;
   final rejected = <String>[];
   final globalJwts = <String?>[];
+  Completer<void>? pendingCleanup;
 
   @override
   Stream<Object?> get events => eventsController.stream;
@@ -28,7 +29,7 @@ final class ChatJwtPlatform extends InfobipMobileMessagingHuaweiPlatform
   }) async {}
 
   @override
-  Future<void> cleanup() async {}
+  Future<void> cleanup() async => pendingCleanup?.future;
 
   @override
   Future<void> setChatJwtProvider() async => registrations++;
@@ -197,6 +198,40 @@ void main() {
         },
       );
     }
+  }
+
+  for (final fail in [false, true]) {
+    test(
+      'delayed cleanup failure=$fail cannot erase a newer provider',
+      () async {
+        await InfobipMobileMessagingHuawei.setChatJwtProvider(
+          () async => 'old',
+        );
+        final pendingCleanup = Completer<void>();
+        platform.pendingCleanup = pendingCleanup;
+        final cleanup = InfobipMobileMessagingHuawei.cleanup();
+        final outcome = fail
+            ? expectLater(cleanup, throwsStateError)
+            : expectLater(cleanup, completes);
+        await InfobipMobileMessagingHuawei.setChatJwtProvider(
+          () async => 'new',
+        );
+        platform.requestJwt();
+        await pumpEventQueue();
+        expect(platform.resolved, ['new']);
+        if (fail) {
+          pendingCleanup.completeError(StateError('cleanup failed'));
+        } else {
+          pendingCleanup.complete();
+        }
+        await outcome;
+        platform.pendingCleanup = null;
+        platform.requestJwt();
+        await pumpEventQueue();
+        expect(platform.resolved, ['new', 'new']);
+        expect(platform.responseIds, ['request-1', 'request-2']);
+      },
+    );
   }
 
   test('global setJwt remains independent from Chat authentication', () async {
