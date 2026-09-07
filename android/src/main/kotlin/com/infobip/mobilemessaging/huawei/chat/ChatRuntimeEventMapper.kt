@@ -1,7 +1,7 @@
 package com.infobip.mobilemessaging.huawei.chat
 
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
-import org.infobip.mobile.messaging.chat.core.widget.WidgetInfo
+import org.infobip.mobile.messaging.api.chat.WidgetInfo
 
 internal object ChatRuntimeEventMapper {
     fun event(name: String, value: Any? = null, includeValue: Boolean = value != null): Map<String, Any?> =
@@ -16,15 +16,15 @@ internal object ChatRuntimeEventMapper {
         "primaryColor" to value.primaryColor,
         "backgroundColor" to value.backgroundColor,
         "primaryTextColor" to value.primaryTextColor,
-        "multiThread" to value.multiThread,
-        "multiChannelConversationEnabled" to value.multiChannelConversationEnabled,
-        "callsEnabled" to value.callsEnabled,
+        "multiThread" to value.isMultiThread,
+        "multiChannelConversationEnabled" to value.isMultiChannelConversationEnabled,
+        "callsEnabled" to value.isCallsEnabled,
         "themeNames" to value.themeNames,
         "attachmentConfig" to value.attachmentConfig?.let { config ->
             mapOf(
                 "maxSize" to config.maxSize,
                 "isEnabled" to config.isEnabled,
-                "allowedExtensions" to config.allowedExtensions,
+                "allowedExtensions" to config.allowedExtensions?.toList(),
             )
         },
     )

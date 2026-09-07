@@ -21,6 +21,7 @@ internal class ChatManager(
     private val inAppChat by lazy { InAppChat.getInstance(applicationContext) }
     private val operations by lazy { ChatOperations.from(inAppChat) }
     private val jwtBridge = ChatJwtBridge(requestDartJwt)
+    internal val exceptionBridge = ChatExceptionBridge()
     @Volatile
     private var activated = false
 
@@ -30,6 +31,7 @@ internal class ChatManager(
         Log.d(TAG, "InAppChat activation started")
         return try {
             inAppChat.activate()
+            inAppChat.inAppChatScreen().errorHandler = exceptionBridge
             activated = true
             Log.d(TAG, "InAppChat activation succeeded")
             null
@@ -80,6 +82,7 @@ internal class ChatManager(
         val failure = attach()
         if (failure != null) return failure
         return try {
+            inAppChat.inAppChatScreen().errorHandler = exceptionBridge
             operations.showChat()
             null
         } catch (_: Exception) {
@@ -127,17 +130,12 @@ internal class ChatManager(
             return ChatFailure("invalid_argument", "enabled must be a boolean")
         }
         return try {
-            inAppChat.setExceptionHandler(
-                if (enabled) {
-                    { exception ->
-                        emit(ChatExceptionMapper.toMap(exception.message, exception.name))
-                    }
-                } else {
-                    null
-                },
-            )
+            // Keep one bridge so already-open screens observe handler replacement/removal.
+            inAppChat.inAppChatScreen().errorHandler = exceptionBridge
+            exceptionBridge.setHandler(if (enabled) emit else null)
             null
         } catch (_: Exception) {
+            exceptionBridge.setHandler(null)
             ChatFailure("native_error", "Unable to configure Chat exception handler")
         }
     }
@@ -193,7 +191,8 @@ internal class ChatManager(
     }
 
     fun clearExceptionHandler() {
-        runCatching { inAppChat.setExceptionHandler(null) }
+        exceptionBridge.setHandler(null)
+        runCatching { inAppChat.inAppChatScreen().errorHandler = null }
     }
 
     private companion object {

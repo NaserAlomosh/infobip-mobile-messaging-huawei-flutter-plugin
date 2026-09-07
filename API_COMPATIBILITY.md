@@ -282,10 +282,10 @@ its existing native behavior.
 | Unread count updates | **Adapted** | Exposed as a Flutter stream. |
 | Send text message | **Adapted** | Requires an attached Chat view. |
 | Send contextual data | **Adapted** | Requires an attached Chat view. |
-| Set draft message | **Adapted** | Sets the native composer draft for the active conversation; an empty string clears it. |
+| Set draft message | **NOT_AVAILABLE** | Dart API retained; Huawei 8.14 has no composer draft setter. Returns `not_available`. |
 | Language | **Adapted** | View-scoped native widget configuration. |
 | Widget theme | **Adapted** | View-scoped native widget configuration. |
-| Chat exception handler | **Adapted** | `setChatExceptionHandler` maps Huawei `InAppChat.setExceptionHandler` exceptions to nullable `message` and `name` fields. A custom handler replaces Huawei's default exception presentation; passing `null` restores it. Android/Huawei only. |
+| Chat exception handler | **MAPPABLE** | Uses Huawei screen/fragment error handlers; passing null restores default presentation. |
 | Programmatic attachments | **Unsupported** | The pinned official Flutter API has no public programmatic attachment contract to reproduce. Huawei 8.14.0 exposes attachment handling only through its native Chat component contract; the plugin does not invent a Dart file/URI model. |
 | Thread APIs | **Intentionally omitted** | Stable thread models are not exposed in v1. |
 | Raw Chat messages | **Supported** | Exposed unchanged through a typed, view-scoped runtime event. |
@@ -328,48 +328,18 @@ non-conflicting official-compatible API.
 
 ### Chat Draft Messages
 
-The draft-message API was audited against the official Flutter plugin at commit
-`8b630d0f736d400635317131d549c345349bd54d` and Huawei Mobile Messaging SDK
-8.14.0 source commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` before the bridge was added.
+The public `InfobipHuaweiChatController.setChatDraftMessage(String)` contract
+is retained, including empty-string input. Huawei 8.14.0 at commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` has no composer setter or equivalent
+clear operation on `InAppChatFragment`, `InAppChatView`, or `LivechatWidgetApi`.
+Classification: **NOT_AVAILABLE**. On an attached native view, valid calls
+return `PlatformException(code: "not_available")`; invalid channel arguments
+still return `invalid_argument`, and unavailable views return `chat_unavailable`.
 
-The official Flutter contract is the one-way
-`Future<void> setChatDraftMessage(String draftMessage)` operation. A draft is a
-plain, non-nullable `String`; there is no draft model, getter, thread identifier,
-timestamp, or separate clear API. The official Android implementation forwards
-the string to the Android Chat SDK's `setDraftMessage(String)` API. It does not
-trim or transform the value. An empty string clears the composer draft.
-
-Huawei 8.14.0 exposes `InAppChatFragment.setDraftMessage(String)`. The operation
-updates the native widget composer and is therefore view-scoped and
-active-conversation-scoped. In multithread mode it applies to the conversation
-currently displayed by the fragment. It cannot select a thread by identifier,
-set drafts for all threads, or retrieve drafts. On the thread list there is no
-active composer to update. A newly created or subsequently selected thread is
-not assigned a Flutter-maintained copy of an earlier draft.
-
-This package exposes the same method name and string contract on
-`InfobipHuaweiChatController`. Controller placement is an architectural
-adaptation because the package embeds `InAppChatFragment` instead of exposing
-the official plugin's global Chat presentation flow. The existing view channel
-and fragment lifecycle remain the source of truth; no Dart or Android duplicate
-draft state is retained.
-
-| Official API / field | Huawei 8.14 API | Classification | Notes |
-| --- | --- | --- | --- |
-| `setChatDraftMessage(String draftMessage)` | `InAppChatFragment.setDraftMessage(String)` | **MAPPABLE** | Same one-way value semantics, scoped to the attached embedded view. |
-| `draftMessage` (`String`, non-null) | `String` | **EXACT** | Whitespace and all other string content are preserved. |
-| Empty string clearing | `setDraftMessage("")` | **EXACT** | Clears the active native composer. |
-| Null draft | No nullable overload | **NOT_AVAILABLE** | Rejected by the Dart type system and by native channel validation. |
-| Draft getter/model | No official API | **NOT_AVAILABLE** | No getter or fabricated model is exposed. |
-| Explicit thread selection | No official API; active fragment conversation only | **NOT_AVAILABLE** | The bridge does not invent thread IDs or global storage. |
-| iOS implementation | No iOS implementation in this Huawei plugin | **IOS_ONLY** | Package remains Huawei Android-only. |
-
-Draft operations require an attached, non-disposed controller and a live added
-fragment. Calls made before attachment or after disposal fail with the existing
-`chat_unavailable` platform error. Native runtime failures use `native_error`
-and are returned to the caller; they are not sent through the Chat exception
-handler. Calls are posted through the existing view lifecycle guard, preventing
-a queued operation from targeting a replaced or disposed fragment.
+Huawei's `send(MessagePayload.Draft(...))` sends a draft payload to the widget;
+it is also used internally to report native input changes. It rejects blank
+messages and does not set/clear the native composer. It is not an equivalent
+implementation of this Dart API. No reflection or duplicate draft state is used.
 
 ### Chat Attachments
 
@@ -485,27 +455,30 @@ limits.
 `InfobipHuaweiChatError` represents typed Chat view lifecycle and availability
 errors.
 
-`ChatException` matches the official Flutter model's nullable `message` and
-`name` fields. Huawei SDK 8.14.0 supplies both through its native Chat exception
-callback; no stack trace, native object, HTTP status, identity, or credentials
-are exposed.
+`ChatException` retains the official Flutter nullable `message` and `name`
+fields. Both are supplied by Huawei `InAppChatException` without fabrication.
 
 ### Chat exception mapping audit
 
-The desired API is the official Flutter
-`setChatExceptionHandler(Future<void> Function(ChatException)?, [onError])` at
-commit `8b630d0f736d400635317131d549c345349bd54d`. The native audit is pinned to
-Huawei commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`, corresponding to SDK
-8.14.0.
+At Huawei commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`, `InAppChat`
+has no `setExceptionHandler`. The exact alternatives are
+`InAppChat.inAppChatScreen().errorHandler: InAppChatErrorsHandler?` and
+`InAppChatFragment.errorsHandler: InAppChatFragment.ErrorsHandler`.
+Both call `handleError(InAppChatException): Boolean`; true marks the error as
+handled, while false allows Huawei's default error presentation.
 
-| Official Flutter API / field | Huawei 8.14.0 source | Classification |
+| Official Flutter API / field | Huawei 8.14.0 capability | Classification |
 | --- | --- | --- |
-| `setChatExceptionHandler(handler, onError)` | `InAppChat.setExceptionHandler` | **MAPPABLE** |
-| Replace the current handler | Singleton `InAppChat` handler property | **EXACT** |
-| `null` restores default handling | `InAppChat.setExceptionHandler(null)` | **EXACT** |
-| `ChatException.message` (`String?`) | Native exception `message` | **EXACT** |
-| `ChatException.name` (`String?`) | Native exception `name` | **EXACT** |
-| iOS behavior | No iOS implementation in this Huawei plugin | **IOS_ONLY** |
+| `setChatExceptionHandler(handler, onError)` | Screen `errorHandler` and fragment `errorsHandler` | **MAPPABLE** |
+| Replace/remove the handler | Stable bridge reads the current Dart emitter; absent emitter returns false | **MAPPABLE** |
+| `ChatException.message` / `name` | `InAppChatException.message` / `name` | **EXACT** |
+
+The bridge is installed during activation and before fullscreen presentation,
+and on each embedded fragment. Existing screens and fragments reference the
+same bridge, so replacement/removal takes effect without recreating the view.
+Cleanup clears the emitter and screen handler. Invalid `enabled` values return
+`invalid_argument`; native registration failures return `native_error`.
+No reflection or synthetic exception callbacks are used.
 
 ---
 
@@ -750,3 +723,74 @@ exposed as Dart runtime events.
 | `onChatLanguageChanged` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
 | `onChatControlsVisibilityChanged` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
 | `onChatUrlInteracted` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE**; returns `false` and remains unexposed. |
+
+## Huawei 8.14 baseline compile audit
+
+Authority: Huawei SDK commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`.
+The root `build.gradle` pins `infobip-mobile-messaging-api-java` to **15.1.0**;
+its source JAR supplies the shared widget models. This is the Huawei SDK's
+existing dependency, not the standard Android Mobile Messaging SDK.
+
+| Capability | Classification | Native mapping |
+| --- | --- | --- |
+| Chat exception handler | **MAPPABLE** | Exact screen/fragment error-handler APIs; native exception `message` and `name` are preserved. |
+| WidgetInfo type/package | **RENAMED** | `org.infobip.mobile.messaging.api.chat.WidgetInfo`. |
+| WidgetInfo fields | **EXACT** | All requested fields exist; Java Boolean getters use Kotlin `is…` properties. Nullable strings/configuration remain null. |
+| Attachment extensions | **MAPPABLE** | Native `Set<String>` becomes a channel-compatible list; null remains null. |
+| `LivechatWidgetResult.isSuccess` | **EXACT** | Kotlin Boolean property, not a method. |
+| Composer draft setter | **NOT_AVAILABLE** | Explicit `not_available`; sending a draft payload is not a composer setter. |
+| CustomEvent `eventId` | **NOT_AVAILABLE** | Native output includes null; Dart field retained. |
+| CustomEvent `createdAt` | **NOT_AVAILABLE** | Native output includes null; Dart field retained. |
+| CustomEvent properties | **MAPPABLE** | Typed `Map<String, CustomAttributeValue>` for strings, numbers, Booleans and tagged dates. |
+
+`EventPropertiesMapper` supports `Type.Date` but does not serialize `DateTime`
+or `CustomList` event properties. Lists, nested objects, null values and malformed
+date tags are rejected with `invalid_argument`. Missing properties become an
+empty map. Tagged dates use UTC ISO strings stored as `Type.Date`, which the
+pinned `dateValue()` reader accepts, avoiding the Date constructor's local-time
+formatting. Huawei's date serialization has second precision; fractional seconds
+are truncated. Tests cover typed values, channel output, backend serialization
+and a non-UTC default timezone. No unavailable event metadata is invented.
+
+Source files inspected in the pinned Huawei repository (paths relative to repo):
+
+- `build.gradle`
+- `infobip-mobile-messaging-huawei-chat-sdk/build.gradle`
+- `infobip-mobile-messaging-huawei-sdk/build.gradle`
+- Under `infobip-mobile-messaging-huawei-chat-sdk/src/main/java/org/infobip/mobile/messaging/chat/`:
+  `InAppChat.java`, `InAppChatImpl.java`, `InAppChatScreen.kt`,
+  `view/InAppChatActivity.kt`, `view/InAppChatFragment.kt`, `view/InAppChatEventsListener.kt`,
+  `view/InAppChatErrorsHandler.kt`,
+  `view/InAppChatView.kt`, `core/InAppChatException.kt`,
+  `core/widget/LivechatWidgetApi.kt`, `core/widget/LivechatWidgetResult.kt`,
+  `core/widget/LivechatWidgetClientImpl.kt`, `models/MessagePayload.kt`.
+- Under `infobip-mobile-messaging-huawei-sdk/src/main/java/org/infobip/mobile/messaging/`:
+  `CustomEvent.java`, `CustomAttributeValue.java`, `ListCustomAttributeValue.java`,
+  `EventPropertiesHolder.java`, `EventPropertiesMapper.java`, `util/DateTimeUtil.java`.
+- In the pinned Java API 15.1.0 source JAR:
+  `org/infobip/mobile/messaging/api/chat/WidgetInfo.java` and
+  `org/infobip/mobile/messaging/api/chat/WidgetAttachmentConfig.java`.
+
+Validation on JDK 17.0.19 / Flutter 3.35.7 / Dart 3.9.2:
+
+- `flutter pub get`: PASS.
+- `dart format --set-exit-if-changed .`: PASS, 61 files, zero changes.
+- `flutter analyze`: no errors or warnings; 22 info-level deprecation notices.
+- `flutter test`: PASS, 170 tests.
+- `./gradlew :app:assembleDebug`: PASS with WebRTC disabled (default).
+- `./gradlew :infobip_mobilemessaging_huawei:testDebugUnitTest`: blocked at
+  `InitializationCoordinatorTest.kt`, whose existing trailing lambdas bind to
+  `afterSuccess` instead of the required `start` constructor parameter.
+- With only that test source excluded using an external temporary Gradle init
+  script: 117 tests run, 115 pass. Existing failures are `MessageMapperTest`
+  (Android `JSONObject.put` is not mocked) and `UserMapperTest`
+  (expected 12:00Z, actual 15:00Z under the local timezone).
+- With the same external exclusion and test filters for
+  `com.infobip.mobilemessaging.huawei.chat.*` and
+  `com.infobip.mobilemessaging.huawei.event.CustomEventMapperTest`: all 60 pass.
+  This includes the new exception bridge and widget/property conversion tests.
+
+No test exclusions, Gradle changes, standard Android Mobile Messaging SDK,
+WebRTC implementation/configuration changes, or unrelated test fixes are part
+of this change. No application/plugin compile errors remain in the baseline
+build; the full native test-suite limitation above remains separate.

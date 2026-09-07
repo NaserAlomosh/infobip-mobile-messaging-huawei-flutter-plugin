@@ -49,4 +49,26 @@ class ChatRuntimeEventMapperTest {
         assertEquals("application/pdf", attachment["type"])
         assertNull(attachment["caption"])
     }
+    @Test
+    fun `widget info uses exact Huawei fields and channel compatible extensions`() {
+        val widget = org.infobip.mobile.messaging.api.chat.WidgetInfo(
+            "id", "title", "#111111", "#222222", "#333333", true, false, true,
+            listOf("dark"), org.infobip.mobile.messaging.api.chat.WidgetAttachmentConfig(2048L, true, linkedSetOf("pdf", "png")),
+        )
+        assertEquals(
+            mapOf(
+                "id" to "id", "title" to "title", "primaryColor" to "#111111",
+                "backgroundColor" to "#222222", "primaryTextColor" to "#333333",
+                "multiThread" to true, "multiChannelConversationEnabled" to false,
+                "callsEnabled" to true, "themeNames" to listOf("dark"),
+                "attachmentConfig" to mapOf("maxSize" to 2048L, "isEnabled" to true, "allowedExtensions" to listOf("pdf", "png")),
+            ),
+            ChatRuntimeEventMapper.widgetInfo(widget),
+        )
+        val empty = ChatRuntimeEventMapper.widgetInfo(org.infobip.mobile.messaging.api.chat.WidgetInfo())
+        assertNull(empty["title"])
+        assertNull(empty["attachmentConfig"])
+        assertNull(empty["themeNames"])
+    }
+
 }
