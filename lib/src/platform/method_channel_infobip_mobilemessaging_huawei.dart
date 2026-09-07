@@ -158,17 +158,14 @@ final class MethodChannelInfobipMobileMessagingHuawei
   );
 
   @override
-  Future<List<Installation>> depersonalizeInstallation(
-    String pushRegistrationId,
-  ) async => _installationList(
-    await methodChannel.invokeMethod<Object?>(
-      ChannelContract.depersonalizeInstallation,
-      {ChannelContract.pushRegistrationId: pushRegistrationId},
-    ),
-  );
+  Future<void> depersonalizeInstallation(String pushRegistrationId) =>
+      methodChannel.invokeMethod<void>(
+        ChannelContract.depersonalizeInstallation,
+        {ChannelContract.pushRegistrationId: pushRegistrationId},
+      );
 
   @override
-  Future<List<Installation>> setInstallationAsPrimary({
+  Future<List<Installation>?> setInstallationAsPrimary({
     required String pushRegistrationId,
     required bool isPrimary,
   }) async => _installationList(
@@ -179,7 +176,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
         }),
   );
 
-  static List<Installation> _installationList(Object? value) {
+  static List<Installation>? _installationList(Object? value) {
+    if (value == null) return null;
     if (value is! List) {
       throw const FormatException('Installations payload must be a list.');
     }
@@ -226,16 +224,26 @@ final class MethodChannelInfobipMobileMessagingHuawei
       );
 
   @override
-  Future<void> resolveChatJwt(String jwt) => methodChannel.invokeMethod<void>(
-    ChannelContract.resolveChatJwt,
-    {ChannelContract.jwt: jwt},
-  );
+  Future<void> resolveChatJwt(
+    String jwt, {
+    required String requestId,
+    required int generation,
+  }) => methodChannel.invokeMethod<void>(ChannelContract.resolveChatJwt, {
+    ChannelContract.jwt: jwt,
+    'requestId': requestId,
+    'generation': generation,
+  });
 
   @override
-  Future<void> rejectChatJwt(String error) => methodChannel.invokeMethod<void>(
-    ChannelContract.rejectChatJwt,
-    {ChannelContract.error: error},
-  );
+  Future<void> rejectChatJwt(
+    String error, {
+    required String requestId,
+    required int generation,
+  }) => methodChannel.invokeMethod<void>(ChannelContract.rejectChatJwt, {
+    ChannelContract.error: error,
+    'requestId': requestId,
+    'generation': generation,
+  });
 
   @override
   Future<Installation> getInstallation() async => InstallationCodec.decode(

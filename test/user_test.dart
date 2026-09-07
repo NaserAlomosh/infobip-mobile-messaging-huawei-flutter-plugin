@@ -101,28 +101,36 @@ void main() {
     );
   });
 
-  test('encodes DateTime custom values with a recursive date tag', () async {
-    final localInstant = DateTime.parse('2026-09-01T15:00:00+03:00');
-    await platform.saveUser(
-      User(
-        customAttributes: {
-          'created': localInstant,
-          'history': [localInstant],
-          'text': '2026-09-01T12:00:00Z',
-        },
-      ),
-    );
+  test(
+    'encodes DateTime custom values with a date tag inside supported CustomList records',
+    () async {
+      final localInstant = DateTime.parse('2026-09-01T15:00:00+03:00');
+      await platform.saveUser(
+        User(
+          customAttributes: {
+            'created': localInstant,
+            'history': [
+              {'at': localInstant},
+            ],
+            'text': '2026-09-01T12:00:00Z',
+          },
+        ),
+      );
 
-    final arguments = calls.single.arguments as Map<Object?, Object?>;
-    final user = arguments[ChannelContract.user] as Map<Object?, Object?>;
-    final custom = user[ChannelContract.customAttributes] as Map;
-    expect(custom['created'], {
-      ChannelContract.customValueType: ChannelContract.customDateType,
-      ChannelContract.customValue: '2026-09-01T12:00:00.000Z',
-    });
-    expect((custom['history'] as List).single, custom['created']);
-    expect(custom['text'], '2026-09-01T12:00:00Z');
-  });
+      final arguments = calls.single.arguments as Map<Object?, Object?>;
+      final user = arguments[ChannelContract.user] as Map<Object?, Object?>;
+      final custom = user[ChannelContract.customAttributes] as Map;
+      expect(custom['created'], {
+        ChannelContract.customValueType: ChannelContract.customDateType,
+        ChannelContract.customValue: '2026-09-01T12:00:00.000Z',
+      });
+      expect(
+        ((custom['history'] as List).single as Map)['at'],
+        custom['created'],
+      );
+      expect(custom['text'], '2026-09-01T12:00:00Z');
+    },
+  );
 
   test(
     'delegates personalization identity, attributes, and force option',
@@ -202,33 +210,42 @@ void main() {
     await expectLater(platform.getUser(), throwsFormatException);
   });
 
-  test('decodes tagged custom dates as UTC instants in nested lists', () async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-          channel,
-          (_) async => <String, Object?>{
-            ChannelContract.customAttributes: <String, Object?>{
-              'created': <String, Object>{
-                ChannelContract.customValueType: ChannelContract.customDateType,
-                ChannelContract.customValue: '2026-09-01T12:00:00Z',
-              },
-              'history': <Object?>[
-                <String, Object>{
+  test(
+    'decodes tagged custom dates as UTC instants in CustomList record fields',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            channel,
+            (_) async => <String, Object?>{
+              ChannelContract.customAttributes: <String, Object?>{
+                'created': <String, Object>{
                   ChannelContract.customValueType:
                       ChannelContract.customDateType,
-                  ChannelContract.customValue: '2026-09-01T12:00:00.000Z',
+                  ChannelContract.customValue: '2026-09-01T12:00:00Z',
                 },
-              ],
-              'text': '2026-09-01T12:00:00Z',
+                'history': <Object?>[
+                  {
+                    'at': <String, Object>{
+                      ChannelContract.customValueType:
+                          ChannelContract.customDateType,
+                      ChannelContract.customValue: '2026-09-01T12:00:00.000Z',
+                    },
+                  },
+                ],
+                'text': '2026-09-01T12:00:00Z',
+              },
             },
-          },
-        );
+          );
 
-    final custom = (await platform.getUser()).customAttributes!;
-    expect(custom['created'], DateTime.utc(2026, 9, 1, 12));
-    expect((custom['history'] as List).single, DateTime.utc(2026, 9, 1, 12));
-    expect(custom['text'], isA<String>());
-  });
+      final custom = (await platform.getUser()).customAttributes!;
+      expect(custom['created'], DateTime.utc(2026, 9, 1, 12));
+      expect(
+        ((custom['history'] as List).single as Map)['at'],
+        DateTime.utc(2026, 9, 1, 12),
+      );
+      expect(custom['text'], isA<String>());
+    },
+  );
 
   test('rejects malformed tagged custom dates', () async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

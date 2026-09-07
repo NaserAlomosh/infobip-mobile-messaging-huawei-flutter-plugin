@@ -142,7 +142,7 @@ internal class InstallationManager(
         fail(
             callback,
             error?.code?.toString() ?: fallbackCode,
-            error?.message ?: fallbackMessage,
+            fallbackMessage,
         )
     }
 
@@ -168,9 +168,9 @@ internal class InstallationManager(
     ) = object : MobileMessaging.ResultListener<List<Installation>>() {
         override fun onResult(result: Result<List<Installation>, MobileMessagingError>) {
             val installations = result.data
-            if (result.isSuccess && installations != null) {
+            if (result.isSuccess) {
                 mainHandler.post {
-                    callback(installations.map(InstallationMapper::toMap), null)
+                    callback(installations?.map(InstallationMapper::toMap), null)
                 }
             } else {
                 failList(callback, result.error, code, message)
@@ -193,8 +193,8 @@ internal class InstallationManager(
         fallbackMessage: String,
     ) {
         val code = error?.code?.toString() ?: fallbackCode
-        val message = error?.message ?: fallbackMessage
-        val details = error?.let { mapOf("code" to code, "message" to message) }
+        val message = fallbackMessage
+        val details = error?.let { mapOf("code" to code) }
         mainHandler.post { callback(null, InstallationFailure(code, message, details)) }
     }
 
@@ -208,7 +208,7 @@ internal class InstallationManager(
         } catch (_: IllegalArgumentException) {
             failList(callback, "invalid_argument", "Invalid installation argument")
         } catch (error: Exception) {
-            failList(callback, code, error.message ?: "Installation operation failed")
+            failList(callback, code, "Installation operation failed")
         }
     }
 

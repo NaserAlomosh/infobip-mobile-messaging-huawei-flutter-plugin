@@ -86,7 +86,7 @@ class WebRtcOperationsTest {
         runtime.failure = NoSuchMethodException("missing method")
         val result = operations(configuration = WebRtcConfiguration("rtc-id")).enableCallsResult("id")
         assertEquals("webrtc_error", result.single()?.code)
-        assertEquals("missing method", result.single()?.message)
+        assertEquals("WebRTC operation failed", result.single()?.message)
     }
 
     @Test
@@ -102,7 +102,7 @@ class WebRtcOperationsTest {
         runtime.callbacks = { _, error -> error("first"); error("second") }
         val result = operations(configuration = WebRtcConfiguration("rtc-id")).enableCallsResult("id")
         assertEquals(1, result.size)
-        assertEquals("first", result.single()?.message)
+        assertEquals("WebRTC operation failed", result.single()?.message)
     }
 
     @Test
@@ -166,6 +166,75 @@ class WebRtcOperationsTest {
             ),
             InfobipRtcUi.calls,
         )
+    }
+
+    @Test
+    fun `cleanup cancels delayed enable then waits to unregister actual instance`() {
+        lateinit var oldSuccess: () -> Unit
+        lateinit var oldError: (String) -> Unit
+        runtime.callbacks = { success, error -> oldSuccess = success; oldError = error }
+        val operations = operations(configuration = WebRtcConfiguration("rtc-id"))
+        val enabled = mutableListOf<WebRtcFailure?>()
+        operations.enableCalls("old", enabled::add)
+        val cleaned = mutableListOf<WebRtcFailure?>()
+        operations.cleanup(cleaned::add)
+        assertEquals("webrtc_cancelled", enabled.single()?.code)
+        assertEquals(0, cleaned.size)
+        runtime.callbacks = { success, _ -> success() }
+        oldSuccess()
+        assertSame(runtime.builtRtcUi, runtime.disabledReceiver)
+        assertEquals(listOf(null), cleaned)
+        assertEquals(1, enabled.size)
+        operations.enableCallsResult("new")
+        val disables = runtime.events.count { it == "disableCalls" }
+        oldSuccess()
+        oldError("secret-jwt")
+        assertEquals(disables, runtime.events.count { it == "disableCalls" })
+        assertEquals(1, enabled.size)
+    }
+
+    @Test
+    fun `detach reset still unregisters after a delayed callback`() {
+        lateinit var success: () -> Unit
+        runtime.callbacks = { ready, _ -> success = ready }
+        val operations = operations(configuration = WebRtcConfiguration("rtc-id"))
+        val enabled = mutableListOf<WebRtcFailure?>()
+        operations.enableCalls("identity", enabled::add)
+        operations.reset()
+        runtime.callbacks = { ready, _ -> ready() }
+        success()
+        assertSame(runtime.builtRtcUi, runtime.disabledReceiver)
+        assertEquals("webrtc_cancelled", enabled.single()?.code)
+    }
+
+    @Test
+    fun `repeated enable is idempotent and identity change requires disable`() {
+        val operations = operations(configuration = WebRtcConfiguration("rtc-id"))
+        operations.enableCallsResult("first")
+        assertNull(operations.enableCallsResult("first").single())
+        assertEquals(1, runtime.enableCount)
+        assertEquals("webrtc_operation_in_progress", operations.enableCallsResult("second").single()?.code)
+        operations.disableCallsResult()
+        assertNull(operations.enableCallsResult("second").single())
+        assertEquals(2, runtime.enableCount)
+    }
+
+    @Test
+    fun `failed disable retains actual instance for retry and redacts error`() {
+        val operations = operations(configuration = WebRtcConfiguration("rtc-id"))
+        operations.enableCallsResult("first")
+        runtime.callbacks = { _, error -> error("secret-token") }
+        assertEquals("Unable to disable WebRTC calls", operations.disableCallsResult().single()?.message)
+        runtime.callbacks = { success, _ -> success() }
+        assertNull(operations.disableCallsResult().single())
+        assertSame(runtime.builtRtcUi, runtime.disabledReceiver)
+    }
+
+    @Test
+    fun `Huawei production runtime rejects unsupported RTC before registration`() {
+        val operations = WebRtcOperations(null, { true }, { WebRtcConfiguration("rtc") })
+        assertEquals("webrtc_unsupported", operations.enableCallsResult("identity").single()?.code)
+        assertEquals("webrtc_unsupported", operations.enableChatCallsResult().single()?.code)
     }
 
     private fun operations(

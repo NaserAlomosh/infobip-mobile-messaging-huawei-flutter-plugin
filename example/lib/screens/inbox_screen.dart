@@ -62,10 +62,12 @@ class _InboxScreenState extends State<InboxScreen> {
     try {
       await InfobipMobileMessagingHuawei.setInboxMessagesSeen(
         externalUserId: _externalUserId.text.trim(),
-        messageIds: [message.messageId ?? ''],
+        messageIds: [message.messageId],
       );
       if (mounted) {
-        setState(() => _result = 'Message marked seen on the server.');
+        setState(
+          () => _result = 'Seen request accepted; checking Inbox again.',
+        );
       }
       await _fetchAfterUpdate();
     } on PlatformException catch (error) {
@@ -155,7 +157,7 @@ class _InboxScreenState extends State<InboxScreen> {
                     subtitle: Text(
                       [
                         if (message.body != null) message.body!,
-                        'Topic: ${message.topic ?? 'none'}',
+                        'Topic: ${message.topic}',
                         'Received: ${message.receivedTimestamp ?? 'unknown'}',
                       ].join('\n'),
                     ),

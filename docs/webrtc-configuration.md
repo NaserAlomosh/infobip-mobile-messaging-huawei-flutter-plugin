@@ -1,75 +1,67 @@
-# WebRTC calls
+# WebRTC status for Huawei
 
-WebRTC configuration is optional and independent from Huawei Mobile Messaging.
-The RTC implementation is supplied by the separate
-`com.infobip:infobip-rtc-ui` Android artifact; it is not part of the Huawei
-Mobile Messaging SDK.
+**RTC UI 15.1.0 is unsupported for Huawei-only production use in this plugin.**
+The optional Dart configuration and call APIs remain source-visible, but call enablement
+returns `webrtc_unsupported`. `-PinfobipWebRtcEnabled=true` fails Gradle configuration
+with an explicit explanation. The baseline app does not package RTC or the conflicting
+standard Mobile Messaging Android core.
 
-Applications that do not use WebRTC initialize as before:
+This is an intentional production safeguard, not verified HMS incoming-call support.
+A vendor-supported integration and Huawei device/backend evidence are required before
+removing the guard. No HMS RTC transport or replacement Mobile Messaging service is invented.
 
-```dart
-await InfobipMobileMessagingHuawei.initialize(
-  applicationCode: 'YOUR_APPLICATION_CODE',
-);
-```
+## Published 15.1.0 integration evidence
 
-An application can provide initialization-time configuration and then enable
-calls:
+The exact [RTC Firebase service source](https://github.com/infobip/mobile-messaging-sdk-android/blob/15.1.0/infobip-rtc-ui/src/main/java/com/infobip/webrtc/ui/service/InfobipRtcUiFirebaseService.kt)
+contains direct calls to `MobileMessagingFirebaseService.onMessageReceived` and
+`MobileMessagingFirebaseService.onNewToken`. Huawei 8.14 does not supply that class.
+The [RTC manifest](https://github.com/infobip/mobile-messaging-sdk-android/blob/15.1.0/infobip-rtc-ui/src/main/AndroidManifest.xml)
+registers `DefaultInfobipRtcUiFirebaseService`, which inherits those calls.
 
-```dart
-await InfobipMobileMessagingHuawei.initialize(
-  applicationCode: 'YOUR_APPLICATION_CODE',
-  webRTCUI: const WebRTCUI(
-    configurationId: 'YOUR_WEBRTC_CONFIGURATION_ID',
-  ),
-);
+The public companion exposes FCM message/token delegation, so a custom Firebase service
+is possible for supported Firebase hosts. It provides no documented HMS transport. Removing
+the default service from the manifest alone is insufficient: the
+[published consumer rules](https://github.com/infobip/mobile-messaging-sdk-android/blob/15.1.0/infobip-rtc-ui/proguard-rules.pro)
+retain the public service classes and their direct missing-core references. Reintroducing
+`com.infobip:infobip-mobile-messaging-android-sdk` duplicates Huawei core classes. No safe
+supported narrow integration was established from these APIs.
 
-await InfobipMobileMessagingHuawei.enableCalls('identity');
-await InfobipMobileMessagingHuawei.enableChatCalls();
-await InfobipMobileMessagingHuawei.disableCalls();
-```
+The service also logs raw FCM tokens in `onNewToken`; the disabled integration avoids
+shipping that path. Any future vendor-approved integration must address this logging.
 
-Both `webRTCUI` and `WebRTCUI.configurationId` may be null. Empty and whitespace
-configuration IDs are retained without normalization. Validation required to
-start a call is deliberately deferred to the call APIs.
+`PublishedRtcAarTest` inspects the actual `com.infobip:infobip-rtc-ui:15.1.0` AAR in an
+isolated, non-transitive test configuration. It verifies the public final-step interface,
+the private implementation, and both unresolved standard-core service calls. That artifact
+is never an app runtime dependency.
 
-## Initialization lifecycle
+## Reflection correction
 
-The configuration from the native initialization attempt is retained only when
-that attempt succeeds. Repeating initialization with the same application code
-remains idempotent and does not replace either Mobile Messaging or WebRTC
-configuration. Cleanup clears the retained configuration, allowing a later
-initialization to provide a new value.
+The retained reflection adapter invokes `build()` through the public
+`InfobipRtcUi.BuilderFinalStep` interface, not the private implementation class.
+The fake also has a private implementation, so dispatcher tests reproduce the access boundary.
+The adapter retains the built instance, uses the public UI contract for `disableCalls`,
+and preserves configuration ID, identity, blank-identity overload, `ListenType.PUSH`, and
+Chat call mode. This verifies access and argument forwarding, not real call registration.
 
-## Optional Android dependency
+## Lifecycle contract
 
-The official Flutter plugin at commit
-`8b630d0f736d400635317131d549c345349bd54d` establishes two relevant facts: RTC
-UI is a conditional dependency and its Maven coordinate is
-`com.infobip:infobip-rtc-ui`. The Huawei SDK source at commit
-`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` does not provide WebRTC itself, but
-declares Mobile Messaging Android SDK 15.1.0 as its corresponding core version.
+The lifecycle coordinator is tested with an injected native runtime:
 
-Huawei SDK 8.14.0 is built against Mobile Messaging Android SDK 15.1.0, and the
-official Flutter plugin uses RTC UI 15.1.0 with that Mobile Messaging release.
-The recommended source-aligned version is therefore 15.1.0. The dependency
-remains disabled by default and configurable so applications can explicitly opt
-in:
+- A successful repeat enable for the same identity/mode/configuration is idempotent.
+- Enabling during a pending operation or changing identity requires completing disable first.
+- Cleanup/disable cancels the Flutter enable completion exactly once. It waits for a pending
+  native enable response, then unregisters the actual returned UI instance.
+- Mobile Messaging cleanup runs only after RTC unregistration succeeds. Failure retains
+  the instance for retry and prevents a false cleanup success.
+- Engine detach requests the same teardown without a Flutter completion; it does not simply
+  forget an active instance. Late callbacks cannot complete a newer session.
+- Native exception text is not copied into platform errors, since it may contain credentials.
 
-```text
--PinfobipWebRtcEnabled=true -PinfobipRtcUiVersion=15.1.0
-```
+The native SDK exposes no cancellation API and can wait for registration broadcasts.
+If its callback never arrives, teardown can remain pending; an unregistration/network
+failure cannot be claimed as server cleanup. Engine-detach unregistration is best effort.
+These are further reasons the production Huawei RTC path remains disabled.
 
-RTC UI depends on the standard
-`com.infobip:infobip-mobile-messaging-android-sdk`. The plugin excludes that
-transitive module because its `org.infobip.mobile.messaging` classes conflict
-with the Huawei SDK classes. Other RTC UI transitive dependencies remain
-enabled.
-
-RTC classes are loaded through reflection only when a WebRTC API is called. If
-the optional artifact is absent, the call completes with a controlled platform
-error without affecting plugin registration or other Mobile Messaging APIs.
-
-RTC UI 15.1.0 includes Firebase-based incoming-call components. Incoming-call
-push behavior on an HMS-only device without GMS has not been verified and must
-be validated on representative devices before production use.
+Optional initialization still accepts `WebRTCUI(configurationId: ...)`. Configuration is
+retained after successful Mobile Messaging initialization and cleared after successful
+cleanup. It does not authorize or activate an RTC transport.

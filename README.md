@@ -66,6 +66,9 @@ The plugin declares the Huawei Maven repository for its Android library dependen
 3. Add Huawei's Maven repository to the host Android settings/plugin repositories as required by the current Huawei setup guide.
 4. Declare the Huawei AGConnect Gradle plugin at the project level and apply `com.huawei.agconnect` to the host application module, using the plugin version approved by the host project.
 5. Enable and configure Push Kit, then configure the matching application in Infobip.
+6. Define a host-owned string named `app_id` in `android/app/src/main/res/values/strings.xml`, whose value is the exact numeric App ID from that application's AppGallery Connect configuration. Huawei 8.14 reads this resource as its sender ID; the JSON file alone does not supply the value to this SDK builder. Do not use the literal `APP_ID` or a placeholder. Missing or invalid values fail initialization with `hms_configuration_missing` before token acquisition.
+
+The library supplies no `app_id`, `app_name`, or `infobip_application_code` placeholders. Define `app_name` in the host if you want it used as the SDK's default notification title. Pass the Infobip application code through `initialize(applicationCode: ...)`; no application-code resource is required by this plugin.
 
 The repository example deliberately does not apply the AGConnect plugin or include `agconnect-services.json`; this keeps source validation independent of private host credentials. Do not commit AppGallery credentials, signing material, or secrets. The host application owns its package identity, signing configuration, permission UX, notification resources, and release configuration.
 
@@ -113,7 +116,7 @@ changing the value does not alter the active SDK instance, but is used by the fi
 initialization after cleanup. This stores regular Mobile Messaging messages, not
 Mobile Inbox or Chat history.
 
-WebRTC calls use the optional `com.infobip:infobip-rtc-ui` Android artifact. See
+WebRTC APIs are retained, but RTC UI 15.1.0 integration is disabled for Huawei-only production use because of unresolved Firebase linkage and transport support. See
 [`docs/webrtc-configuration.md`](docs/webrtc-configuration.md) for initialization,
 runtime usage, and dependency configuration.
 
@@ -166,7 +169,11 @@ final personalized = await InfobipMobileMessagingHuawei.personalize(
 await InfobipMobileMessagingHuawei.depersonalize();
 ```
 
-`UserIdentity` supports an external user ID, phones, and emails. User attributes support names, gender, a date-only `String?` birthday in `YYYY-MM-DD` format, tags, and SDK-compatible custom attributes. Message `receivedTimestamp` and `seenDate` values are numeric Unix epoch milliseconds, matching the official Flutter model.
+`UserIdentity` supports an external user ID, phones, and emails. User attributes support names, gender, a date-only `String?` birthday in `YYYY-MM-DD` format, tags, and SDK-compatible custom attributes. Huawei custom lists use lists of records with consistent field names and scalar types; arbitrary nested JSON and scalar lists are not supported for writes. Record fields accept strings, numbers, booleans, and `DateTime`; Huawei serializes record dates as `YYYY-MM-DD` strings and date-times as ISO UTC strings, which remain strings when read back. Null values are retained where the native attribute container supports them.
+
+Inbox results use `InboxMessage`, including rich content fields and the SDK's `sentTimestamp`. The separate `receivedTimestamp` remains available for compatibility. `depersonalizeInstallation` returns `Future<void>` and `setInstallationAsPrimary` returns `Future<List<Installation>?>`, matching official successful-null semantics.
+
+Message `receivedTimestamp` and `seenDate` values are numeric Unix epoch milliseconds, matching the official Flutter model.
 
 ## Installation
 

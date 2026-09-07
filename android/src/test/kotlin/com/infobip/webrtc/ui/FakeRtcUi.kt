@@ -8,7 +8,7 @@ fun interface SuccessListener {
 }
 
 fun interface ErrorListener {
-    fun onError(error: Any?)
+    fun onError(error: Throwable)
 }
 
 class InfobipRtcUi {
@@ -34,23 +34,28 @@ class InfobipRtcUi {
             error: ErrorListener,
         ): BuilderFinalStep {
             calls += "builder.withCalls:$identity:$listenType"
-            return BuilderFinalStep()
+            return BuilderFinalStepImpl(success)
         }
 
         fun withCalls(success: SuccessListener, error: ErrorListener): BuilderFinalStep {
             calls += "builder.withCalls"
-            return BuilderFinalStep()
+            return BuilderFinalStepImpl(success)
         }
 
         fun withInAppChatCalls(success: SuccessListener, error: ErrorListener): BuilderFinalStep {
             calls += "builder.withInAppChatCalls"
-            return BuilderFinalStep()
+            return BuilderFinalStepImpl(success)
         }
     }
 
-    class BuilderFinalStep {
-        fun build(): InfobipRtcUi {
+    interface BuilderFinalStep {
+        fun build(): InfobipRtcUi
+    }
+
+    private class BuilderFinalStepImpl(private val success: SuccessListener) : BuilderFinalStep {
+        override fun build(): InfobipRtcUi {
             calls += "finalStep.build"
+            success.onSuccess()
             return builtInstance
         }
     }

@@ -6,12 +6,19 @@ plugins {
 group = "com.infobip.mobilemessaging.huawei"
 version = "1.0.0"
 
+// Contract inspection only; never added to the app's compile/runtime classpaths.
+val rtcContractAar = configurations.create("rtcContractAar") {
+    isCanBeConsumed = false
+    isTransitive = false
+}
+
 android {
     namespace = "com.infobip.mobilemessaging.huawei"
     compileSdk = 36
 
     defaultConfig {
         minSdk = 26
+        consumerProguardFiles("consumer-rules.pro")
     }
 
     compileOptions {
@@ -26,6 +33,10 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
+            val testTask = it
+            testTask.doFirst {
+                testTask.systemProperty("infobip.rtc.contractAar", rtcContractAar.singleFile.absolutePath)
+            }
             // Allow Robolectric to access JDK internals on Java 17 and newer.
             it.jvmArgs(
                 "--add-opens=java.base/java.lang=ALL-UNNAMED",
@@ -49,7 +60,10 @@ repositories {
 }
 
 dependencies {
+    add(rtcContractAar.name, "com.infobip:infobip-rtc-ui:15.1.0@aar")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:5.20.0")
+    testImplementation("org.ow2.asm:asm-tree:9.8")
     testImplementation("org.robolectric:robolectric:4.16")
     implementation("com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0@aar") {
         isTransitive = true
@@ -63,15 +77,10 @@ dependencies {
     val webRtcEnabled = providers.gradleProperty("infobipWebRtcEnabled")
         .orNull?.toBooleanStrictOrNull() ?: false
     if (webRtcEnabled) {
-        val rtcUiVersion = providers.gradleProperty("infobipRtcUiVersion").orNull
-            ?: error(
-                "infobipRtcUiVersion is required when infobipWebRtcEnabled=true",
-            )
-        implementation("com.infobip:infobip-rtc-ui:$rtcUiVersion") {
-            exclude(
-                group = "com.infobip",
-                module = "infobip-mobile-messaging-android-sdk",
-            )
-        }
+        error(
+            "RTC UI 15.1.0 is unsupported for Huawei-only production use: it references " +
+                "MobileMessagingFirebaseService from the conflicting standard MM core. " +
+                "Keep infobipWebRtcEnabled=false. See docs/webrtc-configuration.md.",
+        )
     }
 }

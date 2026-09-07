@@ -1,6 +1,9 @@
 package com.infobip.mobilemessaging.huawei.user
 
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
+import org.infobip.mobile.messaging.CustomAttributesMapper
+import org.infobip.mobile.messaging.ListCustomAttributeItem
+import org.infobip.mobile.messaging.ListCustomAttributeValue
 import org.infobip.mobile.messaging.CustomAttributeValue
 import org.infobip.mobile.messaging.User
 import org.infobip.mobile.messaging.UserAttributes
@@ -9,14 +12,12 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 
 internal object UserMapper {
     private val dateFormat: SimpleDateFormat
         get() =
             SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).apply {
                 isLenient = false
-                timeZone = TimeZone.getTimeZone("UTC")
             }
 
     fun toMap(user: User): Map<String, Any?> =
@@ -109,10 +110,15 @@ internal object UserMapper {
     private fun date(value: Any?): Date? {
         if (value == null) return null
         if (value !is String) throw IllegalArgumentException("birthday must be a string")
-        return dateFormat.parse(value) ?: throw IllegalArgumentException("birthday is invalid")
+        require(Regex("\\d{4}-\\d{2}-\\d{2}").matches(value)) { "birthday is invalid" }
+        return try {
+            dateFormat.parse(value) ?: throw IllegalArgumentException("birthday is invalid")
+        } catch (_: java.text.ParseException) {
+            throw IllegalArgumentException("birthday is invalid")
+        }
     }
 
-    internal fun toNativeCustomAttributes(value: Any?): Map<String, CustomAttributeValue>? {
+    internal fun toNativeCustomAttributes(value: Any?): Map<String, CustomAttributeValue?>? {
         if (value == null) return null
         val map =
             value as? Map<*, *>
@@ -125,17 +131,57 @@ internal object UserMapper {
         }
     }
 
-    private fun channelCustomAttributes(value: Map<String, CustomAttributeValue>?): Map<String, Any?>? =
+    private fun channelCustomAttributes(value: Map<String, CustomAttributeValue?>?): Map<String, Any?>? =
         value?.mapValues { channelValue(it.value) }
 
-    private fun nativeCustomValue(value: Any?): CustomAttributeValue =
+    private fun nativeCustomValue(value: Any?): CustomAttributeValue? =
         when (value) {
+            null -> null
+            is List<*> -> nativeCustomList(value)
             is String -> CustomAttributeValue(value)
             is Boolean -> CustomAttributeValue(value)
             is Number -> CustomAttributeValue(value)
             is Map<*, *> -> CustomAttributeValue(CustomAttributeValue.DateTime(taggedDate(value)))
             else -> throw IllegalArgumentException("customAttributes contains an unsupported value")
         }
+
+    private fun nativeCustomList(value: List<*>): CustomAttributeValue {
+        val records = value.map { record ->
+            val fields = record as? Map<*, *>
+                ?: throw IllegalArgumentException("CustomList must contain records")
+            require(fields.isNotEmpty() && fields.keys.all { it is String }) {
+                "CustomList records must have string keys"
+            }
+            val builder = ListCustomAttributeItem.builder()
+            fields.forEach { (key, item) ->
+                val name = key as String
+                when (item) {
+                    null -> builder.putString(name, null)
+                    is String -> builder.putString(name, item)
+                    is Number -> builder.putNumber(name, item)
+                    is Boolean -> builder.putBoolean(name, item)
+                    is Map<*, *> -> builder.putDateTime(name, CustomAttributeValue.DateTime(taggedDate(item)))
+                    else -> throw IllegalArgumentException("CustomList fields must be scalar values")
+                }
+            }
+            builder.build()
+        }
+        // Huawei lists use one record schema. Reject incompatible records before SDK mutation.
+        val schema = records.firstOrNull()?.map?.keys
+        require(records.all { it.map.keys == schema }) { "CustomList records must have the same fields" }
+        val types = mutableMapOf<String, Class<*>>()
+        records.forEach { record -> record.map.forEach { (key, item) ->
+            if (item != null) {
+                val type = if (item is Number) Number::class.java else item.javaClass
+                require(types.putIfAbsent(key, type)?.let { it == type } != false) {
+                    "CustomList fields must have consistent types"
+                }
+            }
+        } }
+        val holder = User()
+        holder.setListCustomAttribute("value", ListCustomAttributeValue(records))
+        return holder.getCustomAttributeValue("value")
+    }
 
     private fun taggedDate(value: Map<*, *>): Date {
         if (value.size != 2 ||
@@ -161,10 +207,10 @@ internal object UserMapper {
                 when (value.type) {
                     CustomAttributeValue.Type.String -> value.stringValue()
                     CustomAttributeValue.Type.Number -> value.numberValue()
-                    CustomAttributeValue.Type.Date -> taggedChannelDate(value.dateValue())
+                    CustomAttributeValue.Type.Date -> CustomAttributesMapper.customValueToBackend(value)
                     CustomAttributeValue.Type.DateTime -> taggedChannelDate(value.dateTimeValue().date)
                     CustomAttributeValue.Type.Boolean -> value.booleanValue()
-                    CustomAttributeValue.Type.CustomList -> null
+                    CustomAttributeValue.Type.CustomList -> channelValue(CustomAttributesMapper.customValueToBackend(value))
                 }
             }
 

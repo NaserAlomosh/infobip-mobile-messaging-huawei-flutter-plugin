@@ -71,11 +71,10 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
     InfobipHuaweiCustomEvent event,
   ) => throw UnimplementedError();
 
-  Future<List<Installation>> depersonalizeInstallation(
-    String pushRegistrationId,
-  ) => throw UnimplementedError();
+  Future<void> depersonalizeInstallation(String pushRegistrationId) =>
+      throw UnimplementedError();
 
-  Future<List<Installation>> setInstallationAsPrimary({
+  Future<List<Installation>?> setInstallationAsPrimary({
     required String pushRegistrationId,
     required bool isPrimary,
   }) => throw UnimplementedError();
@@ -97,9 +96,17 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   Future<void> showChat({required bool shouldBePresentedModallyIOS}) =>
       throw UnimplementedError();
 
-  Future<void> resolveChatJwt(String jwt) => throw UnimplementedError();
+  Future<void> resolveChatJwt(
+    String jwt, {
+    required String requestId,
+    required int generation,
+  }) => throw UnimplementedError();
 
-  Future<void> rejectChatJwt(String error) => throw UnimplementedError();
+  Future<void> rejectChatJwt(
+    String error, {
+    required String requestId,
+    required int generation,
+  }) => throw UnimplementedError();
 
   Future<Installation> getInstallation() => throw UnimplementedError();
 

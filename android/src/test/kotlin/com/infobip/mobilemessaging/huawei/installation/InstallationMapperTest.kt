@@ -2,6 +2,8 @@ package com.infobip.mobilemessaging.huawei.installation
 
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import org.infobip.mobile.messaging.Installation
+import org.infobip.mobile.messaging.CustomAttributeValue
+import org.infobip.mobile.messaging.util.DateTimeUtil
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -16,8 +18,9 @@ class InstallationMapperTest {
             isPrimaryDevice = false
             language = "en"
             customAttributes = mapOf(
-                "created" to org.infobip.mobile.messaging.CustomAttributeValue(
-                    Date.from(Instant.parse("2026-09-01T10:15:30Z")),
+                "date" to CustomAttributeValue(DateTimeUtil.dateFromYMDString("1995-06-20")),
+                "created" to CustomAttributeValue(
+                    CustomAttributeValue.DateTime(Date.from(Instant.parse("2026-09-01T10:15:30Z"))),
                 ),
             )
         }
@@ -29,10 +32,12 @@ class InstallationMapperTest {
         assertEquals(false, mapped[ChannelContract.IS_PRIMARY_DEVICE])
         assertEquals("en", mapped[ChannelContract.LANGUAGE])
         val attributes = mapped[ChannelContract.CUSTOM_ATTRIBUTES] as Map<*, *>
+        assertEquals("1995-06-20", attributes["date"])
         assertEquals(
             ChannelContract.CUSTOM_DATE_TYPE,
             (attributes["created"] as Map<*, *>)[ChannelContract.CUSTOM_VALUE_TYPE],
         )
+        assertEquals("2026-09-01T10:15:30Z", (attributes["created"] as Map<*, *>)[ChannelContract.CUSTOM_VALUE])
     }
 
     @Test
