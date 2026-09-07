@@ -116,7 +116,7 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Language | **Adapted** | View-scoped native widget configuration. |
 | Widget theme | **Adapted** | View-scoped native widget configuration. |
 | Chat exception handler | **Adapted** | `setChatExceptionHandler` maps Huawei `InAppChat.setExceptionHandler` exceptions to nullable `message` and `name` fields. A custom handler replaces Huawei's default exception presentation; passing `null` restores it. Android/Huawei only. |
-| Programmatic attachments | **Intentionally omitted** | Android URI ownership and permission semantics are not part of v1. |
+| Programmatic attachments | **Unsupported** | The pinned official Flutter API has no public programmatic attachment contract to reproduce. Huawei 8.14.0 exposes attachment handling only through its native Chat component contract; the plugin does not invent a Dart file/URI model. |
 | Thread APIs | **Intentionally omitted** | Stable thread models are not exposed in v1. |
 | Raw Chat messages | **Intentionally omitted** | v1 does not expose raw component messages. |
 | Additional Chat runtime events | **Intentionally omitted** | Only stable v1 Chat events are exposed. |
@@ -200,6 +200,69 @@ fragment. Calls made before attachment or after disposal fail with the existing
 and are returned to the caller; they are not sent through the Chat exception
 handler. Calls are posted through the existing view lifecycle guard, preventing
 a queued operation from targeting a replaced or disposed fragment.
+
+### Chat Attachments
+
+**Feature classification: PARTIALLY_SUPPORTED.** Attachment sending is
+available from the embedded Huawei native composer. There is no semantically
+equivalent public programmatic attachment API to add to Dart at the pinned
+official Flutter revision, so this audit does not add a controller method,
+attachment model, channel command, or custom upload implementation.
+
+The official Flutter plugin was inspected at commit
+`8b630d0f736d400635317131d549c345349bd54d`. Its public Chat surface contains
+text sending through `sendChatMessage(String)`, but it does not export
+`sendAttachment`, `sendChatAttachment`, `ChatAttachment`, or another public
+file/URI attachment input. Its Android and iOS Chat presentation integrations
+leave attachment selection and sending to their respective native Chat UI.
+Consequently there are no official public attachment constructor fields,
+enums, serialization rules, completion result, progress callback, or
+deprecated attachment methods to reproduce.
+
+Huawei Mobile Messaging SDK 8.14.0 was inspected at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`. The Chat module contains
+`InAppChatAttachment` and `AttachmentSource`, and `InAppChatFragment` owns the
+native input and its attachment workflow. The component also accepts
+`MessagePayload` through `send(MessagePayload)`, but the pinned sources do not
+establish an official-Flutter-compatible public file/URI contract. These native
+types are therefore not exposed over the MethodChannel and are not projected
+into a fabricated Dart model.
+
+| Official API / field | Huawei 8.14 API | Classification | Notes |
+| --- | --- | --- | --- |
+| Native Chat composer attachment action | `InAppChatFragment` native input using `InAppChatAttachment` / `AttachmentSource` | **MAPPABLE** | Already available in `InfobipHuaweiChatView` when `withInput` is enabled; selection, upload, and native result handling remain SDK-owned. |
+| Public programmatic attachment method | No official public Flutter method | **NOT_AVAILABLE** | No Dart controller method or channel command is added. |
+| Public attachment model | No official public Flutter model | **NOT_AVAILABLE** | Native attachment objects are not serialized as untyped maps. |
+| File path or URI argument | No official public Flutter argument | **NOT_AVAILABLE** | The bridge does not convert paths to URIs, resolve `content://` values, read bytes, or retain URI grants. |
+| MIME type argument | No official public Flutter argument | **NOT_AVAILABLE** | MIME detection and validation remain inside the native composer/SDK workflow. |
+| File-name argument | No official public Flutter argument | **NOT_AVAILABLE** | The plugin neither supplies nor fabricates a file name. |
+| Upload progress | No official public Flutter callback | **NOT_AVAILABLE** | No progress event is exposed or simulated. |
+| Programmatic send completion | No official public Flutter result | **NOT_AVAILABLE** | Native composer feedback remains native; the plugin makes no delivery or upload-completion guarantee. |
+| Android native composer | Huawei Chat component | **ANDROID_ONLY** | This package supports Huawei Android only. |
+| Official iOS native composer | Infobip iOS Chat UI | **IOS_ONLY** | Reviewed for parity awareness; no iOS implementation is included in this package. |
+
+The native composer determines which configured attachment sources and media
+types are offered. The audited public surfaces do not provide a portable,
+exhaustive file-type list, and the plugin therefore does not claim support for
+images, video, audio, PDF, generic documents, or arbitrary files individually.
+No plugin-specific file-size limit is imposed; backend and SDK validation still
+apply, and this document does not infer a limit that is not public in the
+audited contract.
+
+Attachment destination follows the native composer. In single-thread mode it
+uses that conversation; in multithread mode it uses the conversation whose
+composer is currently active. The plugin does not add a `threadId`, change the
+active thread, or preserve an attachment across thread changes. On the thread
+list there is no active conversation composer.
+
+The operation remains bound to the existing `InAppChatFragment` and Android
+view lifecycle. Disposal removes the fragment and its channel handler; the
+plugin retains no `Activity`, `Context`, `Fragment`, `Uri`, path, MIME value, or
+attachment metadata for later use. Native picker permission requests and URI
+access remain owned by Huawei Chat and Android. The plugin adds no broad storage
+permission, `FileProvider`, Storage Access Framework bridge, or persistable URI
+grant. Applications should validate the native picker behavior on their
+supported Android versions and devices.
 
 ---
 
