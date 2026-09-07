@@ -20,6 +20,7 @@ final class ChatPushPlatform extends InfobipMobileMessagingHuaweiPlatform
   Future<void> initialize({
     required String applicationCode,
     bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
   }) async {}
 
   @override

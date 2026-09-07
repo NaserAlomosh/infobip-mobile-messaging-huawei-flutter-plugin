@@ -36,6 +36,8 @@ abstract final class ChannelContract {
   static const initialize = 'initialize';
   static const cleanup = 'cleanup';
   static const defaultMessageStorage = 'defaultMessageStorage';
+  static const webRTCUI = 'webRTCUI';
+  static const configurationId = 'configurationId';
   static const registerForRemoteNotifications =
       'registerForRemoteNotifications';
   static const markMessagesSeen = 'markMessagesSeen';

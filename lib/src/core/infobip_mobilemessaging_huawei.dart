@@ -10,6 +10,7 @@ import '../chat/chat.dart';
 import '../chat/chat_exception.dart';
 import '../chat/chat_customization.dart';
 import '../custom_event/custom_event.dart';
+import '../configuration/web_rtc_ui.dart';
 
 /// Entry point for the Infobip Huawei Mobile Messaging plugin.
 final class InfobipMobileMessagingHuawei {
@@ -70,7 +71,10 @@ final class InfobipMobileMessagingHuawei {
   ///
   /// Equivalent calls are idempotent. A different application code is rejected
   /// once initialization has started.
-  static Future<void> initialize({required String applicationCode}) {
+  static Future<void> initialize({
+    required String applicationCode,
+    WebRTCUI? webRTCUI,
+  }) {
     if (applicationCode.trim().isEmpty) {
       throw ArgumentError.value(
         applicationCode,
@@ -81,6 +85,7 @@ final class InfobipMobileMessagingHuawei {
     return InfobipMobileMessagingHuaweiPlatform.instance.initialize(
       applicationCode: applicationCode,
       defaultMessageStorage: defaultMessageStorage,
+      webRTCUI: webRTCUI,
     );
   }
 

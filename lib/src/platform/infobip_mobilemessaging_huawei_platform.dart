@@ -6,6 +6,7 @@ import '../installation/installation.dart';
 import '../inbox/inbox.dart';
 import '../custom_event/custom_event.dart';
 import '../chat/chat_customization.dart';
+import '../configuration/web_rtc_ui.dart';
 
 abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   InfobipMobileMessagingHuaweiPlatform() : super(token: _token);
@@ -27,6 +28,7 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
   Future<void> initialize({
     required String applicationCode,
     bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
   });
 
   Future<void> cleanup() => throw UnimplementedError();

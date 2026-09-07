@@ -38,6 +38,8 @@ internal object ChannelContract {
     const val MARK_MESSAGES_SEEN = "markMessagesSeen"
     const val APPLICATION_CODE = "applicationCode"
     const val DEFAULT_MESSAGE_STORAGE = "defaultMessageStorage"
+    const val WEB_RTC_UI = "webRTCUI"
+    const val CONFIGURATION_ID = "configurationId"
     const val GET_USER = "getUser"
     const val FETCH_USER = "fetchUser"
     const val SAVE_USER = "saveUser"
