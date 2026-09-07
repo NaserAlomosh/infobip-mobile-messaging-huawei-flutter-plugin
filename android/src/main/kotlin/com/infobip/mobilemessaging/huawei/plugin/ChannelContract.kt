@@ -35,6 +35,7 @@ internal object ChannelContract {
     const val INITIALIZE = "initialize"
     const val CLEANUP = "cleanup"
     const val REGISTER_FOR_REMOTE_NOTIFICATIONS = "registerForRemoteNotifications"
+    const val MARK_MESSAGES_SEEN = "markMessagesSeen"
     const val APPLICATION_CODE = "applicationCode"
     const val GET_USER = "getUser"
     const val FETCH_USER = "fetchUser"

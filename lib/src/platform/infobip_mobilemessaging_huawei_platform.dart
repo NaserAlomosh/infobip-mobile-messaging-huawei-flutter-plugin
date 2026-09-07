@@ -30,6 +30,9 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
 
   Future<void> registerForRemoteNotifications() => throw UnimplementedError();
 
+  Future<void> markMessagesSeen(List<String> messageIds) =>
+      throw UnimplementedError();
+
   Future<int> getChatUnreadMessageCount() => throw UnimplementedError();
 
   Future<UserData> getUser() => throw UnimplementedError();

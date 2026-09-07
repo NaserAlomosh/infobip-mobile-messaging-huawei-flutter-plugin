@@ -76,6 +76,10 @@ final class MethodChannelInfobipMobileMessagingHuawei
       .invokeMethod<void>(ChannelContract.registerForRemoteNotifications);
 
   @override
+  Future<void> markMessagesSeen(List<String> messageIds) => methodChannel
+      .invokeMethod<void>(ChannelContract.markMessagesSeen, messageIds);
+
+  @override
   Future<UserData> getUser() async => UserCodec.decode(
     await methodChannel.invokeMethod<Object?>(ChannelContract.getUser),
   );

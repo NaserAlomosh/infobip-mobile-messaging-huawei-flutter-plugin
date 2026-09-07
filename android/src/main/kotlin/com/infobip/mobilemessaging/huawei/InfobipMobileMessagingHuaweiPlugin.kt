@@ -10,6 +10,7 @@ import com.infobip.mobilemessaging.huawei.chat.ChatManager
 import com.infobip.mobilemessaging.huawei.chat.ChatPlatformViewFactory
 import com.infobip.mobilemessaging.huawei.core.CleanupManager
 import com.infobip.mobilemessaging.huawei.core.MobileMessagingInitializer
+import com.infobip.mobilemessaging.huawei.core.MessageOperations
 import com.infobip.mobilemessaging.huawei.event.CustomEventManager
 import com.infobip.mobilemessaging.huawei.inbox.InboxManager
 import com.infobip.mobilemessaging.huawei.installation.InstallationManager
@@ -38,6 +39,7 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var userManager: UserManager? = null
     private var installationManager: InstallationManager? = null
     private var customEventManager: CustomEventManager? = null
+    private var messageOperations: MessageOperations? = null
     private var inboxManager: InboxManager? = null
     private var chatManager: ChatManager? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -69,6 +71,11 @@ class InfobipMobileMessagingHuaweiPlugin :
             )
         customEventManager =
             CustomEventManager(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+            )
+        messageOperations =
+            MessageOperations(
                 context = binding.applicationContext,
                 isInitialized = { initializer?.isInitialized == true },
             )
@@ -124,6 +131,7 @@ class InfobipMobileMessagingHuaweiPlugin :
         userManager = null
         installationManager = null
         customEventManager = null
+        messageOperations = null
         inboxManager = null
         chatManager = null
         applicationContext = null
@@ -170,6 +178,13 @@ class InfobipMobileMessagingHuaweiPlugin :
                         else result.error(error.code, error.message, error.details)
                     }
                 } ?: detached(result)
+            }
+
+            ChannelContract.MARK_MESSAGES_SEEN -> {
+                val failure = messageOperations?.markMessagesSeen(call.arguments)
+                    ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.GET_USER -> {

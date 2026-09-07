@@ -37,6 +37,7 @@ abstract final class ChannelContract {
   static const cleanup = 'cleanup';
   static const registerForRemoteNotifications =
       'registerForRemoteNotifications';
+  static const markMessagesSeen = 'markMessagesSeen';
   static const applicationCode = 'applicationCode';
   static const getUser = 'getUser';
   static const fetchUser = 'fetchUser';
