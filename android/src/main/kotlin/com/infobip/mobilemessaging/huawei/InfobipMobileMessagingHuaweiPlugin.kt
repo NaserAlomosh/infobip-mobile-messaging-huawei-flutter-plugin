@@ -99,6 +99,7 @@ class InfobipMobileMessagingHuaweiPlugin :
                 context = binding.applicationContext,
                 isInitialized = { initializer?.isInitialized == true },
                 clearPluginJwtState = {
+                    eventBridge?.clearPendingTaps()
                     inboxManager?.clearJwtState()
                     chatManager?.clearJwtProvider()
                     chatManager?.clearExceptionHandler()
