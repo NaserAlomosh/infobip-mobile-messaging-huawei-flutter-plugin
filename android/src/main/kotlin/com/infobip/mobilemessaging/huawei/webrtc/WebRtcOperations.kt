@@ -3,6 +3,7 @@ package com.infobip.mobilemessaging.huawei.webrtc
 import android.content.Context
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Proxy
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class WebRtcFailure(
     val code: String,
@@ -10,38 +11,47 @@ internal data class WebRtcFailure(
     val details: Any? = null,
 )
 
+internal interface WebRtcRuntime {
+    fun enableCalls(
+        context: Context?,
+        configurationId: String,
+        identity: String,
+        success: () -> Unit,
+        error: (String) -> Unit,
+    ): Any
+
+    fun enableChatCalls(
+        context: Context?,
+        configurationId: String,
+        success: () -> Unit,
+        error: (String) -> Unit,
+    ): Any
+
+    fun disableCalls(rtcUi: Any, success: () -> Unit, error: (String) -> Unit)
+}
+
 internal class WebRtcOperations(
-    private val context: Context,
+    private val context: Context?,
     private val isInitialized: () -> Boolean,
     private val configuration: () -> WebRtcConfiguration?,
+    private val runtime: WebRtcRuntime = ReflectiveWebRtcRuntime(),
 ) {
     private var rtcUi: Any? = null
 
-    fun enableCalls(
-        identity: String,
-        complete: (WebRtcFailure?) -> Unit,
-    ) = enable(complete) { finalStep, success, error ->
-        if (identity.isNotBlank()) {
-            val listenTypeClass = loadClass(LISTEN_TYPE_CLASS)
-            val push = listenTypeClass.enumConstants.first { (it as Enum<*>).name == "PUSH" }
-            invoke(finalStep, "withCalls", identity, push, success, error)
-        } else {
-            invoke(finalStep, "withCalls", success, error)
+    fun enableCalls(identity: String, complete: (WebRtcFailure?) -> Unit) =
+        enable(complete) { configurationId, success, error ->
+            runtime.enableCalls(context, configurationId, identity, success, error)
         }
-    }
 
     fun enableChatCalls(complete: (WebRtcFailure?) -> Unit) =
-        enable(complete) { finalStep, success, error ->
-            invoke(finalStep, "withInAppChatCalls", success, error)
+        enable(complete) { configurationId, success, error ->
+            runtime.enableChatCalls(context, configurationId, success, error)
         }
 
     fun disableCalls(complete: (WebRtcFailure?) -> Unit) {
         val current = rtcUi
             ?: return complete(WebRtcFailure("webrtc_not_enabled", "Enable WebRTC calls first"))
-        reflect(complete) { success, error ->
-            loadClass(RTC_UI_CLASS)
-            invoke(current, "disableCalls", success, error)
-        }
+        reflect(complete) { success, error -> runtime.disableCalls(current, success, error) }
     }
 
     fun reset() {
@@ -50,77 +60,112 @@ internal class WebRtcOperations(
 
     private fun enable(
         complete: (WebRtcFailure?) -> Unit,
-        operation: (Any, Any, Any) -> Any?,
+        operation: (String, () -> Unit, (String) -> Unit) -> Any,
     ) {
         if (!isInitialized()) {
             complete(WebRtcFailure("not_initialized", "Initialize the Infobip SDK first"))
             return
         }
-        val webRtcConfiguration = configuration()
-        if (webRtcConfiguration == null) {
+        val configurationId = configuration()?.configurationId
+        if (configurationId.isNullOrBlank()) {
             complete(
                 WebRtcFailure(
                     "webrtc_not_configured",
-                    "Initialize the Infobip SDK with WebRTCUI configuration first",
+                    "WebRTC configurationId is required before enabling calls",
                 ),
             )
             return
         }
         reflect(complete) { success, error ->
-            val builderClass = loadClass(BUILDER_CLASS)
-            loadClass(BUILDER_FINAL_STEP_CLASS)
-            val builder = builderClass.getConstructor(Context::class.java).newInstance(context)
-            val finalStep = invoke(
-                builder,
-                "withConfigurationId",
-                webRtcConfiguration.configurationId,
-            ) ?: error("InfobipRtcUi.Builder did not return a final step")
-            rtcUi = operation(finalStep, success, error)
-                ?: error("InfobipRtcUi was not created")
+            rtcUi = operation(configurationId, success, error)
         }
     }
 
     private fun reflect(
         complete: (WebRtcFailure?) -> Unit,
-        operation: (Any, Any) -> Unit,
+        operation: (() -> Unit, (String) -> Unit) -> Unit,
     ) {
+        val completed = AtomicBoolean(false)
+        val finish: (WebRtcFailure?) -> Unit = { failure ->
+            if (completed.compareAndSet(false, true)) complete(failure)
+        }
         try {
-            val success = listener(SUCCESS_LISTENER_CLASS) { complete(null) }
-            val error = listener(ERROR_LISTENER_CLASS) { arguments ->
-                complete(
-                    WebRtcFailure(
-                        "webrtc_error",
-                        arguments.firstOrNull()?.toString() ?: "WebRTC operation failed",
-                    ),
-                )
-            }
-            operation(success, error)
+            operation(
+                { finish(null) },
+                { message -> finish(WebRtcFailure("webrtc_error", message)) },
+            )
         } catch (_: ClassNotFoundException) {
-            complete(
+            finish(
                 WebRtcFailure(
                     "webrtc_unavailable",
                     "The Infobip RTC UI dependency is not available",
                 ),
             )
         } catch (error: ReflectiveOperationException) {
-            complete(
+            finish(
                 WebRtcFailure(
                     "webrtc_error",
                     error.cause?.message ?: error.message ?: "WebRTC operation failed",
                 ),
             )
         } catch (error: RuntimeException) {
-            complete(
-                WebRtcFailure(
-                    "webrtc_error",
-                    error.message ?: "WebRTC operation failed",
-                ),
-            )
+            finish(WebRtcFailure("webrtc_error", error.message ?: "WebRTC operation failed"))
+        }
+    }
+}
+
+internal class ReflectiveWebRtcRuntime : WebRtcRuntime {
+    override fun enableCalls(
+        context: Context?,
+        configurationId: String,
+        identity: String,
+        success: () -> Unit,
+        error: (String) -> Unit,
+    ): Any = build(context, configurationId) { builder ->
+        val listeners = listeners(success, error)
+        if (identity.isNotBlank()) {
+            val listenTypeClass = loadClass(LISTEN_TYPE_CLASS)
+            val push = listenTypeClass.enumConstants.first { (it as Enum<*>).name == "PUSH" }
+            invoke(builder, "withCalls", identity, push, listeners.first, listeners.second)
+        } else {
+            invoke(builder, "withCalls", listeners.first, listeners.second)
         }
     }
 
+    override fun enableChatCalls(
+        context: Context?,
+        configurationId: String,
+        success: () -> Unit,
+        error: (String) -> Unit,
+    ): Any = build(context, configurationId) { builder ->
+        val listeners = listeners(success, error)
+        invoke(builder, "withInAppChatCalls", listeners.first, listeners.second)
+    }
+
+    override fun disableCalls(rtcUi: Any, success: () -> Unit, error: (String) -> Unit) {
+        val listeners = listeners(success, error)
+        invoke(rtcUi, "disableCalls", listeners.first, listeners.second)
+    }
+
+    private fun build(context: Context?, configurationId: String, enable: (Any) -> Any?): Any {
+        val builderClass = loadClass(BUILDER_CLASS)
+        val builder = builderClass.getConstructor(Context::class.java).newInstance(context)
+        invoke(builder, "withConfigurationId", configurationId)
+        val finalStep = requireNotNull(enable(builder)) {
+            "InfobipRtcUi.Builder did not return a final step"
+        }
+        return requireNotNull(invoke(finalStep, "build")) { "InfobipRtcUi was not created" }
+    }
+
+    private fun listeners(success: () -> Unit, error: (String) -> Unit): Pair<Any, Any> =
+        listener(SUCCESS_LISTENER_CLASS, "onSuccess") { success() } to
+            listener(ERROR_LISTENER_CLASS, "onError") { arguments ->
+                error(arguments.firstOrNull()?.toString() ?: "WebRTC operation failed")
+            }
+
     private fun listener(
         className: String,
+        callbackName: String,
         callback: (Array<out Any?>) -> Unit,
     ): Any {
         val listenerClass = loadClass(className)
@@ -132,20 +177,17 @@ internal class WebRtcOperations(
                     "toString" -> className
                     "hashCode" -> System.identityHashCode(proxy)
                     "equals" -> proxy === arguments?.firstOrNull()
-                    else -> {
+                    callbackName -> {
                         callback(arguments ?: emptyArray())
                         null
                     }
+                    else -> null
                 }
             },
         )
     }
 
-    private fun invoke(
-        receiver: Any,
-        name: String,
-        vararg arguments: Any?,
-    ): Any? {
+    private fun invoke(receiver: Any, name: String, vararg arguments: Any?): Any? {
         val method = receiver.javaClass.methods.firstOrNull {
             it.name == name && it.parameterTypes.size == arguments.size &&
                 it.parameterTypes.indices.all { index -> accepts(it.parameterTypes[index], arguments[index]) }
@@ -159,10 +201,7 @@ internal class WebRtcOperations(
     private fun loadClass(name: String): Class<*> = Class.forName(name)
 
     private companion object {
-        const val RTC_UI_CLASS = "com.infobip.webrtc.ui.InfobipRtcUi"
         const val BUILDER_CLASS = "com.infobip.webrtc.ui.InfobipRtcUi\$Builder"
-        const val BUILDER_FINAL_STEP_CLASS =
-            "com.infobip.webrtc.ui.InfobipRtcUi\$BuilderFinalStep"
         const val SUCCESS_LISTENER_CLASS = "com.infobip.webrtc.ui.SuccessListener"
         const val ERROR_LISTENER_CLASS = "com.infobip.webrtc.ui.ErrorListener"
         const val LISTEN_TYPE_CLASS = "com.infobip.webrtc.ui.model.ListenType"

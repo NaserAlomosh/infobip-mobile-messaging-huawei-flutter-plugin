@@ -48,6 +48,11 @@ dependencies {
             ?: error(
                 "infobipRtcUiVersion is required when infobipWebRtcEnabled=true",
             )
-        implementation("com.infobip:infobip-rtc-ui:$rtcUiVersion")
+        implementation("com.infobip:infobip-rtc-ui:$rtcUiVersion") {
+            exclude(
+                group = "com.infobip",
+                module = "infobip-mobile-messaging-android-sdk",
+            )
+        }
     }
 }
