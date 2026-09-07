@@ -4,8 +4,9 @@ import 'installation.dart';
 
 abstract final class InstallationCodec {
   static Installation decode(Object? value) {
-    if (value is! Map)
+    if (value is! Map) {
       throw const FormatException('Invalid installation payload');
+    }
     return Installation(
       installationId: _string(value, ChannelContract.installationId),
       pushRegistrationId: _string(value, ChannelContract.pushRegistrationId),
@@ -77,8 +78,9 @@ abstract final class InstallationCodec {
 
   static PushServiceType? _serviceType(Object? value) {
     if (value == null) return null;
-    if (value is! String)
+    if (value is! String) {
       throw const FormatException('pushServiceType must be a string');
+    }
     return switch (value.toUpperCase()) {
       'APNS' => PushServiceType.APNS,
       'GCM' => PushServiceType.GCM,
