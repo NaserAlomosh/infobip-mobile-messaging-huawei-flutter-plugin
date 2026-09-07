@@ -251,6 +251,12 @@ class InfobipMobileMessagingHuaweiPlugin :
                 setChatCustomization(call, result)
             }
 
+            ChannelContract.SHOW_CHAT -> {
+                val failure = chatManager?.showChat() ?: return detached(result)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
             ChannelContract.RESOLVE_CHAT_JWT -> {
                 val failure = chatManager?.resolveJwt(call.argument<Any?>(ChannelContract.JWT))
                     ?: return detached(result)

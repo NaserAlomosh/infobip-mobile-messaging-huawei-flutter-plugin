@@ -94,6 +94,67 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 
 ## In-App Chat
 
+### `showChat`
+
+The global Chat presentation API was audited against the official Flutter
+plugin at commit `8b630d0f736d400635317131d549c345349bd54d` and Huawei Mobile
+Messaging SDK 8.14.0 at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`.
+
+The official Flutter API is:
+
+```dart
+static Future<void> showChat({
+  bool shouldBePresentedModallyIOS = true,
+})
+```
+
+Its official Android implementation calls
+`InAppChat.getInstance(activity.getApplication()).inAppChatScreen().show()`.
+Huawei 8.14.0 exposes the same supported screen flow through
+`InAppChat.getInstance(applicationContext).inAppChatScreen().show()`, so the
+mapping is **MAPPABLE**. The public Dart method remains global on
+`InfobipMobileMessagingHuawei`; it does not require a
+`InfobipHuaweiChatController`, create an `InfobipHuaweiChatView`, or use a
+Flutter route. The iOS-only `shouldBePresentedModallyIOS` argument is sent as a
+boolean for public and channel compatibility and has no effect on Huawei
+Android.
+
+Huawei's `show()` uses the application context to launch its SDK-owned
+`InAppChatActivity`; it does not require the current Flutter `Activity` or an
+embedded `InAppChatFragment`. The native activity owns its lifecycle and back
+navigation. Notification entry points remain SDK-owned and are not changed by
+this method.
+
+The plugin requires successful Mobile Messaging initialization and Chat
+activation before presenting the screen. It does not initialize implicitly and
+does not add an `isChatAvailable()` pre-check: widget/backend availability,
+network state, and authenticated-widget behavior remain controlled by the
+native screen. Calls made before initialization return `not_initialized`; a
+failed Chat activation returns `chat_unavailable`; synchronous presentation
+failures return `native_error`. Native widget failures continue through the
+configured `setChatExceptionHandler` behavior rather than a separate
+`showChat` event API.
+
+Global customization installed by `setChatCustomization` calls
+`InAppChat.setTheme` and is therefore used by the SDK-owned screen. The Chat JWT
+provider is also installed on the same `InAppChat` singleton and is requested
+normally by the presented widget. `setWidgetTheme` remains an independent,
+view-scoped controller operation for the embedded `InfobipHuaweiChatView`; it
+is not repurposed as global-screen configuration.
+
+Huawei's native Chat screen owns unread-state changes when a conversation is
+opened. The Flutter bridge neither reads nor manually resets the counter as
+part of `showChat`; counter updates and any reset are emitted by the SDK through
+its existing native behavior.
+
+| Official capability | Huawei 8.14 mapping | Classification | Notes |
+| --- | --- | --- | --- |
+| Global `showChat()` | `InAppChat.inAppChatScreen().show()` | **MAPPABLE** | SDK-owned Android activity and navigation. |
+| `shouldBePresentedModallyIOS` | Ignored | **IOS_ONLY** | Preserved and forwarded only for API parity. |
+| Application context presentation | `InAppChat.getInstance(applicationContext)` | **EXACT** | No attached Flutter activity is required. |
+| Embedded Chat controller/view | Not used | **EXACT** | Global and embedded presentation modes remain independent. |
+
 ### UI
 
 | Capability | Status | Notes |
