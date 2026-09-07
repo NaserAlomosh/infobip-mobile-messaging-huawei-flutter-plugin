@@ -8,7 +8,13 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+// SDK 35 supports Java 17; Robolectric's SDK 36 runtime requires Java 21.
+@Config(sdk = [35])
 class MessageMapperTest {
     @Test
     fun `preserves non-null internal data`() {
