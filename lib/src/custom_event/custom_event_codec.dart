@@ -32,28 +32,40 @@ abstract final class CustomEventCodec {
     if (value is! Map) {
       throw const FormatException('Custom event payload must be a map.');
     }
+
     final map = value.cast<Object?, Object?>();
-    final definitionId = map[ChannelContract.definitionId];
-    final eventId = map[ChannelContract.eventId];
-    final createdAt = map[ChannelContract.createdAt];
-    if (definitionId is! String || definitionId.trim().isEmpty) {
+
+    final rawDefinitionId = map[ChannelContract.definitionId];
+    final rawEventId = map[ChannelContract.eventId];
+    final rawCreatedAt = map[ChannelContract.createdAt];
+
+    if (rawDefinitionId is! String || rawDefinitionId.trim().isEmpty) {
       throw const FormatException('definitionId must be a non-empty string.');
     }
-    if (eventId != null && eventId is! String) {
+
+    if (rawEventId != null && rawEventId is! String) {
       throw const FormatException('eventId must be a string.');
     }
-    if (createdAt != null && createdAt is! String) {
+
+    if (rawCreatedAt != null && rawCreatedAt is! String) {
       throw const FormatException('createdAt must be a string.');
     }
+
+    final definitionId = rawDefinitionId;
+    final eventId = rawEventId as String?;
+    final createdAt = rawCreatedAt as String?;
+
     final parsedCreatedAt = createdAt == null
         ? null
         : DateTime.tryParse(createdAt);
+
     if (createdAt != null && parsedCreatedAt == null) {
       throw const FormatException('createdAt must be an ISO-8601 timestamp.');
     }
+
     return InfobipHuaweiCustomEvent(
       definitionId: definitionId,
-      eventId: eventId as String?,
+      eventId: eventId,
       createdAt: parsedCreatedAt?.toUtc(),
       properties: UserCodec.decodeCustomAttributes(
         map[ChannelContract.properties],
