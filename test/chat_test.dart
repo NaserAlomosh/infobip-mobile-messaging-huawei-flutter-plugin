@@ -4,6 +4,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
+Future<T> withTargetPlatform<T>(
+  TargetPlatform platform,
+  Future<T> Function() body,
+) async {
+  debugDefaultTargetPlatformOverride = platform;
+  try {
+    return await body();
+  } finally {
+    debugDefaultTargetPlatformOverride = null;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -70,51 +82,50 @@ void main() {
   testWidgets('unsupported platforms render a deterministic placeholder', (
     tester,
   ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await withTargetPlatform(TargetPlatform.iOS, () async {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: InfobipHuaweiChatView(),
+        ),
+      );
 
-    await tester.pumpWidget(
-      const Directionality(
-        textDirection: TextDirection.ltr,
-        child: InfobipHuaweiChatView(),
-      ),
-    );
-
-    expect(find.text('Chat is available on Android only.'), findsOneWidget);
+      expect(find.text('Chat is available on Android only.'), findsOneWidget);
+    });
   });
 
   testWidgets('Chat view uses native input and Flutter toolbar defaults', (
     tester,
   ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.pumpWidget(
-      const Directionality(
-        textDirection: TextDirection.ltr,
-        child: InfobipHuaweiChatView(),
-      ),
-    );
-    final view = tester.widget<AndroidView>(find.byType(AndroidView));
-    expect(view.creationParams, <String, bool>{
-      'withInput': true,
-      'withToolbar': false,
+    await withTargetPlatform(TargetPlatform.android, () async {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: InfobipHuaweiChatView(),
+        ),
+      );
+      final view = tester.widget<AndroidView>(find.byType(AndroidView));
+      expect(view.creationParams, <String, bool>{
+        'withInput': true,
+        'withToolbar': false,
+      });
+      expect(view.creationParamsCodec, isA<StandardMessageCodec>());
     });
-    expect(view.creationParamsCodec, isA<StandardMessageCodec>());
   });
 
   testWidgets('Chat view propagates native UI options', (tester) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.pumpWidget(
-      const Directionality(
-        textDirection: TextDirection.ltr,
-        child: InfobipHuaweiChatView(withInput: false, withToolbar: true),
-      ),
-    );
-    expect(
-      tester.widget<AndroidView>(find.byType(AndroidView)).creationParams,
-      <String, bool>{'withInput': false, 'withToolbar': true},
-    );
+    await withTargetPlatform(TargetPlatform.android, () async {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: InfobipHuaweiChatView(withInput: false, withToolbar: true),
+        ),
+      );
+      expect(
+        tester.widget<AndroidView>(find.byType(AndroidView)).creationParams,
+        <String, bool>{'withInput': false, 'withToolbar': true},
+      );
+    });
   });
 
   group('embedded Chat errors', () {
@@ -123,12 +134,20 @@ void main() {
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
+    void androidTest(String description, WidgetTesterCallback callback) {
+      testWidgets(description, (tester) async {
+        await withTargetPlatform(
+          TargetPlatform.android,
+          () => callback(tester),
+        );
+      });
+    }
+
     Future<void> mountView(
       WidgetTester tester, {
       InfobipHuaweiChatController? controller,
       void Function(InfobipHuaweiChatError)? onError,
     }) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
       await tester.pumpWidget(
         Directionality(
           textDirection: TextDirection.ltr,
@@ -165,7 +184,6 @@ void main() {
     });
 
     tearDown(() {
-      debugDefaultTargetPlatformOverride = null;
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
         null,
@@ -181,7 +199,7 @@ void main() {
       'native_error': InfobipHuaweiChatErrorCode.nativeError,
       'future_error': InfobipHuaweiChatErrorCode.unknown,
     }.entries) {
-      testWidgets('decodes ${entry.key}', (tester) async {
+      androidTest('decodes ${entry.key}', (tester) async {
         InfobipHuaweiChatError? received;
         await mountView(tester, onError: (error) => received = error);
 
@@ -192,7 +210,7 @@ void main() {
       });
     }
 
-    testWidgets('malformed payload maps to unknown', (tester) async {
+    androidTest('malformed payload maps to unknown', (tester) async {
       InfobipHuaweiChatError? received;
       await mountView(tester, onError: (error) => received = error);
 
@@ -202,7 +220,7 @@ void main() {
       expect(received?.message, isNull);
     });
 
-    testWidgets('does not invoke callback after disposal', (tester) async {
+    androidTest('does not invoke callback after disposal', (tester) async {
       var calls = 0;
       await mountView(tester, onError: (_) => calls++);
       await tester.pumpWidget(const SizedBox());
@@ -212,7 +230,7 @@ void main() {
       expect(calls, 0);
     });
 
-    testWidgets('controller shares the view bridge channel', (tester) async {
+    androidTest('controller shares the view bridge channel', (tester) async {
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
 
@@ -220,7 +238,7 @@ void main() {
       expect(await controller.navigateBackOrCloseChat(), isTrue);
     });
 
-    testWidgets('draft message is forwarded unchanged', (tester) async {
+    androidTest('draft message is forwarded unchanged', (tester) async {
       final calls = <MethodCall>[];
       messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
         call,
@@ -239,7 +257,7 @@ void main() {
       expect(call.arguments, <String, Object?>{'message': '  hello  '});
     });
 
-    testWidgets('empty draft clears the native draft', (tester) async {
+    androidTest('empty draft clears the native draft', (tester) async {
       MethodCall? draftCall;
       messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
         call,
@@ -255,7 +273,7 @@ void main() {
       expect(draftCall?.arguments, <String, Object?>{'message': ''});
     });
 
-    testWidgets('draft platform errors propagate', (tester) async {
+    androidTest('draft platform errors propagate', (tester) async {
       messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
         call,
       ) async {
@@ -279,7 +297,7 @@ void main() {
       );
     });
 
-    testWidgets('controller requests the thread list on its view channel', (
+    androidTest('controller requests the thread list on its view channel', (
       tester,
     ) async {
       final calls = <MethodCall>[];
@@ -301,7 +319,7 @@ void main() {
       expect(calls.last.arguments, isNull);
     });
 
-    testWidgets('thread list request forwards a native platform error', (
+    androidTest('thread list request forwards a native platform error', (
       tester,
     ) async {
       messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
@@ -330,7 +348,7 @@ void main() {
       );
     });
 
-    testWidgets('controller accepts a false navigation result', (tester) async {
+    androidTest('controller accepts a false navigation result', (tester) async {
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
         (call) async => call.method == 'navigateBackOrCloseChat' ? false : null,
@@ -342,7 +360,7 @@ void main() {
     });
 
     for (final value in [true, false]) {
-      testWidgets('controller returns $value for multithread state', (
+      androidTest('controller returns $value for multithread state', (
         tester,
       ) async {
         messenger.setMockMethodCallHandler(
@@ -356,7 +374,7 @@ void main() {
       });
     }
 
-    testWidgets('controller rejects malformed multithread state', (
+    androidTest('controller rejects malformed multithread state', (
       tester,
     ) async {
       messenger.setMockMethodCallHandler(
@@ -369,7 +387,7 @@ void main() {
       await expectLater(controller.isMultithread(), throwsFormatException);
     });
 
-    testWidgets('controller sends text on its view channel', (tester) async {
+    androidTest('controller sends text on its view channel', (tester) async {
       final calls = <MethodCall>[];
       messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
         call,
@@ -388,7 +406,7 @@ void main() {
       expect(calls.last.arguments, <String, Object>{'text': 'Hello'});
     });
 
-    testWidgets('controller sends contextual data on its view channel', (
+    androidTest('controller sends contextual data on its view channel', (
       tester,
     ) async {
       final calls = <MethodCall>[];
@@ -410,7 +428,7 @@ void main() {
       });
     });
 
-    testWidgets('controller serializes every contextual data strategy', (
+    androidTest('controller serializes every contextual data strategy', (
       tester,
     ) async {
       final calls = <MethodCall>[];
@@ -435,7 +453,7 @@ void main() {
       }
     });
 
-    testWidgets(
+    androidTest(
       'contextual data validation happens before channel invocation',
       (tester) async {
         var invocationCount = 0;
@@ -457,7 +475,7 @@ void main() {
       },
     );
 
-    testWidgets('contextual data native failures propagate unchanged', (
+    androidTest('contextual data native failures propagate unchanged', (
       tester,
     ) async {
       messenger.setMockMethodCallHandler(
@@ -482,7 +500,7 @@ void main() {
       );
     });
 
-    testWidgets('controller sets and gets the component language', (
+    androidTest('controller sets and gets the component language', (
       tester,
     ) async {
       final calls = <MethodCall>[];
@@ -502,7 +520,7 @@ void main() {
       expect(await controller.getLanguage(), 'en-US');
     });
 
-    testWidgets('controller sets and gets the widget theme', (tester) async {
+    androidTest('controller sets and gets the widget theme', (tester) async {
       final calls = <MethodCall>[];
       messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
         call,
@@ -520,14 +538,14 @@ void main() {
       expect(await controller.getWidgetTheme(), 'support');
     });
 
-    testWidgets('controller preserves an absent widget theme', (tester) async {
+    androidTest('controller preserves an absent widget theme', (tester) async {
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
 
       expect(await controller.getWidgetTheme(), isNull);
     });
 
-    testWidgets('navigation rejects a missing native boolean', (tester) async {
+    androidTest('navigation rejects a missing native boolean', (tester) async {
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
         (_) async => null,
@@ -541,7 +559,7 @@ void main() {
       );
     });
 
-    testWidgets('controller validates language and theme values', (
+    androidTest('controller validates language and theme values', (
       tester,
     ) async {
       final controller = InfobipHuaweiChatController();
@@ -552,7 +570,7 @@ void main() {
       await expectLater(controller.setWidgetTheme(' '), throwsArgumentError);
     });
 
-    testWidgets('controller command forwards a native error', (tester) async {
+    androidTest('controller command forwards a native error', (tester) async {
       messenger.setMockMethodCallHandler(
         const MethodChannel(channelName),
         (call) async => throw PlatformException(code: 'native_error'),
@@ -572,7 +590,7 @@ void main() {
       );
     });
 
-    testWidgets('disposed controller rejects commands', (tester) async {
+    androidTest('disposed controller rejects commands', (tester) async {
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
       await tester.pumpWidget(const SizedBox());

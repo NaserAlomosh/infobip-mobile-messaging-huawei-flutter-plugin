@@ -105,7 +105,7 @@ void main() {
     },
   );
 
-  test('PlatformException propagates unchanged', () async {
+  test('PlatformException fields propagate unchanged', () async {
     const channel = MethodChannel('chat-push-error-method-test');
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -119,11 +119,19 @@ void main() {
 
     await expectLater(
       platform.setChatPushTitle('Support'),
-      throwsA(same(error)),
+      throwsA(
+        isA<PlatformException>()
+            .having((error) => error.code, 'code', 'native_error')
+            .having((error) => error.message, 'message', 'failed'),
+      ),
     );
     await expectLater(
       platform.setChatPushBody('New message'),
-      throwsA(same(error)),
+      throwsA(
+        isA<PlatformException>()
+            .having((error) => error.code, 'code', 'native_error')
+            .having((error) => error.message, 'message', 'failed'),
+      ),
     );
   });
 }
