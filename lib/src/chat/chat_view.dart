@@ -11,6 +11,9 @@ import '../platform/channel_contract.dart';
 import 'chat_error.dart';
 import 'chat_event.dart';
 import 'chat_message_payload.dart';
+import 'chat_view_attachment.dart';
+import 'widget_attachment_config.dart';
+import 'widget_info.dart';
 
 /// Determines which Chat threads receive contextual data.
 enum ChatMultithreadStrategies {
@@ -75,7 +78,26 @@ InfobipHuaweiChatEvent? decodeInfobipHuaweiChatEvent(Object? payload) {
   final value = payload[ChannelContract.value];
   switch (payload[ChannelContract.event]) {
     case ChannelContract.chatLoaded:
-      return const InfobipHuaweiChatLoadedEvent();
+      if (value is! bool) return null;
+      return InfobipHuaweiChatLoadedEvent(success: value);
+    case ChannelContract.chatExitPressed:
+      return const InfobipHuaweiChatExitPressedEvent();
+    case ChannelContract.chatWidgetThemeChanged:
+      if (value is! String) return null;
+      return InfobipHuaweiChatWidgetThemeChangedEvent(theme: value);
+    case ChannelContract.chatWidgetInfoUpdated:
+      final widgetInfo = _decodeWidgetInfo(value);
+      if (widgetInfo == null) return null;
+      return InfobipHuaweiChatWidgetInfoUpdatedEvent(widgetInfo: widgetInfo);
+    case ChannelContract.chatAttachmentPreviewOpened:
+      final attachment = _decodeAttachment(value);
+      if (attachment == null) return null;
+      return InfobipHuaweiChatAttachmentPreviewOpenedEvent(
+        attachment: attachment,
+      );
+    case ChannelContract.chatRawMessageReceived:
+      if (value is! String) return null;
+      return InfobipHuaweiChatRawMessageReceivedEvent(rawMessage: value);
     case ChannelContract.chatViewChanged:
       if (value is! String) return null;
       return InfobipHuaweiChatViewChangedEvent(
@@ -102,6 +124,76 @@ InfobipHuaweiChatEvent? decodeInfobipHuaweiChatEvent(Object? payload) {
       );
   }
   return null;
+}
+
+WidgetInfo? _decodeWidgetInfo(Object? value) {
+  if (value is! Map) return null;
+  final themeNames = value['themeNames'];
+  if (themeNames != null &&
+      (themeNames is! List || themeNames.any((name) => name is! String))) {
+    return null;
+  }
+  final attachmentValue = value['attachmentConfig'];
+  WidgetAttachmentConfig? attachmentConfig;
+  if (attachmentValue != null) {
+    if (attachmentValue is! Map) return null;
+    final maxSize = attachmentValue['maxSize'];
+    final enabled = attachmentValue['isEnabled'];
+    final extensions = attachmentValue['allowedExtensions'];
+    if ((maxSize != null && maxSize is! int) ||
+        (enabled != null && enabled is! bool) ||
+        (extensions != null &&
+            (extensions is! List ||
+                extensions.any((extension) => extension is! String)))) {
+      return null;
+    }
+    attachmentConfig = WidgetAttachmentConfig(
+      maxSize: maxSize as int?,
+      isEnabled: enabled as bool?,
+      allowedExtensions: (extensions as List?)?.cast<String>(),
+    );
+  }
+  const stringFields = <String>[
+    'id',
+    'title',
+    'primaryColor',
+    'backgroundColor',
+    'primaryTextColor',
+  ];
+  const boolFields = <String>[
+    'multiThread',
+    'multiChannelConversationEnabled',
+    'callsEnabled',
+  ];
+  if (stringFields.any((key) => value[key] != null && value[key] is! String) ||
+      boolFields.any((key) => value[key] != null && value[key] is! bool)) {
+    return null;
+  }
+  return WidgetInfo(
+    id: value['id'] as String?,
+    title: value['title'] as String?,
+    primaryColor: value['primaryColor'] as String?,
+    backgroundColor: value['backgroundColor'] as String?,
+    primaryTextColor: value['primaryTextColor'] as String?,
+    multiThread: value['multiThread'] as bool?,
+    multiChannelConversationEnabled:
+        value['multiChannelConversationEnabled'] as bool?,
+    callsEnabled: value['callsEnabled'] as bool?,
+    themeNames: (themeNames as List?)?.cast<String>(),
+    attachmentConfig: attachmentConfig,
+  );
+}
+
+ChatViewAttachment? _decodeAttachment(Object? value) {
+  if (value is! Map) return null;
+  for (final key in const ['url', 'type', 'caption']) {
+    if (value[key] != null && value[key] is! String) return null;
+  }
+  return ChatViewAttachment(
+    url: value['url'] as String?,
+    type: value['type'] as String?,
+    caption: value['caption'] as String?,
+  );
 }
 
 InfobipHuaweiChatError _decodeError(Object? payload) {

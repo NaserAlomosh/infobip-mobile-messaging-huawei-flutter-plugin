@@ -20,6 +20,11 @@ abstract final class ChannelContract {
   static const chatLoaded = 'loaded';
   static const chatViewChanged = 'viewChanged';
   static const chatConnectionChanged = 'connectionChanged';
+  static const chatExitPressed = 'exitPressed';
+  static const chatWidgetThemeChanged = 'widgetThemeChanged';
+  static const chatWidgetInfoUpdated = 'widgetInfoUpdated';
+  static const chatAttachmentPreviewOpened = 'attachmentPreviewOpened';
+  static const chatRawMessageReceived = 'rawMessageReceived';
   static const event = 'event';
   static const value = 'value';
   static const code = 'code';

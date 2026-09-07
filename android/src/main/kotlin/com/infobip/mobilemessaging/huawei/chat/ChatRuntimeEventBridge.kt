@@ -2,13 +2,13 @@ package com.infobip.mobilemessaging.huawei.chat
 
 internal class ChatRuntimeEventBridge(
     private val capacity: Int = DEFAULT_CAPACITY,
-    private val emit: (Map<String, String>) -> Unit,
+    private val emit: (Map<String, Any?>) -> Unit,
 ) {
-    private val pending = ArrayDeque<Map<String, String>>()
+    private val pending = ArrayDeque<Map<String, Any?>>()
     private var ready = false
     private var disposed = false
 
-    fun publish(event: Map<String, String>) {
+    fun publish(event: Map<String, Any?>) {
         if (disposed) return
         if (ready) {
             emit(event)
@@ -20,7 +20,7 @@ internal class ChatRuntimeEventBridge(
 
     fun publishResult(
         successful: Boolean,
-        event: Map<String, String>,
+        event: Map<String, Any?>,
         onFailure: () -> Unit,
     ) {
         if (successful) publish(event) else onFailure()
