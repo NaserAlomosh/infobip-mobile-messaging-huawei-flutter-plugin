@@ -16,6 +16,9 @@ import com.infobip.mobilemessaging.huawei.inbox.InboxManager
 import com.infobip.mobilemessaging.huawei.installation.InstallationManager
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import com.infobip.mobilemessaging.huawei.plugin.NativeEventBridge
+import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcManager
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import com.infobip.mobilemessaging.huawei.user.UserManager
 import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
 import com.infobip.mobilemessaging.huawei.webrtc.WebRtcFailure
@@ -46,6 +49,9 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var inboxManager: InboxManager? = null
     private var chatManager: ChatManager? = null
     private var webRtcOperations: WebRtcOperations? = null
+    private var huaweiRtcManager: HuaweiRtcManager? = null
+    private var huaweiRtcChannel: MethodChannel? = null
+    private var huaweiRtcEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
     private var drawableLoader: PluginChatCustomization.DrawableLoader? = null
@@ -63,6 +69,22 @@ class InfobipMobileMessagingHuaweiPlugin :
             MobileMessagingInitializer(binding.applicationContext) {
                 chatManager?.activate()
             }
+        huaweiRtcManager = HuaweiRtcManager(
+            binding.applicationContext,
+            initialized = { initializer?.isInitialized == true },
+            canStartCall = {
+                activity?.let {
+                    !it.isFinishing && !it.isDestroyed &&
+                        ((it as? LifecycleOwner)?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) ?: it.hasWindowFocus())
+                } == true
+            },
+        )
+        huaweiRtcChannel = MethodChannel(binding.binaryMessenger, HuaweiRtcManager.METHOD_CHANNEL).also {
+            it.setMethodCallHandler(huaweiRtcManager)
+        }
+        huaweiRtcEvents = EventChannel(binding.binaryMessenger, HuaweiRtcManager.EVENT_CHANNEL).also {
+            it.setStreamHandler(huaweiRtcManager)
+        }
         webRtcOperations =
             WebRtcOperations(
                 context = binding.applicationContext,
@@ -130,6 +152,12 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        huaweiRtcManager?.dispose()
+        huaweiRtcChannel?.setMethodCallHandler(null)
+        huaweiRtcEvents?.setStreamHandler(null)
+        huaweiRtcManager = null
+        huaweiRtcChannel = null
+        huaweiRtcEvents = null
         inboxManager?.setJwt(null)
         methodChannel?.setMethodCallHandler(null)
         eventChannel?.setStreamHandler(null)
@@ -181,8 +209,15 @@ class InfobipMobileMessagingHuaweiPlugin :
             ChannelContract.CLEANUP -> {
                 val manager = cleanupManager ?: return detached(result)
                 val rtc = webRtcOperations ?: return detached(result)
+                val outgoingRtc = huaweiRtcManager ?: return detached(result)
+                val outgoingFailure = outgoingRtc.prepareCleanup()
+                if (outgoingFailure != null) {
+                    result.error(outgoingFailure.code, outgoingFailure.message, null)
+                    return
+                }
                 rtc.cleanup { failure ->
                     mainHandler.post {
+                        outgoingRtc.completeCleanup()
                         if (webRtcOperations !== rtc || cleanupManager !== manager) {
                             detached(result)
                         } else if (failure != null) result.error(failure.code, failure.message, null)

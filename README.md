@@ -116,7 +116,14 @@ changing the value does not alter the active SDK instance, but is used by the fi
 initialization after cleanup. This stores regular Mobile Messaging messages, not
 Mobile Inbox or Chat history.
 
-WebRTC APIs are retained, but RTC UI 15.1.0 integration is disabled for Huawei-only production use because of unresolved Firebase linkage and transport support. See
+**Outgoing audio/video calls:** the separate [`HuaweiRtc` extension](docs/huawei-rtc-outgoing.md)
+uses RTC Core 2.5.28 and internally acquires RTC tokens through initialized Huawei
+Mobile Messaging. It provides typed application-call requests, events, active-call
+snapshots and hangup. It is code/unit verified; Huawei device validation is pending.
+
+**Official incoming-call APIs remain unsupported/guarded:** `enableCalls`,
+`enableChatCalls` and `disableCalls` do not place outgoing calls. RTC UI 15.1.0
+integration remains disabled because of unresolved Firebase linkage and HMS transport support. See
 [the direct RTC Core investigation](docs/webrtc-core-research.md) for verified API/dependency limitations, and
 [`docs/webrtc-configuration.md`](docs/webrtc-configuration.md) for initialization,
 runtime usage, and dependency configuration.

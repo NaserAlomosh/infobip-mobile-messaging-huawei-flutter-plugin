@@ -1,5 +1,11 @@
 # Direct RTC Core feasibility decision
 
+Historical research record at `bbee8577f8bfa442b7a87e67991bb1e0286192a9`.
+The subsequent [Huawei outgoing extension](huawei-rtc-outgoing.md) implements a
+separate contract on this branch. The stop decision below still applies to the
+official incoming-call APIs; statements about an unchanged baseline describe the
+research commit, not the later outgoing implementation.
+
 Research performed 7–8 September 2026 on `feature/huawei-rtc-core`, based on
 `development` commit `a5cb643c046f42d40a542dab705cc42222504c0e`.
 Fetching `origin development` confirmed that both branches already pointed to that

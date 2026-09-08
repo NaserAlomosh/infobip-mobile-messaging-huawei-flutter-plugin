@@ -1,0 +1,60 @@
+debug
+  records: 154; unique artifacts including plugin: 148
+  Mobile Messaging classes: 718; duplicates: 0
+  all duplicate class entries: META-INF/versions/9/module-info.class
+  standard MM core: ABSENT; RTC UI classes/runtime: ABSENT
+  dependency assertions: PASS
+  Infobip / Firebase / GMS modules:
+    com.google.android.gms:play-services-basement:17.0.0
+    com.google.android.gms:play-services-cloud-messaging:16.0.0
+    com.google.android.gms:play-services-stats:17.0.0
+    com.google.android.gms:play-services-tasks:17.0.0
+    com.google.firebase:firebase-annotations:16.0.0
+    com.google.firebase:firebase-common:20.0.0
+    com.google.firebase:firebase-components:17.0.0
+    com.google.firebase:firebase-datatransport:18.0.0
+    com.google.firebase:firebase-encoders-json:18.0.0
+    com.google.firebase:firebase-encoders:17.0.0
+    com.google.firebase:firebase-iid-interop:17.1.0
+    com.google.firebase:firebase-installations-interop:17.0.0
+    com.google.firebase:firebase-installations:17.0.0
+    com.google.firebase:firebase-measurement-connector:19.0.0
+    com.google.firebase:firebase-messaging:22.0.0
+    com.infobip:google-webrtc:1.0.45036
+    com.infobip:infobip-mobile-messaging-android-resources:15.1.0
+    com.infobip:infobip-mobile-messaging-api-java:15.1.0
+    com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0
+    com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0
+    com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0
+    com.infobip:infobip-rtc:2.5.28
+  Core AAR SHA-256: 9303984b90dd14cb31458d94d35b26f5b494ae42017e3174ae135030c01314a4
+release
+  records: 154; unique artifacts including plugin: 148
+  Mobile Messaging classes: 718; duplicates: 0
+  all duplicate class entries: META-INF/versions/9/module-info.class
+  standard MM core: ABSENT; RTC UI classes/runtime: ABSENT
+  dependency assertions: PASS
+  Infobip / Firebase / GMS modules:
+    com.google.android.gms:play-services-basement:17.0.0
+    com.google.android.gms:play-services-cloud-messaging:16.0.0
+    com.google.android.gms:play-services-stats:17.0.0
+    com.google.android.gms:play-services-tasks:17.0.0
+    com.google.firebase:firebase-annotations:16.0.0
+    com.google.firebase:firebase-common:20.0.0
+    com.google.firebase:firebase-components:17.0.0
+    com.google.firebase:firebase-datatransport:18.0.0
+    com.google.firebase:firebase-encoders-json:18.0.0
+    com.google.firebase:firebase-encoders:17.0.0
+    com.google.firebase:firebase-iid-interop:17.1.0
+    com.google.firebase:firebase-installations-interop:17.0.0
+    com.google.firebase:firebase-installations:17.0.0
+    com.google.firebase:firebase-measurement-connector:19.0.0
+    com.google.firebase:firebase-messaging:22.0.0
+    com.infobip:google-webrtc:1.0.45036
+    com.infobip:infobip-mobile-messaging-android-resources:15.1.0
+    com.infobip:infobip-mobile-messaging-api-java:15.1.0
+    com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0
+    com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0
+    com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0
+    com.infobip:infobip-rtc:2.5.28
+  Core AAR SHA-256: 9303984b90dd14cb31458d94d35b26f5b494ae42017e3174ae135030c01314a4

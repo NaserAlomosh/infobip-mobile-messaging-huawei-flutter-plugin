@@ -4,6 +4,7 @@ import '../app.dart';
 import '../widgets/result_card.dart';
 import 'chat_screen.dart';
 import 'inbox_screen.dart';
+import 'huawei_rtc_screen.dart';
 import 'installation_screen.dart';
 import 'notifications_screen.dart';
 import 'user_screen.dart';
@@ -49,6 +50,7 @@ class HomeScreen extends StatelessWidget {
       ),
       ('Inbox', Icons.inbox_outlined, const InboxScreen()),
       ('Chat', Icons.chat_bubble_outline, const ChatScreen()),
+      ('Huawei outgoing RTC', Icons.call_outlined, const HuaweiRtcScreen()),
     ];
 
     return Scaffold(

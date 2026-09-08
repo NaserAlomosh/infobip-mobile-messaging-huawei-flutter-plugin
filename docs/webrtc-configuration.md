@@ -1,17 +1,26 @@
 # WebRTC status for Huawei
 
+**Outgoing Huawei extension:** [`HuaweiRtc`](huawei-rtc-outgoing.md) implements
+application audio/video calls and hangup using RTC Core 2.5.28, with native MM token
+acquisition. Its `callsConfigurationId` is separate from `WebRTCUI.configurationId`.
+Code/unit verification does not establish Huawei device success.
+
+**Official MM incoming-call APIs:** unsupported/guarded. Nothing in the outgoing
+extension enables `enableCalls`, `enableChatCalls` or incoming HMS push.
+
 The direct RTC Core investigation is recorded in
 [WebRTC Core feasibility](webrtc-core-research.md), with an explicit
 [Huawei device plan](webrtc-core-device-validation.md). Core avoids the conflicting
 Mobile Messaging core, but its inspected push transport and public session lifecycle
-cannot safely implement the current incoming-call APIs. The requested stop condition
-was reached before production changes; the safeguards below remain in effect.
+cannot safely implement the current incoming-call APIs. The earlier research stop
+condition applied to that incoming contract; the safeguards below remain in effect
+after the separately scoped outgoing extension.
 
 **RTC UI 15.1.0 is unsupported for Huawei-only production use in this plugin.**
 The optional Dart configuration and call APIs remain source-visible, but call enablement
 returns `webrtc_unsupported`. `-PinfobipWebRtcEnabled=true` fails Gradle configuration
-with an explicit explanation. The baseline app does not package RTC or the conflicting
-standard Mobile Messaging Android core.
+with an explicit explanation. The app packages RTC Core 2.5.28 with its legitimate
+Firebase/GMS dependencies, but no RTC UI or conflicting standard MM Android core.
 
 This is an intentional production safeguard, not verified HMS incoming-call support.
 A vendor-supported integration and Huawei device/backend evidence are required before
@@ -67,7 +76,7 @@ The lifecycle coordinator is tested with an injected native runtime:
 The native SDK exposes no cancellation API and can wait for registration broadcasts.
 If its callback never arrives, teardown can remain pending; an unregistration/network
 failure cannot be claimed as server cleanup. Engine-detach unregistration is best effort.
-These are further reasons the production Huawei RTC path remains disabled.
+These are further reasons the official incoming-call path remains disabled.
 
 Optional initialization still accepts `WebRTCUI(configurationId: ...)`. Configuration is
 retained after successful Mobile Messaging initialization and cleared after successful

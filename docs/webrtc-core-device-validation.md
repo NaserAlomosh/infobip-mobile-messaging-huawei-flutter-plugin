@@ -1,5 +1,54 @@
 # Huawei RTC Core device validation plan
 
+## Outgoing extension update — 8 September 2026
+
+The separate [`HuaweiRtc` implementation](huawei-rtc-outgoing.md) is ready for
+foreground Huawei **outgoing** device testing following code/unit/build checks.
+The earlier incoming-contract research matrix below is retained as history.
+It does not describe the new extension's implementation status.
+
+| Feature | Source | Automated | This repository on Huawei hardware |
+|---|---|---|---|
+| Outgoing audio application call | CODE_VERIFIED | UNIT_VERIFIED | NOT_VERIFIED |
+| Outgoing video application call | CODE_VERIFIED | UNIT_VERIFIED | NOT_VERIFIED |
+| Hangup | CODE_VERIFIED | UNIT_VERIFIED | NOT_VERIFIED |
+| Native token delegation / permissions / lifecycle / events | CODE_VERIFIED | UNIT_VERIFIED | NOT_VERIFIED |
+| Backend token issuance and routing | Client flow CODE_VERIFIED | Mock boundary only | NOT_VERIFIED |
+| Background media / process recovery | Limited foreground implementation | No continuation guarantee | NOT_VERIFIED |
+| Incoming HMS calls / enableCalls / enableChatCalls / disableCalls parity | UNSUPPORTED / guarded | Guards UNIT_VERIFIED | UNSUPPORTED |
+| Video renderer / extra media controls | Not implemented | Not implemented | NOT_VERIFIED |
+
+For the first device run:
+
+1. Record the implementation commit, Huawei model/OS/HMS/GMS availability, network,
+   permission grants and sanitized backend configuration reference.
+2. Initialize the example with a test MM application and wait for registration.
+   Grant Microphone, Camera for video and Nearby devices on Android 12+ in App info.
+3. Open **Huawei outgoing RTC**. Supply a Calls configuration ID, not a push
+   configuration ID; optionally supply an authorized test identity.
+4. Start audio. Confirm real token issuance, routing, establishment and two-way
+   audio at the peer. Reject a second call deterministically.
+5. Hang up locally and remotely in separate runs; verify terminal reason/events,
+   microphone release, and ability to place the next call.
+6. Start video. Verify audio plus actual outgoing camera frames at the peer. This
+   MVP intentionally has no preview/remote renderer in Flutter.
+7. Deny/revoke microphone/camera/Nearby devices separately. Confirm safe errors,
+   no fake success, and successful retry after explicit permission grant.
+8. Rotate/recreate Activity, cancel/reattach the event listener and return from
+   Android settings. Confirm active ownership survives; no stale Activity retained.
+9. Exercise token failure/network loss and pending-call cleanup. Test engine
+   destruction separately from Activity recreation and observe actual media cleanup.
+10. Reject MM cleanup during a live call; hang up, await finished, clean up,
+    initialize another authorized test account and place a new call.
+
+Keep all results NOT_VERIFIED until that scenario is actually run with this
+repository. External successful calls from another plugin are not DEVICE_VERIFIED
+evidence here. Do not record raw SDK logs that may include the known upstream MM
+authorization println. Backend authorization, rendered video, background operation
+and HMS incoming signaling cannot be inferred from mock or build success.
+
+## Historical incoming-contract research plan
+
 Status on 8 September 2026: **NOT READY FOR DEVICE VALIDATION** for the requested
 incoming-call APIs. See [the feasibility decision](webrtc-core-research.md).
 This is a future acceptance plan, not evidence of implemented Core integration.
