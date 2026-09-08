@@ -7,6 +7,7 @@ environment:
   sdk: ^3.9.0
 
 dependencies:
+  crypto: ^3.0.7
   flutter:
     sdk: flutter
   infobip_mobilemessaging_huawei:

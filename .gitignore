@@ -32,6 +32,8 @@ secrets/
 *.secrets
 .env
 .env.*
+example/example_config.local.json
+example/**/example_config.local.dart
 
 # IDE and operating system
 .idea/

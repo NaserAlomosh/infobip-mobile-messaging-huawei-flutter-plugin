@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
+import '../setup/safe_display.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -56,16 +57,20 @@ class _ChatScreenState extends State<ChatScreen> {
     } on PlatformException catch (error) {
       if (mounted) setState(() => _result = _platformFailure(error));
     } on ArgumentError catch (error) {
-      if (mounted) setState(() => _result = error.message.toString());
+      if (mounted) {
+        setState(() => _result = safeFailure('Chat operation', error));
+      }
     } on FormatException catch (error) {
-      if (mounted) setState(() => _result = error.message);
+      if (mounted) {
+        setState(() => _result = safeFailure('Chat operation', error));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   String _platformFailure(PlatformException error) =>
-      '${error.code}: ${error.message ?? 'Chat operation failed'}';
+      safeFailure('Chat operation', error);
 
   Future<void> _navigateBack() async {
     if (_handlingBack) return;
@@ -76,7 +81,9 @@ class _ChatScreenState extends State<ChatScreen> {
     } on PlatformException catch (error) {
       if (mounted) setState(() => _result = _platformFailure(error));
     } on FormatException catch (error) {
-      if (mounted) setState(() => _result = error.message);
+      if (mounted) {
+        setState(() => _result = safeFailure('Chat operation', error));
+      }
     } finally {
       _handlingBack = false;
     }
@@ -304,8 +311,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (mounted) {
                     setState(
                       () => _result =
-                          '${error.code.name}: '
-                          '${error.message ?? 'Chat view unavailable'}',
+                          'Chat view • ${error.code.name}\nCheck widget configuration and connectivity.',
                     );
                   }
                 },

@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
+import '../setup/example_controller.dart';
+import '../setup/feature_readiness.dart';
+import '../setup/safe_display.dart';
 import '../widgets/result_card.dart';
 import '../widgets/section_card.dart';
 
 class InboxScreen extends StatefulWidget {
-  const InboxScreen({super.key});
+  const InboxScreen({required this.controller, super.key});
+  final ExampleController controller;
 
   @override
   State<InboxScreen> createState() => _InboxScreenState();
 }
 
 class _InboxScreenState extends State<InboxScreen> {
-  final _externalUserId = TextEditingController();
+  ExampleController get c => widget.controller;
   final _topic = TextEditingController();
   final _limit = TextEditingController(text: '20');
   Inbox? _inbox;
   bool _loading = false;
-  String _result = 'Enter a test external user identity.';
+  String _result = 'Fetch Inbox for the configured test user.';
 
   Future<void> _fetch() async {
-    if (_loading) return;
+    if (_loading || !c.readiness(ExampleFeature.inbox).isReady) return;
     final limit = int.tryParse(_limit.text.trim());
     if (limit == null || limit <= 0) {
       setState(() => _result = 'Limit must be a positive integer.');
@@ -29,8 +32,7 @@ class _InboxScreenState extends State<InboxScreen> {
     }
     setState(() => _loading = true);
     try {
-      final inbox = await InfobipMobileMessagingHuawei.fetchInbox(
-        externalUserId: _externalUserId.text.trim(),
+      final inbox = await c.fetchInbox(
         options: FilterOptions(
           limit: limit,
           topic: _topic.text.trim().isEmpty ? null : _topic.text.trim(),
@@ -42,26 +44,19 @@ class _InboxScreenState extends State<InboxScreen> {
           _result = 'Inbox fetch succeeded.';
         });
       }
-    } on PlatformException catch (error) {
-      if (mounted) {
-        setState(
-          () => _result =
-              '${error.code}: ${error.message ?? 'Inbox operation failed'}',
-        );
-      }
-    } on ArgumentError catch (error) {
-      if (mounted) setState(() => _result = error.message.toString());
+    } catch (error) {
+      if (mounted) setState(() => _result = safeFailure('Fetch Inbox', error));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _markSeen(InboxMessage message) async {
-    if (_loading) return;
+    if (_loading || !c.readiness(ExampleFeature.inbox).isReady) return;
     setState(() => _loading = true);
     try {
       await InfobipMobileMessagingHuawei.setInboxMessagesSeen(
-        externalUserId: _externalUserId.text.trim(),
+        externalUserId: c.config.externalUserId.trim(),
         messageIds: [message.messageId],
       );
       if (mounted) {
@@ -70,21 +65,18 @@ class _InboxScreenState extends State<InboxScreen> {
         );
       }
       await _fetchAfterUpdate();
-    } on PlatformException catch (error) {
-      if (mounted) {
+    } catch (error) {
+      if (mounted)
         setState(
-          () => _result =
-              '${error.code}: ${error.message ?? 'Inbox update failed'}',
+          () => _result = safeFailure('Mark seen / refresh Inbox', error),
         );
-      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _fetchAfterUpdate() async {
-    final inbox = await InfobipMobileMessagingHuawei.fetchInbox(
-      externalUserId: _externalUserId.text.trim(),
+    final inbox = await c.fetchInbox(
       options: FilterOptions(
         limit: int.tryParse(_limit.text.trim()),
         topic: _topic.text.trim().isEmpty ? null : _topic.text.trim(),
@@ -95,7 +87,6 @@ class _InboxScreenState extends State<InboxScreen> {
 
   @override
   void dispose() {
-    _externalUserId.dispose();
     _topic.dispose();
     _limit.dispose();
     super.dispose();
@@ -116,12 +107,38 @@ class _InboxScreenState extends State<InboxScreen> {
               description:
                   'Fetch messages for an external user ID using typed filters.',
               children: [
-                TextField(
-                  controller: _externalUserId,
-                  decoration: const InputDecoration(
-                    labelText: 'Test external user ID',
-                  ),
+                Text('External User ID: ${masked(c.config.externalUserId)}'),
+                DropdownButton<InboxAuth>(
+                  value: c.inboxAuth,
+                  isExpanded: true,
+                  items: InboxAuth.values
+                      .map(
+                        (auth) => DropdownMenuItem(
+                          value: auth,
+                          child: Text('Auth: ${auth.label}'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _loading
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() {
+                              c.selectInboxAuth(value);
+                              _inbox = null;
+                              _result =
+                                  'Auth: ${value.label}. Fetch to test this path.';
+                            });
+                          }
+                        },
                 ),
+                const Text(
+                  'Application Code: sandbox profiles only. JWT: generated immediately before each fetch. Seen updates use the existing installation context.',
+                ),
+                ...c
+                    .readiness(ExampleFeature.inbox)
+                    .missing
+                    .map((r) => Text('Missing: ${r.title}')),
                 TextField(
                   controller: _topic,
                   decoration: const InputDecoration(
@@ -135,7 +152,10 @@ class _InboxScreenState extends State<InboxScreen> {
                 ),
                 const SizedBox(height: 8),
                 FilledButton(
-                  onPressed: _loading ? null : _fetch,
+                  onPressed:
+                      _loading || !c.readiness(ExampleFeature.inbox).isReady
+                      ? null
+                      : _fetch,
                   child: const Text('Fetch Inbox'),
                 ),
               ],
@@ -167,7 +187,9 @@ class _InboxScreenState extends State<InboxScreen> {
                             semanticLabel: 'Seen',
                           )
                         : TextButton(
-                            onPressed: _loading
+                            onPressed:
+                                _loading ||
+                                    !c.readiness(ExampleFeature.inbox).isReady
                                 ? null
                                 : () => _markSeen(message),
                             child: const Text('Mark seen'),

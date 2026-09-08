@@ -82,6 +82,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
+            'Send a notification to this external user from the Infobip Portal. '
+            'Personalization lets the Portal target the configured test user. '
+            'The app receives the portal push.\n\n'
             'This screen listens to all public notification streams. The tap '
             'stream also receives the SDK\'s one-time cold-start replay.',
           ),

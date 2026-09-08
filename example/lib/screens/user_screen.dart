@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
+import '../setup/example_controller.dart';
+import '../setup/safe_display.dart';
 import '../widgets/result_card.dart';
 import '../widgets/section_card.dart';
 
 class UserScreen extends StatefulWidget {
-  const UserScreen({super.key});
+  const UserScreen({required this.controller, super.key});
+  final ExampleController controller;
 
   @override
   State<UserScreen> createState() => _UserScreenState();
@@ -15,7 +17,7 @@ class UserScreen extends StatefulWidget {
 class _UserScreenState extends State<UserScreen> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
-  final _externalUserId = TextEditingController();
+
   bool _loading = false;
   String _result = 'No user operation performed.';
   UserData? _user;
@@ -25,15 +27,11 @@ class _UserScreenState extends State<UserScreen> {
     setState(() => _loading = true);
     try {
       await operation();
-    } on PlatformException catch (error) {
+      await widget.controller.refresh();
+    } catch (error) {
       if (mounted) {
-        setState(
-          () =>
-              _result = '${error.code}: ${error.message ?? 'Operation failed'}',
-        );
+        setState(() => _result = safeFailure('User operation', error));
       }
-    } on ArgumentError catch (error) {
-      if (mounted) setState(() => _result = error.message.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -58,7 +56,6 @@ class _UserScreenState extends State<UserScreen> {
   void dispose() {
     _firstName.dispose();
     _lastName.dispose();
-    _externalUserId.dispose();
     super.dispose();
   }
 
@@ -143,28 +140,28 @@ class _UserScreenState extends State<UserScreen> {
             title: 'Personalization',
             description:
                 'Use a test identity with a non-production Infobip application. '
-                'Values are not persisted by this example.',
+                'The SDK persists user and installation state.',
             children: [
-              TextField(
-                controller: _externalUserId,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Test external user ID',
-                ),
+              Text(
+                'Configured external user ID: ${masked(widget.controller.config.externalUserId)}',
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
                   FilledButton(
-                    onPressed: _loading || _externalUserId.text.trim().isEmpty
+                    onPressed:
+                        _loading || !widget.controller.externalUserIdConfigured
                         ? null
                         : () => _run(() async {
                             final user =
                                 await InfobipMobileMessagingHuawei.personalize(
                                   PersonalizeContext(
                                     userIdentity: UserIdentity(
-                                      externalUserId: _externalUserId.text
+                                      externalUserId: widget
+                                          .controller
+                                          .config
+                                          .externalUserId
                                           .trim(),
                                     ),
                                     userAttributes: UserAttributes(
@@ -189,7 +186,6 @@ class _UserScreenState extends State<UserScreen> {
                             if (mounted) {
                               setState(() {
                                 _user = null;
-                                _externalUserId.clear();
                                 _result = 'Depersonalization succeeded.';
                               });
                             }

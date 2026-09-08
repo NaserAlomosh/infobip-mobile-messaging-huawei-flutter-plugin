@@ -273,15 +273,18 @@ Chat does not expose thread commands, programmatic attachments, raw received-mes
 
 ## Example
 
-The example covers initialization, notifications, user, installation, Inbox, and Chat. Supply a non-production application code at runtime:
+The example guides testers through **Application Setup → User & Installation Setup → Features**, with per-feature readiness for Push, Inbox, Chat, outgoing RTC Audio/Video, User and Installation. Follow the [example guide](example/README.md) for configuration and the exact authentication contracts.
 
 ```sh
 cd example
-flutter run \
-  --dart-define=INFOBIP_APPLICATION_CODE=YOUR_APPLICATION_CODE
+cp example_config.example.json example_config.local.json
+# Fill the ignored local JSON with controlled test configuration.
+flutter run --dart-define-from-file=example_config.local.json
 ```
 
 It intentionally contains neither a real Infobip Application Code nor Huawei credentials. Add your own ignored `android/app/agconnect-services.json` and host Gradle configuration before testing HMS push on a device.
+
+**Never embed signing secrets in a production mobile application. This local configuration is for controlled SDK testing only.** The example generates short-lived tokens on demand; Mobile Messaging/Inbox and Chat use separate JWT contracts and signing configuration.
 
 ## Limitations
 

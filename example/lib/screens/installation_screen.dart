@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
+import '../setup/safe_display.dart';
 import '../widgets/result_card.dart';
 import '../widgets/section_card.dart';
 
@@ -23,12 +23,9 @@ class _InstallationScreenState extends State<InstallationScreen> {
     setState(() => _loading = true);
     try {
       await operation();
-    } on PlatformException catch (error) {
+    } catch (error) {
       if (mounted) {
-        setState(
-          () =>
-              _result = '${error.code}: ${error.message ?? 'Operation failed'}',
-        );
+        setState(() => _result = safeFailure('Installation operation', error));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
