@@ -45,9 +45,15 @@ class ExampleController extends ChangeNotifier {
   ExamplePermissions _permissions = const ExamplePermissions();
   final List<StreamSubscription<Object?>> _subscriptions = [];
   String? result;
+  String? operationError;
+  String? operationBlocker;
   JwtTestMetadata? jwtMetadata;
   InboxAuth _inboxAuth = InboxAuth.applicationCode;
 
+  bool _chatPrepared = false;
+  String get chatAuthLabel => ['installation', 'jwt'].contains(config.chatAuth)
+      ? config.chatAuth
+      : 'unconfigured';
   bool get initialized => _initialized;
   bool get busy => _busy;
   Installation? get installation => _installation;
@@ -71,6 +77,8 @@ class ExampleController extends ChangeNotifier {
   List<FeatureRequirement> get jwtRequirements =>
       config.jwtToken.trim().isNotEmpty
       ? [
+          FeatureRequirement('applicationCode', applicationCodeConfigured),
+          FeatureRequirement('externalUserId', externalUserIdConfigured),
           FeatureRequirement(
             'Supplied JWT unexpired and matching subject',
             validSuppliedJwt(config.jwtToken),
@@ -167,6 +175,10 @@ class ExampleController extends ChangeNotifier {
         ]);
         if (config.chatAuth == 'jwt') {
           requirements.addAll([
+            FeatureRequirement(
+              'Chat subject at most 100 characters',
+              config.externalUserId.trim().length <= 100,
+            ),
             identity,
             person,
             if (config.chatJwtToken.isEmpty) ...[
@@ -193,7 +205,7 @@ class ExampleController extends ChangeNotifier {
             ] else
               FeatureRequirement(
                 'Supplied Chat JWT unexpired and matching subject',
-                validSuppliedJwt(config.chatJwtToken),
+                validSuppliedJwt(config.chatJwtToken, chat: true),
               ),
           ]);
         }
@@ -237,6 +249,71 @@ class ExampleController extends ChangeNotifier {
     return FeatureReadiness(feature.title, requirements);
   }
 
+  String? testBlocker(DeviceTest test) {
+    if (test.action == 'initialize') {
+      return applicationCodeConfigured
+          ? null
+          : 'Fill infobipApplicationCode in the local Dart configuration.';
+    }
+    if (!initialized) return 'Initialize SDK in Setup first.';
+    if ((test.category == 'USER' || test.category == 'INBOX') &&
+        !externalUserIdConfigured) {
+      return 'Fill externalUserId in the local Dart configuration.';
+    }
+    if (test.category == 'SDK' && session.huaweiConfigured != true) {
+      return 'Verify the real Huawei host App ID and agconnect-services.json.';
+    }
+    if (test.action == 'personalize' || test.action == 'saveUser') {
+      if (!externalUserIdConfigured) {
+        return 'Fill externalUserId in the local Dart configuration.';
+      }
+    }
+    if (test.action == 'jwt') {
+      return jwtConfigReady
+          ? null
+          : jwtRequirements
+                .where((r) => !r.satisfied)
+                .map((r) => r.title)
+                .join('; ');
+    }
+    if (test.action == 'chat') {
+      if (test.category == 'AUTH' && config.chatAuth != 'jwt') {
+        return 'Set chatAuthMode=jwt for the Chat JWT authentication test; restart/rebuild.';
+      }
+      final missing = readiness(ExampleFeature.chat).missing;
+      return missing.isEmpty ? null : missing.map((r) => r.title).join('; ');
+    }
+    if (test.category == 'PUSH' && test.action != 'register') {
+      final missing = readiness(ExampleFeature.push).missing;
+      return missing.isEmpty ? null : missing.map((r) => r.title).join('; ');
+    }
+    if (test.category == 'INBOX') {
+      if (config.inboxLimit <= 0) {
+        return 'Set inboxLimit to a positive integer.';
+      }
+      if (test.action == 'invalidInbox' &&
+          config.invalidExternalUserId.trim().isEmpty) {
+        return 'Fill invalidExternalUserId for this negative test.';
+      }
+      final missing = readiness(ExampleFeature.inbox).missing;
+      return missing.isEmpty ? null : missing.map((r) => r.title).join('; ');
+    }
+    if (test.category == 'RTC') {
+      final missing =
+          readiness(
+            test.action == 'rtcVideo'
+                ? ExampleFeature.rtcVideo
+                : ExampleFeature.rtcAudio,
+          ).missing.where(
+            (r) =>
+                !(test.name == 'Permission denial' &&
+                    r.title.toLowerCase().contains('permission')),
+          );
+      return missing.isEmpty ? null : missing.map((r) => r.title).join('; ');
+    }
+    return null;
+  }
+
   void selectInboxAuth(InboxAuth value) {
     _inboxAuth = value;
     _notify();
@@ -251,6 +328,8 @@ class ExampleController extends ChangeNotifier {
     session.log('SDK', operation, status: 'RUNNING');
     _busy = true;
     result = null;
+    operationError = null;
+    operationBlocker = null;
     _notify();
     try {
       await action();
@@ -258,7 +337,14 @@ class ExampleController extends ChangeNotifier {
       session.log('SDK', operation, status: 'REQUIRES_MANUAL_VERIFICATION');
       return true;
     } catch (error) {
-      result = safeFailure(operation, error);
+      result = error is ExampleBlocked
+          ? 'BLOCKED: ${error.message}'
+          : safeFailure(operation, error);
+      if (error is ExampleBlocked) {
+        operationBlocker = error.message;
+      } else {
+        operationError = result;
+      }
       session.log(
         'ERROR',
         operation,
@@ -275,7 +361,11 @@ class ExampleController extends ChangeNotifier {
   Future<void> initialize() async {
     if (initialized) return;
     await run('Initialize SDK', () async {
-      requireValue(config.applicationCode, 'applicationCode');
+      if (!applicationCodeConfigured) {
+        throw const ExampleBlocked(
+          'Fill infobipApplicationCode in the local Dart configuration.',
+        );
+      }
       await InfobipMobileMessagingHuawei.initialize(
         applicationCode: config.applicationCode.trim(),
       );
@@ -306,7 +396,7 @@ class ExampleController extends ChangeNotifier {
         'User event',
         details: {
           'matchesConfiguredIdentity':
-              value.externalUserId == config.externalUserId,
+              value.externalUserId == config.externalUserId.trim(),
         },
       );
       _user = value;
@@ -416,9 +506,12 @@ class ExampleController extends ChangeNotifier {
     await run('Refresh User', _readUser);
   }
 
-  Future<void> registerPush() async {
-    if (!initialized) return;
-    await run('Register for remote notifications', () async {
+  Future<bool> registerPush() async {
+    if (!initialized) {
+      operationBlocker = 'Initialize SDK before registering push.';
+      return false;
+    }
+    return run('Register for remote notifications', () async {
       _permissions = await ExamplePermissions.read(request: 'push');
       await InfobipMobileMessagingHuawei.registerForRemoteNotifications();
       await _readInstallation();
@@ -427,26 +520,101 @@ class ExampleController extends ChangeNotifier {
     });
   }
 
-  Future<void> personalize() async {
-    if (!initialized || !externalUserIdConfigured) return;
+  /// Identity changes must not silently invalidate an active RTC/Chat test.
+  Future<void> ensureUserMutationAllowed({bool changesIdentity = true}) async {
+    if (!initialized) {
+      throw const ExampleBlocked(
+        'Initialize SDK before changing the test user.',
+      );
+    }
+    if (!externalUserIdConfigured) {
+      throw const ExampleBlocked(
+        'Fill externalUserId in the local Dart configuration.',
+      );
+    }
+    if (changesIdentity &&
+        (_chatPrepared ||
+            session.tests.any(
+              (t) => t.category == 'RTC' && t.status == TestStatus.RUNNING,
+            ))) {
+      throw const ExampleBlocked(
+        'Finish RTC testing and restart after a prepared Chat session before changing user identity.',
+      );
+    }
+    final active = await HuaweiRtc.getActiveCall();
+    if (active != null && active.status != HuaweiRtcCallStatus.finished) {
+      throw const ExampleBlocked(
+        'Hang up and await finished before changing the test user.',
+      );
+    }
+  }
+
+  Future<UserData> saveConfiguredUser({
+    UserData? previous,
+    String? firstName,
+    String? lastName,
+  }) async {
+    await ensureUserMutationAllowed(
+      changesIdentity: _user?.externalUserId != config.externalUserId.trim(),
+    );
+    if (previous?.externalUserId != config.externalUserId.trim()) {
+      previous = null;
+    }
+    await InfobipMobileMessagingHuawei.saveUser(
+      UserData(
+        externalUserId: config.externalUserId.trim(),
+        firstName: firstName ?? config.firstName,
+        lastName: lastName ?? config.lastName,
+        middleName: previous?.middleName,
+        gender: previous?.gender,
+        birthday: previous?.birthday,
+        tags: previous?.tags,
+        customAttributes: previous?.customAttributes,
+        emails: config.email.trim().isEmpty
+            ? previous?.emails
+            : [config.email.trim()],
+        phones: config.phoneNumber.trim().isEmpty
+            ? previous?.phones
+            : [config.phoneNumber.trim()],
+      ),
+    );
+    _user = await InfobipMobileMessagingHuawei.fetchUser();
+    _notify();
+    return _user!;
+  }
+
+  Future<bool> personalize({UserAttributes? attributes}) async {
     final succeeded = await run('Personalize User', () async {
+      await ensureUserMutationAllowed();
       _user = await InfobipMobileMessagingHuawei.personalize(
         PersonalizeContext(
           userIdentity: UserIdentity(
             externalUserId: config.externalUserId.trim(),
           ),
+          userAttributes: attributes,
         ),
       );
+      // A callback is not proof of persisted server state.
+      _user = await InfobipMobileMessagingHuawei.fetchUser();
     });
     if (succeeded) await refresh();
+    return succeeded;
+  }
+
+  Future<UserData> depersonalizeUser() async {
+    await ensureUserMutationAllowed();
+    await InfobipMobileMessagingHuawei.depersonalize();
+    _user = await InfobipMobileMessagingHuawei.fetchUser();
+    _notify();
+    return _user!;
   }
 
   String generateInboxJwt({DateTime? now}) {
-    if (config.jwtToken.isNotEmpty) {
+    if (config.jwtToken.trim().isNotEmpty) {
       if (!validSuppliedJwt(config.jwtToken)) {
         throw const FormatException('Invalid supplied JWT');
       }
-      return config.jwtToken;
+      return config.jwtToken.trim();
     }
     return ExampleJwtHelper.generate(
       applicationCode: config.applicationCode,
@@ -481,7 +649,7 @@ class ExampleController extends ChangeNotifier {
         ),
       );
       result =
-          'JWT generation verified locally. Backend authorization is tested by fetching Inbox.';
+          'JWT structure checked locally; signature/backend authorization is tested by fetching Inbox.';
     });
   }
 
@@ -510,25 +678,37 @@ class ExampleController extends ChangeNotifier {
       throw StateError('Chat prerequisites missing');
     }
     if (config.chatAuth == 'jwt') {
-      await InfobipMobileMessagingHuawei.setChatJwtProvider(() async {
-        if (!personalized) {
-          throw StateError('Personalize the configured Chat user first');
-        }
-        session.log('AUTH', 'Chat JWT provider requested');
-        if (config.chatJwtToken.isNotEmpty) {
-          if (!validSuppliedJwt(config.chatJwtToken)) {
-            throw const FormatException('Invalid supplied Chat JWT');
+      await InfobipMobileMessagingHuawei.setChatJwtProvider(
+        () async {
+          if (!personalized) {
+            throw StateError('Personalize the configured Chat user first');
           }
-          return config.chatJwtToken;
-        }
-        return ChatJwtHelper.generate(
-          widgetId: config.chatWidgetId,
-          externalUserId: config.externalUserId,
-          keyId: config.chatKeyId,
-          secretKey: config.chatSecretKey,
-          ttl: config.chatJwtTtl,
-        );
-      });
+          session.log('AUTH', 'Chat JWT provider requested');
+          if (config.chatJwtToken.trim().isNotEmpty) {
+            if (!validSuppliedJwt(config.chatJwtToken, chat: true)) {
+              throw const FormatException('Invalid supplied Chat JWT');
+            }
+            return config.chatJwtToken.trim();
+          }
+          return ChatJwtHelper.generate(
+            widgetId: config.chatWidgetId,
+            externalUserId: config.externalUserId,
+            keyId: config.chatKeyId,
+            secretKey: config.chatSecretKey,
+            ttl: config.chatJwtTtl,
+          );
+        },
+        (error) {
+          result = safeFailure('Chat JWT provider', error);
+          session.log(
+            'ERROR',
+            'Chat JWT provider failed',
+            status: 'FAIL',
+            details: {'error': result},
+          );
+          _notify();
+        },
+      );
     }
     await InfobipMobileMessagingHuawei.setChatCustomization(
       const ChatCustomization(
@@ -542,6 +722,7 @@ class ExampleController extends ChangeNotifier {
           'Chat • chat_error\nCheck widget configuration and connectivity.';
       _notify();
     });
+    _chatPrepared = true;
   });
 
   Future<void> requestRtcPermissions({required bool video}) async {
@@ -556,19 +737,61 @@ class ExampleController extends ChangeNotifier {
     await run('Open Android settings', ExamplePermissions.openSettings);
   }
 
-  bool validSuppliedJwt(String token) {
+  /// Structural/claim checks only; the backend verifies the supplied signature.
+  /// MM and widget JWT contracts are deliberately validated separately.
+  bool validSuppliedJwt(String token, {bool chat = false, DateTime? now}) {
     try {
-      final parts = token.split('.');
-      if (parts.length != 3 || parts.any((p) => p.isEmpty)) return false;
-      final claims =
+      final parts = token.trim().split('.');
+      if (parts.length != 3 ||
+          parts.any((p) => !RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(p))) {
+        return false;
+      }
+      Map decode(String segment) =>
           jsonDecode(
-                utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+                utf8.decode(base64Url.decode(base64Url.normalize(segment))),
               )
               as Map;
-      return claims['exp'] is num &&
-          (claims['exp'] as num) >
-              DateTime.now().millisecondsSinceEpoch ~/ 1000 &&
-          claims['sub'] == config.externalUserId;
+      final header = decode(parts[0]), claims = decode(parts[1]);
+      if (header['alg'] != 'HS256' ||
+          header['typ'] != 'JWT' ||
+          base64Url.decode(base64Url.normalize(parts[2])).length != 32) {
+        return false;
+      }
+      final seconds = (now ?? DateTime.now()).millisecondsSinceEpoch ~/ 1000;
+      final issued = claims['iat'];
+      // The widget contract defaults an omitted exp to iat + 15 seconds.
+      final expires = chat && !claims.containsKey('exp') && issued is int
+          ? issued + 15
+          : claims['exp'];
+      if (issued is! int ||
+          expires is! int ||
+          issued > seconds ||
+          expires <= seconds ||
+          expires <= issued ||
+          !externalUserIdConfigured ||
+          claims['sub'] != config.externalUserId.trim()) {
+        return false;
+      }
+      bool nonblank(Object? value) =>
+          value is String && value.trim().isNotEmpty;
+      if (!nonblank(claims['jti']) || !nonblank(claims['iss'])) return false;
+      if (chat) {
+        return claims['stp'] == 'externalPersonId' &&
+            config.externalUserId.trim().length <= 100 &&
+            (claims['jti'] as String).length <= 50 &&
+            nonblank(claims['ski']) &&
+            (config.chatWidgetId.trim().isEmpty ||
+                claims['iss'] == config.chatWidgetId.trim()) &&
+            (config.chatKeyId.trim().isEmpty ||
+                claims['ski'] == config.chatKeyId.trim());
+      }
+      return applicationCodeConfigured &&
+          nonblank(header['kid']) &&
+          (config.jwtKid.trim().isEmpty ||
+              header['kid'] == config.jwtKid.trim()) &&
+          claims['typ'] == 'Bearer' &&
+          claims['iss'] == config.applicationCode.trim() &&
+          claims['infobip-api-key'] == config.applicationCode.trim();
     } catch (_) {
       return false;
     }

@@ -34,7 +34,11 @@ class _UserScreenState extends State<UserScreen> {
       await widget.controller.refresh();
     } catch (error) {
       if (mounted) {
-        setState(() => _result = safeFailure('User operation', error));
+        setState(
+          () => _result = error is ExampleBlocked
+              ? 'BLOCKED: ${error.message}'
+              : safeFailure('User operation', error),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -43,9 +47,8 @@ class _UserScreenState extends State<UserScreen> {
 
   void _setUser(UserData user, String operation) => setState(() {
     _user = user;
-    _firstName.text = user.firstName ?? '';
-    _lastName.text = user.lastName ?? '';
-    _result = '$operation succeeded.\n${_describe(user)}';
+    _result =
+        '$operation returned SDK data; confirm intended server state.\n${_describe(user)}';
   });
 
   String _describe(UserData user) => [
@@ -119,22 +122,13 @@ class _UserScreenState extends State<UserScreen> {
                 onPressed: _loading
                     ? null
                     : () => _run(() async {
-                        final saved =
-                            await InfobipMobileMessagingHuawei.saveUser(
-                              UserData(
-                                externalUserId: _user?.externalUserId,
-                                firstName: _firstName.text.trim(),
-                                lastName: _lastName.text.trim(),
-                                middleName: _user?.middleName,
-                                gender: _user?.gender,
-                                birthday: _user?.birthday,
-                                phones: _user?.phones,
-                                emails: _user?.emails,
-                                tags: _user?.tags,
-                                customAttributes: _user?.customAttributes,
-                              ),
+                        final saved = await widget.controller
+                            .saveConfiguredUser(
+                              previous: _user,
+                              firstName: _firstName.text.trim(),
+                              lastName: _lastName.text.trim(),
                             );
-                        _setUser(saved, 'User save');
+                        _setUser(saved, 'Server user verification after save');
                       }),
                 child: const Text('Save user'),
               ),
@@ -158,26 +152,26 @@ class _UserScreenState extends State<UserScreen> {
                         _loading || !widget.controller.externalUserIdConfigured
                         ? null
                         : () => _run(() async {
-                            final user =
-                                await InfobipMobileMessagingHuawei.personalize(
-                                  PersonalizeContext(
-                                    userIdentity: UserIdentity(
-                                      externalUserId: widget
-                                          .controller
-                                          .config
-                                          .externalUserId
-                                          .trim(),
-                                    ),
-                                    userAttributes: UserAttributes(
-                                      firstName: _firstName.text.trim().isEmpty
-                                          ? null
-                                          : _firstName.text.trim(),
-                                      lastName: _lastName.text.trim().isEmpty
-                                          ? null
-                                          : _lastName.text.trim(),
-                                    ),
-                                  ),
-                                );
+                            final ok = await widget.controller.personalize(
+                              attributes: UserAttributes(
+                                firstName: _firstName.text.trim().isEmpty
+                                    ? null
+                                    : _firstName.text.trim(),
+                                lastName: _lastName.text.trim().isEmpty
+                                    ? null
+                                    : _lastName.text.trim(),
+                              ),
+                            );
+                            if (!mounted) return;
+                            if (!ok) {
+                              setState(
+                                () => _result =
+                                    widget.controller.result ??
+                                    'Personalization failed.',
+                              );
+                              return;
+                            }
+                            final user = widget.controller.user!;
                             _setUser(user, 'Personalization');
                           }),
                     child: const Text('Personalize'),
@@ -186,11 +180,12 @@ class _UserScreenState extends State<UserScreen> {
                     onPressed: _loading
                         ? null
                         : () => _run(() async {
-                            await InfobipMobileMessagingHuawei.depersonalize();
+                            await widget.controller.depersonalizeUser();
                             if (mounted) {
                               setState(() {
                                 _user = null;
-                                _result = 'Depersonalization succeeded.';
+                                _result =
+                                    'Depersonalization completed; verify empty server identity and Portal state.';
                               });
                             }
                           }),

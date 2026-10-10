@@ -45,7 +45,7 @@ class TestCenterScreen extends StatelessWidget {
                       'Push: ${c.registered ? 'Registration ID present' : 'Waiting for registration'} · HMS token ${c.installation?.pushServiceToken?.isNotEmpty == true ? 'present' : 'missing'}',
                     ),
                     Text(
-                      'Inbox authentication: ${c.inboxAuth.label} · Chat: ${c.config.chatAuth.isEmpty ? 'Unconfigured' : c.config.chatAuth}',
+                      'Inbox authentication: ${c.inboxAuth.label} · Chat: ${c.chatAuthLabel}',
                     ),
                     Text('Test user: ${masked(c.config.externalUserId)}'),
                     Text(
@@ -167,16 +167,19 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
 
   Future<void> _run(DeviceTest t) async {
     if (_running) return;
-    c.session.begin(
-      t,
-      'Inbox: ${c.inboxAuth.label}; Chat: ${c.config.chatAuth}',
-    );
-    if (t.action != 'initialize' && !c.initialized) {
-      c.session.complete(
-        t,
-        TestStatus.BLOCKED,
-        'Initialize SDK in Setup first.',
+    c.operationError = null;
+    c.operationBlocker = null;
+    if (t.category == 'INBOX') {
+      c.selectInboxAuth(
+        t.name.startsWith('JWT') ? InboxAuth.jwt : InboxAuth.applicationCode,
       );
+    }
+    if (t.action == 'jwt') c.selectInboxAuth(InboxAuth.jwt);
+    if (t.action == 'clearJwt') c.selectInboxAuth(InboxAuth.applicationCode);
+    c.session.begin(t, 'Inbox: ${c.inboxAuth.label}; Chat: ${c.chatAuthLabel}');
+    final blocker = c.testBlocker(t);
+    if (blocker != null) {
+      c.session.complete(t, TestStatus.BLOCKED, blocker);
       return;
     }
     setState(() => _running = true);
@@ -187,7 +190,15 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
       switch (t.action) {
         case 'initialize':
           await c.initialize();
-          if (!c.initialized) throw StateError('Initialization failed');
+          if (!c.initialized) {
+            c.session.complete(
+              t,
+              c.operationBlocker != null ? TestStatus.BLOCKED : TestStatus.FAIL,
+              c.result ?? 'Initialization failed.',
+              error: c.operationError,
+            );
+            return;
+          }
           actual = c.result ?? 'SDK initialized; verify installation.';
         case 'clearJwt':
           await InfobipMobileMessagingHuawei.setJwt(null);
@@ -208,7 +219,18 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
           actual =
               'Token structurally validated/generated; backend acceptance requires Inbox fetch.';
         case 'register':
-          await c.registerPush();
+          if (!await c.registerPush()) {
+            if (c.operationBlocker != null) {
+              throw ExampleBlocked(c.operationBlocker!);
+            }
+            c.session.complete(
+              t,
+              TestStatus.FAIL,
+              'Registration operation failed.',
+              error: c.operationError,
+            );
+            return;
+          }
           actual = c.result ?? 'Registration requested.';
         case 'getUser':
         case 'fetchUser':
@@ -216,34 +238,27 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
               ? await InfobipMobileMessagingHuawei.getUser()
               : await InfobipMobileMessagingHuawei.fetchUser();
           actual =
-              'User returned. Identity matches: ${u.externalUserId == config.externalUserId}; first/last name present: ${u.firstName != null}/${u.lastName != null}.';
+              'User returned. Identity matches: ${u.externalUserId == config.externalUserId.trim()}; first/last name present: ${u.firstName != null}/${u.lastName != null}.';
         case 'saveUser':
-          await InfobipMobileMessagingHuawei.saveUser(
-            UserData(
-              externalUserId: config.externalUserId,
-              firstName: config.firstName,
-              lastName: config.lastName,
-              emails: config.email.isEmpty ? null : [config.email],
-              phones: config.phoneNumber.isEmpty ? null : [config.phoneNumber],
-            ),
-          );
-          final u = await InfobipMobileMessagingHuawei.fetchUser();
+          final u = await c.saveConfiguredUser();
           actual =
-              'Server matches: identity ${u.externalUserId == config.externalUserId}; first name ${u.firstName == config.firstName}; last name ${u.lastName == config.lastName}; email ${config.email.isEmpty ? 'not tested' : u.emails?.contains(config.email)}; phone ${config.phoneNumber.isEmpty ? 'not tested' : u.phones?.contains(config.phoneNumber)}.';
+              'Server matches: identity ${u.externalUserId == config.externalUserId.trim()}; first name ${u.firstName == config.firstName}; last name ${u.lastName == config.lastName}; email ${config.email.isEmpty ? 'not tested' : u.emails?.contains(config.email.trim())}; phone ${config.phoneNumber.isEmpty ? 'not tested' : u.phones?.contains(config.phoneNumber.trim())}.';
         case 'personalize':
-          await c.personalize();
-          actual = c.result ?? 'Personalization requested; verify identity.';
-        case 'depersonalize':
-          if (await HuaweiRtc.getActiveCall() != null) {
+          if (!await c.personalize()) {
+            if (c.operationBlocker != null) {
+              throw ExampleBlocked(c.operationBlocker!);
+            }
             c.session.complete(
               t,
-              TestStatus.BLOCKED,
-              'Hang up and await finished before changing identity.',
+              TestStatus.FAIL,
+              'Personalization operation failed.',
+              error: c.operationError,
             );
             return;
           }
-          await InfobipMobileMessagingHuawei.depersonalize();
-          final u = await InfobipMobileMessagingHuawei.fetchUser();
+          actual = c.result ?? 'Personalization requested; verify identity.';
+        case 'depersonalize':
+          final u = await c.depersonalizeUser();
           actual =
               'Server external identity empty: ${u.externalUserId?.isEmpty != false}.';
         case 'saveInstallation':
@@ -292,7 +307,7 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
               await InfobipMobileMessagingHuawei.setJwt(null);
             }
             inbox = await InfobipMobileMessagingHuawei.fetchInbox(
-              externalUserId: config.invalidExternalUserId,
+              externalUserId: config.invalidExternalUserId.trim(),
               jwt: c.inboxAuth == InboxAuth.jwt ? c.generateInboxJwt() : null,
               options: options,
             );
@@ -337,12 +352,23 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
         '${t.id} operation completed',
         details: {'summary': actual},
       );
-      c.session.complete(t, TestStatus.REQUIRES_MANUAL_VERIFICATION, actual);
-    } catch (error) {
       c.session.complete(
         t,
         TestStatus.REQUIRES_MANUAL_VERIFICATION,
-        'Operation returned an error. Confirm Fail for unexpected errors; confirm Pass only if this negative test produced the expected rejection.',
+        actual,
+        error: c.operationError,
+      );
+    } on ExampleBlocked catch (error) {
+      c.session.complete(t, TestStatus.BLOCKED, error.message);
+    } catch (error) {
+      c.session.complete(
+        t,
+        t.expectsRejection
+            ? TestStatus.REQUIRES_MANUAL_VERIFICATION
+            : TestStatus.FAIL,
+        t.expectsRejection
+            ? 'Negative test returned an error; confirm Pass only if this is the expected rejection.'
+            : 'Operation failed unexpectedly. Correct the error and re-run before confirming Pass.',
         error: safeFailure('Test operation', error),
       );
     } finally {
@@ -403,7 +429,7 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
                             t.action == 'manual' ? 'Begin observation' : 'Run',
                           ),
                         ),
-                        if (!_running && t.status != TestStatus.NOT_RUN) ...[
+                        if (!_running && t.canConfirm) ...[
                           OutlinedButton(
                             onPressed: () => c.session.complete(
                               t,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:infobip_mobilemessaging_huawei_example/auth/example_jwt_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:infobip_mobilemessaging_huawei_example/app.dart';
@@ -66,10 +67,18 @@ void main() {
   test(
     'supplied JWT accepts only matching unexpired claims; separate Chat token',
     () {
-      final token =
-          'e30.${base64Url.encode(utf8.encode(jsonEncode({'sub': 'test-user', 'exp': DateTime.now().millisecondsSinceEpoch ~/ 1000 + 60}))).replaceAll('=', '')}.signature';
+      final token = ExampleJwtHelper.generate(
+        applicationCode: testConfig.applicationCode,
+        externalUserId: testConfig.externalUserId,
+        kid: testConfig.jwtKid,
+        secretKey: testConfig.jwtSecretKey,
+      );
       final c = ExampleController(
-        config: ExampleConfig(externalUserId: 'test-user', jwtToken: token),
+        config: ExampleConfig(
+          applicationCode: testConfig.applicationCode,
+          externalUserId: 'test-user',
+          jwtToken: token,
+        ),
       );
       expect(c.jwtConfigReady, true);
       expect(c.generateInboxJwt(), token);

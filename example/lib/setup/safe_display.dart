@@ -57,6 +57,16 @@ String safeFailure(String operation, Object error) {
     'stale_request',
     'not_available',
   };
-  final code = codes.contains(candidate) ? candidate : 'operation_failed';
+  final code =
+      codes.contains(candidate) ||
+          RegExp(r'^-?[0-9]{1,10}$').hasMatch(candidate)
+      ? candidate
+      : 'operation_failed';
   return '$operation • $code\nCheck configuration, device permissions and connectivity, then retry.';
+}
+
+/// A local prerequisite failure with application-owned text, never SDK details.
+class ExampleBlocked implements Exception {
+  const ExampleBlocked(this.message);
+  final String message;
 }

@@ -51,6 +51,10 @@ class FakeSdk {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   void install() {
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('infobip_mobilemessaging_huawei/huawei_rtc'),
+      (_) async => null,
+    );
     messenger.setMockMethodCallHandler(events, (_) async => null);
     messenger.setMockMethodCallHandler(ExamplePermissions.channel, (
       call,
@@ -69,6 +73,11 @@ class FakeSdk {
           return installation;
         case 'getUser':
         case 'fetchUser':
+          return user;
+        case 'saveUser':
+          user = Map<String, Object?>.from(
+            (call.arguments as Map)['user'] as Map,
+          );
           return user;
         case 'personalize':
           final identity = (call.arguments as Map)['userIdentity'] as Map;
@@ -117,6 +126,10 @@ class FakeSdk {
 
   Future<void> close() async {
     await InfobipMobileMessagingHuawei.cleanup();
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('infobip_mobilemessaging_huawei/huawei_rtc'),
+      null,
+    );
     messenger.setMockMethodCallHandler(methods, null);
     messenger.setMockMethodCallHandler(events, null);
     messenger.setMockMethodCallHandler(ExamplePermissions.channel, null);

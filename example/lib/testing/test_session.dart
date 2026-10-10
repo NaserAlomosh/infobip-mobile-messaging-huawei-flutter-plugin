@@ -36,6 +36,17 @@ class DeviceTest {
       permissions,
       authentication,
       action;
+  bool get expectsRejection =>
+      action == 'invalidInbox' ||
+      name.contains('Authentication errors') ||
+      name == 'Network failure' ||
+      name == 'Permission denial' ||
+      name == 'Call already active' ||
+      name == 'Network interruption';
+  bool get canConfirm =>
+      status == TestStatus.REQUIRES_MANUAL_VERIFICATION ||
+      status == TestStatus.PASS ||
+      (status == TestStatus.FAIL && (error == null || expectsRejection));
   TestStatus status;
   String actual = 'No evidence recorded.';
   String? error;
@@ -65,6 +76,7 @@ class TestSession extends ChangeNotifier {
   String deviceModel = 'unknown', androidVersion = 'unknown';
   bool? huaweiConfigured;
   bool _disposed = false;
+  Future<void>? _restoration;
   int count(TestStatus status) => tests.where((t) => t.status == status).length;
   void changed() {
     if (!_disposed) notifyListeners();
@@ -89,6 +101,7 @@ class TestSession extends ChangeNotifier {
 
   void begin(DeviceTest test, String auth) {
     if (test.status == TestStatus.UNSUPPORTED) return;
+    test.durationMs = null;
     test.started = DateTime.now();
     test.timestamp = test.started;
     test.authMode = auth;
@@ -106,6 +119,7 @@ class TestSession extends ChangeNotifier {
     String? error,
   }) {
     if (test.status == TestStatus.UNSUPPORTED) return;
+    if (status == TestStatus.PASS && !test.canConfirm) return;
     test.status = status;
     test.actual = actual;
     test.error = error;
@@ -128,13 +142,18 @@ class TestSession extends ChangeNotifier {
   String exportLogs() => const JsonEncoder.withIndent('  ').convert(logs);
   Future<void> persist() async {
     try {
+      // Wait for the startup read before writing, so a quick test start cannot
+      // erase earlier rows. Rows modified this session win over the snapshot.
+      await _restoration;
       await host.invokeMethod<void>('saveTestReport', {'report': report()});
     } catch (_) {
       log('ERROR', 'Report persistence unavailable');
     }
   }
 
-  Future<void> restore() async {
+  Future<void> restore() => _restoration ??= _restore();
+
+  Future<void> _restore() async {
     try {
       final info = await host.invokeMapMethod<String, dynamic>('deviceInfo');
       deviceModel = info?['model'] as String? ?? 'unknown';
@@ -147,17 +166,28 @@ class TestSession extends ChangeNotifier {
           final matches = tests.where((t) => t.id == row['id']);
           if (matches.isEmpty) continue;
           final t = matches.first;
-          if (t.status == TestStatus.UNSUPPORTED) continue;
+          if (t.status == TestStatus.UNSUPPORTED || t.timestamp != null) {
+            continue;
+          }
           t.status = TestStatus.values.byName(row['status'] as String);
           if (t.status == TestStatus.RUNNING) {
             t.status = TestStatus.REQUIRES_MANUAL_VERIFICATION;
           }
-          // Only summaries produced by this app are restored, never free text.
+          // This private host store contains the app's own sanitized summaries.
           t.actual =
+              row['actualResult'] as String? ??
               'Restored prior local result; re-run to collect fresh evidence.';
+          t.error = row['error'] as String?;
           t.timestamp = DateTime.tryParse(row['timestamp'] as String? ?? '');
           t.durationMs = row['durationMs'] as int?;
-          t.authMode = row['authenticationMode'] as String?;
+          final auth = row['authenticationMode'];
+          t.authMode =
+              auth is String &&
+                  RegExp(
+                    r'^Inbox: (Application Code|JWT); Chat: (installation|jwt|unconfigured)$',
+                  ).hasMatch(auth)
+              ? auth
+              : null;
         }
       }
     } catch (_) {
