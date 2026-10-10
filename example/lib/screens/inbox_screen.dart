@@ -17,8 +17,10 @@ class InboxScreen extends StatefulWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   ExampleController get c => widget.controller;
-  final _topic = TextEditingController();
-  final _limit = TextEditingController(text: '20');
+  late final _topic = TextEditingController(text: c.config.inboxTopic);
+  late final _limit = TextEditingController(
+    text: c.config.inboxLimit.toString(),
+  );
   Inbox? _inbox;
   bool _loading = false;
   String _result = 'Fetch Inbox for the configured test user.';
@@ -66,10 +68,11 @@ class _InboxScreenState extends State<InboxScreen> {
       }
       await _fetchAfterUpdate();
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _result = safeFailure('Mark seen / refresh Inbox', error),
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -173,11 +176,13 @@ class _InboxScreenState extends State<InboxScreen> {
               ...inbox.messages.map(
                 (message) => Card(
                   child: ListTile(
-                    title: Text(message.title ?? 'Untitled message'),
+                    title: Text(
+                      'Message ${inbox.messages.indexOf(message) + 1} (content redacted)',
+                    ),
                     subtitle: Text(
                       [
-                        if (message.body != null) message.body!,
-                        'Topic: ${message.topic}',
+                        'Body present: ${message.body?.isNotEmpty == true}',
+                        'Topic: ${masked(message.topic)}',
                         'Received: ${message.receivedTimestamp ?? 'unknown'}',
                       ].join('\n'),
                     ),

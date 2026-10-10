@@ -10,6 +10,7 @@ import '../config/example_config.dart';
 import '../platform/example_permissions.dart';
 import 'feature_readiness.dart';
 import 'safe_display.dart';
+import '../testing/test_session.dart';
 
 class JwtTestMetadata {
   const JwtTestMetadata(this.subject, this.issued, this.expires);
@@ -25,6 +26,16 @@ class JwtTestMetadata {
 class ExampleController extends ChangeNotifier {
   ExampleController({this.config = const ExampleConfig()});
   final ExampleConfig config;
+  final TestSession session = TestSession();
+  bool _observing = false;
+
+  void startObserving() {
+    if (_observing) return;
+    _observing = true;
+    _listen();
+    unawaited(session.restore());
+  }
+
   bool _initialized = false;
   bool _busy = false;
   bool _disposed = false;
@@ -57,16 +68,27 @@ class ExampleController extends ChangeNotifier {
   // Let testers inspect individual missing prerequisites, including registration.
   bool get canOpenFeatures => initialized && !busy;
 
-  List<FeatureRequirement> get jwtRequirements => [
-    FeatureRequirement('applicationCode', applicationCodeConfigured),
-    FeatureRequirement('externalUserId', externalUserIdConfigured),
-    FeatureRequirement('kid', config.jwtKid.trim().isNotEmpty),
-    FeatureRequirement('secretKey (valid hex, at least 32 bytes)', _validMmKey),
-    FeatureRequirement(
-      'JWT TTL (1–300 whole seconds)',
-      validTestTtl(config.jwtTtl),
-    ),
-  ];
+  List<FeatureRequirement> get jwtRequirements =>
+      config.jwtToken.trim().isNotEmpty
+      ? [
+          FeatureRequirement(
+            'Supplied JWT unexpired and matching subject',
+            validSuppliedJwt(config.jwtToken),
+          ),
+        ]
+      : [
+          FeatureRequirement('applicationCode', applicationCodeConfigured),
+          FeatureRequirement('externalUserId', externalUserIdConfigured),
+          FeatureRequirement('kid', config.jwtKid.trim().isNotEmpty),
+          FeatureRequirement(
+            'secretKey (valid hex, at least 32 bytes)',
+            _validMmKey,
+          ),
+          FeatureRequirement(
+            'JWT TTL (1–300 whole seconds)',
+            validTestTtl(config.jwtTtl),
+          ),
+        ];
   bool get _validMmKey {
     try {
       ExampleJwtHelper.decodeHexKey(config.jwtSecretKey);
@@ -147,30 +169,44 @@ class ExampleController extends ChangeNotifier {
           requirements.addAll([
             identity,
             person,
-            FeatureRequirement(
-              'Chat widget ID',
-              config.chatWidgetId.trim().isNotEmpty,
-            ),
-            FeatureRequirement(
-              'Chat key ID',
-              config.chatKeyId.trim().isNotEmpty,
-            ),
-            FeatureRequirement(
-              'Separate Chat secret (valid Base64, at least 32 bytes)',
-              _validChatKey,
-            ),
-            FeatureRequirement(
-              'Chat subject at most 100 characters',
-              config.externalUserId.trim().length <= 100,
-            ),
-            FeatureRequirement(
-              'Chat TTL (15–300 whole seconds)',
-              validTestTtl(config.chatJwtTtl, minimumSeconds: 15),
-            ),
+            if (config.chatJwtToken.isEmpty) ...[
+              FeatureRequirement(
+                'Chat widget ID',
+                config.chatWidgetId.trim().isNotEmpty,
+              ),
+              FeatureRequirement(
+                'Chat key ID',
+                config.chatKeyId.trim().isNotEmpty,
+              ),
+              FeatureRequirement(
+                'Separate Chat secret (valid Base64, at least 32 bytes)',
+                _validChatKey,
+              ),
+              FeatureRequirement(
+                'Chat subject at most 100 characters',
+                config.externalUserId.trim().length <= 100,
+              ),
+              FeatureRequirement(
+                'Chat TTL (15–300 whole seconds)',
+                validTestTtl(config.chatJwtTtl, minimumSeconds: 15),
+              ),
+            ] else
+              FeatureRequirement(
+                'Supplied Chat JWT unexpired and matching subject',
+                validSuppliedJwt(config.chatJwtToken),
+              ),
           ]);
         }
       case ExampleFeature.rtcAudio:
       case ExampleFeature.rtcVideo:
+        requirements.add(
+          FeatureRequirement(
+            'Testing enabled in local configuration',
+            feature == ExampleFeature.rtcVideo
+                ? config.enableVideoTesting
+                : config.enableAudioTesting,
+          ),
+        );
         requirements.addAll([
           FeatureRequirement(
             'rtcCallsConfigurationId configured',
@@ -212,15 +248,23 @@ class ExampleController extends ChangeNotifier {
 
   Future<bool> run(String operation, Future<void> Function() action) async {
     if (busy) return false;
+    session.log('SDK', operation, status: 'RUNNING');
     _busy = true;
     result = null;
     _notify();
     try {
       await action();
-      result ??= '$operation succeeded.';
+      result ??= '$operation completed; verify device/server evidence.';
+      session.log('SDK', operation, status: 'REQUIRES_MANUAL_VERIFICATION');
       return true;
     } catch (error) {
       result = safeFailure(operation, error);
+      session.log(
+        'ERROR',
+        operation,
+        status: 'FAIL',
+        details: {'error': result},
+      );
       return false;
     } finally {
       _busy = false;
@@ -236,7 +280,7 @@ class ExampleController extends ChangeNotifier {
         applicationCode: config.applicationCode.trim(),
       );
       _initialized = true;
-      _listen();
+      startObserving();
     });
     if (initialized) await refresh();
   }
@@ -244,21 +288,68 @@ class ExampleController extends ChangeNotifier {
   void _listen() {
     final events = InfobipMobileMessagingHuawei.notifications;
     void installationChanged(Installation value) {
+      session.log(
+        'INSTALLATION',
+        'Installation event',
+        details: {
+          'registered': value.pushRegistrationId?.isNotEmpty == true,
+          'pushEnabled': value.isPushRegistrationEnabled,
+        },
+      );
       _installation = value;
       _notify();
     }
 
     void userChanged(UserData value) {
+      session.log(
+        'USER',
+        'User event',
+        details: {
+          'matchesConfiguredIdentity':
+              value.externalUserId == config.externalUserId,
+        },
+      );
       _user = value;
       _notify();
     }
 
     void failed(Object _) {
+      session.log('ERROR', 'SDK event stream error', status: 'FAIL');
       result = 'SDK events • operation_failed\nRefresh setup state.';
       _notify();
     }
 
     _subscriptions.addAll([
+      events.onMessageReceived.listen(
+        (m) => recordPush('Message received', m),
+        onError: failed,
+      ),
+      events.onNotificationTapped.listen(
+        (m) => recordPush('Notification tapped', m),
+        onError: failed,
+      ),
+      events.onNotificationActionTapped.listen(
+        (e) => recordPush('Notification action tapped', e.message),
+        onError: failed,
+      ),
+      InfobipMobileMessagingHuawei.chat.onUnreadMessageCounterUpdated.listen(
+        (count) =>
+            session.log('CHAT', 'Unread count', details: {'count': count}),
+        onError: failed,
+      ),
+      HuaweiRtc.events.listen(
+        (e) => session.log(
+          'RTC',
+          e.type.name,
+          details: {
+            'sequence': e.sequence,
+            'callStatus': e.call?.status.name,
+            'type': e.call?.type.name,
+            'nativeErrorCode': e.nativeErrorCode,
+          },
+        ),
+        onError: failed,
+      ),
       events.onRegistrationUpdated.listen(installationChanged, onError: failed),
       events.onInstallationUpdated.listen(installationChanged, onError: failed),
       events.onUserUpdated.listen(userChanged, onError: failed),
@@ -350,14 +441,22 @@ class ExampleController extends ChangeNotifier {
     if (succeeded) await refresh();
   }
 
-  String generateInboxJwt({DateTime? now}) => ExampleJwtHelper.generate(
-    applicationCode: config.applicationCode,
-    externalUserId: config.externalUserId,
-    kid: config.jwtKid,
-    secretKey: config.jwtSecretKey,
-    ttl: config.jwtTtl,
-    now: now,
-  );
+  String generateInboxJwt({DateTime? now}) {
+    if (config.jwtToken.isNotEmpty) {
+      if (!validSuppliedJwt(config.jwtToken)) {
+        throw const FormatException('Invalid supplied JWT');
+      }
+      return config.jwtToken;
+    }
+    return ExampleJwtHelper.generate(
+      applicationCode: config.applicationCode,
+      externalUserId: config.externalUserId,
+      kid: config.jwtKid,
+      secretKey: config.jwtSecretKey,
+      ttl: config.jwtTtl,
+      now: now,
+    );
+  }
 
   Future<void> testJwt() async {
     await run('Generate/Test JWT', () async {
@@ -412,8 +511,16 @@ class ExampleController extends ChangeNotifier {
     }
     if (config.chatAuth == 'jwt') {
       await InfobipMobileMessagingHuawei.setChatJwtProvider(() async {
-        if (!personalized)
+        if (!personalized) {
           throw StateError('Personalize the configured Chat user first');
+        }
+        session.log('AUTH', 'Chat JWT provider requested');
+        if (config.chatJwtToken.isNotEmpty) {
+          if (!validSuppliedJwt(config.chatJwtToken)) {
+            throw const FormatException('Invalid supplied Chat JWT');
+          }
+          return config.chatJwtToken;
+        }
         return ChatJwtHelper.generate(
           widgetId: config.chatWidgetId,
           externalUserId: config.externalUserId,
@@ -430,6 +537,7 @@ class ExampleController extends ChangeNotifier {
       ),
     );
     await InfobipMobileMessagingHuawei.setChatExceptionHandler((_) async {
+      session.log('ERROR', 'Chat exception', status: 'FAIL');
       result =
           'Chat • chat_error\nCheck widget configuration and connectivity.';
       _notify();
@@ -448,12 +556,53 @@ class ExampleController extends ChangeNotifier {
     await run('Open Android settings', ExamplePermissions.openSettings);
   }
 
+  bool validSuppliedJwt(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3 || parts.any((p) => p.isEmpty)) return false;
+      final claims =
+          jsonDecode(
+                utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
+              )
+              as Map;
+      return claims['exp'] is num &&
+          (claims['exp'] as num) >
+              DateTime.now().millisecondsSinceEpoch ~/ 1000 &&
+          claims['sub'] == config.externalUserId;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void recordPush(String event, Message message) {
+    session.log(
+      'PUSH',
+      event,
+      details: {
+        'titlePresent': message.title?.isNotEmpty == true,
+        'bodyPresent': message.body?.isNotEmpty == true,
+        'deepLinkPresent': message.deeplink?.isNotEmpty == true,
+        'customPayloadPresent': message.customPayload != null,
+        'titleMatches': config.expectedNotificationTitle.isEmpty
+            ? null
+            : message.title == config.expectedNotificationTitle,
+        'bodyMatches': config.expectedNotificationBody.isEmpty
+            ? null
+            : message.body == config.expectedNotificationBody,
+        'deepLinkMatches': config.expectedDeepLink.isEmpty
+            ? null
+            : message.deeplink == config.expectedDeepLink,
+      },
+    );
+  }
+
   @override
   void dispose() {
     _disposed = true;
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
+    session.dispose();
     super.dispose();
   }
 }

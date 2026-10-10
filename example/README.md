@@ -1,221 +1,80 @@
-# Guided Huawei integration example
+# Huawei SDK Test Center
 
-**Never embed signing secrets in a production mobile application.
-This local configuration is for controlled SDK testing only.**
+A manual integration test application for a **physical Huawei device**, using the existing plugin on `feature/huawei-rtc-core`. All runtime results come from public SDK APIs, real events, or explicit tester confirmation. No physical-device test has been performed by this refactor.
 
-The signing helpers live only under `example/`; they are not plugin APIs.
-Dart defines are compiled into the application and can be extracted from an APK.
-Use a test account, keep the APK private, and generate production tokens on a
-trusted backend. Never paste tokens, signing secrets, or Authorization headers
-into logs, screenshots, issues, or source control.
+## One editable Dart configuration
 
-## Configure and run
-
-Complete the [Huawei host setup](../README.md) first, including the AppGallery
-application, package/signing fingerprint, HMS configuration and App Profile.
-Then, from `example/`:
+From `example/`:
 
 ```sh
-cp example_config.example.json example_config.local.json
-# Edit example_config.local.json locally; keep credentials out of shell history.
 flutter pub get
-flutter run --dart-define-from-file=example_config.local.json
+dart run tool/prepare_local.dart
 ```
 
-The local JSON and any `example_config.local.dart` are ignored by Git. The safe
-JSON template contains only empty values and TTL defaults. We retain environment
-configuration instead of importing a missing ignored Dart file: a clean checkout
-builds and displays missing prerequisites. No generator or local Dart import is
-needed. `lib/config/example_config.dart` is the single configuration class;
-`const ExampleConfig()` reads these compile-time values. Rebuild/restart after
-changing configuration; hot reload does not reload Dart defines.
+Edit **`example/lib/config/example_test_config.dart`**. It is Git-ignored. The launcher creates it from the tracked empty `example_test_config.template.dart` only if it does not already exist, and never overwrites existing local values. Then run:
 
-| ExampleConfig field | JSON / Dart define | Meaning |
+```sh
+flutter run -t lib/main_local.dart -d YOUR_HUAWEI_DEVICE_ID
+```
+
+Use `flutter devices` to get the ID. No Dart defines or JSON test-data file is needed. Restart/rebuild after changing static fields. `lib/main.dart` uses the tracked empty template, so a clean checkout compiles and reports missing prerequisites. `main_local.dart` is an ignored entry point using the same mapping with the local file instead. All feature controllers receive that one configuration object. Running plain `flutter run` intentionally uses empty template values; use the command above for your device session. The old JSON template is retained only as historical reference and is no longer read.
+
+Use controlled test credentials and decrypted values only. Signing secrets are extractable from test APKs; keep those APKs private. Production JWTs belong on a trusted backend. Never use the banking AppKey as a signing key. No decryption or banking encryption exists here.
+
+### Every active field
+
+| Section | Fields to fill / choose | Contract |
 | --- | --- | --- |
-| `applicationCode` | `INFOBIP_APPLICATION_CODE` | Application Code from the Mobile Messaging App Profile. Base SDK initialization context; never call it applicationId. |
-| `externalUserId` | `INFOBIP_EXTERNAL_USER_ID` | Your controlled test user's external identity. Used consistently for personalization, Inbox and authenticated Chat. |
-| `jwtKid` | `INFOBIP_JWT_KID` | Mobile Messaging signing key ID from that App Profile. |
-| `jwtSecretKey` | `INFOBIP_JWT_SECRET_KEY` | Hex-encoded Mobile Messaging signing secret from the same App Profile; at least 32 decoded bytes. |
-| `jwtTtl` | `INFOBIP_JWT_TTL_SECONDS` | Default 15; example accepts 1–300 whole seconds. |
-| `rtcCallsConfigurationId` | `INFOBIP_RTC_CALLS_CONFIGURATION_ID` | Outgoing Calls routing configuration ID, distinct from an RTC push configuration ID. |
-| `rtcIdentity` | `INFOBIP_RTC_IDENTITY` | Optional explicit test identity. Empty uses the registered installation's push registration ID. |
-| `chatAuth` | `INFOBIP_CHAT_AUTH` | Set `installation` or `jwt` to match your Portal widget security setting. Empty disables Chat until explicitly configured. |
-| `chatWidgetId` | `INFOBIP_CHAT_WIDGET_ID` | Live Chat widget issuer for Chat JWT. |
-| `chatKeyId` | `INFOBIP_CHAT_KEY_ID` | Widget secret key ID, used as `ski`. |
-| `chatSecretKey` | `INFOBIP_CHAT_SECRET_KEY` | Separate Base64-encoded widget secret, at least 32 decoded bytes. |
-| `chatJwtTtl` | `INFOBIP_CHAT_JWT_TTL_SECONDS` | Default 60; example accepts 15–300 whole seconds. |
+| Application | `infobipApplicationCode` | Required for SDK initialization. Backend `ApplicationCode` → `INFOBIP_APPLICATION_CODE`. |
+| Mobile Messaging JWT | `jwtToken` **or** `jwtKid`, `jwtSecretKey`, `jwtTtlSeconds` | Optional outside JWT Inbox tests. Signing secret is hex, at least 32 decoded bytes; TTL 1–300 seconds. Fresh locally generated token per Inbox request. A supplied token is reused only while valid: replace/rebuild when expired. Signature acceptance is determined by the backend, not local validation. |
+| Chat authentication | `chatAuthMode` | `installation` or `jwt`, matching Portal widget security. Application Code still initializes the SDK. |
+| Chat JWT | `chatJwtToken` **or** `chatWidgetId`, `chatKeyId`, `chatSecretKey`, `chatJwtTtlSeconds` | Separate widget token/provider. Signing secret is Base64, at least 32 decoded bytes; TTL 15–300 seconds. Matching personalized `externalUserId` required. Generated provider signs on every callback. Supplied tokens cannot be automatically renewed. Restart when changing authentication mode; no public provider-clear API is invented. |
+| Chat controls | `chatMessage`, `chatContextualData`, `chatTheme` | Optional initial text for existing controls; use test-only content and an existing widget theme. Language buttons retain English/Arabic tests. |
+| Test user | `externalUserId`, `firstName`, `lastName`, `email`, `phoneNumber` | Identity required for personalization/Inbox; name defaults available; email/phone optional for save-user testing. Use an isolated test identity. |
+| Inbox | `inboxTopic`, `inboxLimit`, `invalidExternalUserId` | Optional topic, positive limit (default 20); separate intentionally invalid identity for negative tests. Configure an actually empty identity for empty Inbox tests. |
+| Push comparisons | `expectedNotificationTitle`, `expectedNotificationBody`, `expectedDeepLink` | Optional match checks in events, never raw payload logging. Empty disables comparison. |
+| Outgoing RTC | `rtcCallsConfigurationId`, `rtcIdentity`, `enableAudioTesting`, `enableVideoTesting` | Calls routing configuration, **not RTC Push Configuration ID**. Empty identity uses registered installation ID. Flags enable/disable normal call controls. Routing selects the peer; there is no callee API parameter. |
+| Device/installation | `environmentName`, `installationPrimary`, `installationPushEnabled`, `installationAttributes` | Environment label; intended writable test installation state. Attributes must be supported SDK values. Changing push-enabled state affects subsequent delivery tests. |
 
-JWT and Chat signing fields are optional for unrelated features. Empty values,
-invalid secret encodings and invalid TTLs appear as missing prerequisites.
-Never fill the committed JSON template with real credentials.
+**Not used by active flows:** backend `AppKey` → `INFOBIP_APP_KEY`, `InfobipApplicationId` → `INFOBIP_APPLICATION_ID`, `InfobipBaseUrl` → `INFOBIP_BASE_URL`. The inspected public initialization contract has no parameters for these fields. They are documented rather than invented in SDK requests. **Huawei AppGallery App ID is a separate Android host value**, unrelated to Infobip Application Code or Infobip Application ID.
 
-## Three primary stages
+## Huawei Android host setup
 
-1. **Application Setup:** verify the masked Application Code status and select
-   **Initialize SDK**. Next stays disabled until the native initialization call
-   succeeds. Initialization does not prove push registration completed.
-2. **User & Installation Setup:** inspect cached/server installation data;
-   register for remote notifications; grant Android notification permission;
-   personalize the configured external user; optionally expand the JWT section
-   and test local generation. Expand the authentication explanation as needed.
-3. **Features:** seven cards open Push Notifications, Inbox, Chat, Outgoing RTC
-   Audio, Outgoing RTC Video, User and Installation. Every card lists missing
-   prerequisites and disables its open button until those are satisfied.
+1. In AppGallery Connect create/select your Android application. Its package must match `example/android/app/build.gradle.kts`: `com.infobip.mobilemessaging.huawei.example`, or change that `applicationId` to your registered test package.
+2. Register the SHA-256 fingerprint of the certificate actually signing your installed debug APK. Use `cd android && ./gradlew :app:signingReport` to inspect it; do not assume a release fingerprint covers debug builds.
+3. Enable HMS Push Kit and configure the matching Huawei credentials in the Infobip Mobile Messaging App Profile. Match the Infobip Application Code to that profile.
+4. Download the real **`agconnect-services.json`** into **`example/android/app/agconnect-services.json`**. Git ignores it. Do not create a fake file. The AppGallery App ID comes from its `client.app_id`; Gradle provides the HMS manifest app-id metadata from this value and conditionally applies the AppGallery Connect plugin. Empty checkouts build but cannot establish real HMS registration.
+5. Huawei Maven repositories are configured in `example/android/settings.gradle.kts`; the AGC classpath and conditional plugin application are in `example/android/app/build.gradle.kts`. AGC tooling is loaded only when the real local file is present. No production plugin Gradle/source files are changed.
+6. The host already extends **FlutterFragmentActivity** and requests runtime permissions through its example-only channel. Manifest permissions cover notifications (Android 13+), microphone, camera, and Nearby devices/Bluetooth connect (Android 12+). Grant notifications during Push registration and call permissions in Setup. Verify notification channels, Huawei battery/background settings and HMS Core availability on the device.
+7. The main screen reports host App ID resource presence only, not credential correctness or device readiness. A real installation ID/HMS token and Portal delivery are required to confirm setup.
 
-Recommended order: **Initialize → Installation → Push → Personalize → Features**.
-Page 2 Next requires only successful SDK initialization, allowing testers to
-inspect features while registration completes. Each card separately enforces its
-requirements. The User and Installation drill-down screens retain their read,
-write and personalization tests. Returning to the dashboard refreshes setup state.
-Registration, installation and user events also update the shared controller;
-returning from Android settings refreshes permission grants.
+Host configuration placement follows [Huawei's Flutter Android integration guide](https://developer.huawei.com/consumer/en/doc/HMS-Plugin-Guides-V1/integrating-sdk-0000001052151811-V1). The no-file build path does not validate real AGC credentials/plugin processing; verify the downloaded file on your device build.
 
-READY means checked local prerequisites, not verified service availability or
-backend authorization. Cache reads may be followed by a failed server refresh;
-read the Last operation result and retry. Unknown permissions never count as granted.
+## Guided execution order
 
-## Authentication contracts
+1. **Setup:** initialize; inspect readiness and host status. Grant call permissions through the reused three-stage setup controls.
+2. **Authentication:** clear optional Mobile Messaging JWT for Application Code tests; separately validate MM JWT and configure Chat JWT when needed. Application Code and JWT are not interchangeable and there is no invented universal auth switch.
+3. **Push Notifications:** register, fetch installation, personalize in User Management, then send from the Infobip Portal to the configured test App Profile/external identity. Observe foreground, background, notification tap/action, custom payload and deep-link match flags. Repeated registration/network failures are separate tests.
+4. **User / Installation:** read cache and server, save configured test values, personalize/depersonalize, verify server matches. Installation primary/push registration/custom attributes are tested through actual writable fields.
+5. **Mobile Inbox:** run both auth paths; verify filters, limits, unread counters, mark-seen/re-fetch, empty results, invalid identity and auth errors. Mark-seen retains its existing installation context with no invented JWT argument.
+6. **In-App Chat:** open embedded/global Chat, send/reply with a real agent, attachments in native composer, unread count/stream, contextual data, language, theme, draft, events/errors, back navigation and reopening.
+7. **Huawei RTC:** configure Calls routing and a reachable peer; start audio/video, observe establishment and native errors, confirm media at peer, hang up and await `finished`. Run repeated calls, second-call rejection, permission denial, network interruption, Activity recreation, active snapshots and media cleanup. Rejection probes call the same guarded public API; no safeguard is bypassed.
+8. **Event Logs / Test Report:** inspect sanitized evidence and explicitly confirm Pass/Fail or mark Blocked. Copy/Export writes sanitized JSON to clipboard; paste it into a local `.json` file. Export before uninstall/clear-data.
 
-There is **no universal Application Code vs JWT switch**. The Application Code
-initializes Mobile Messaging. Mobile Messaging JWT supplies authorization for
-supported MM/Inbox requests. Chat uses its own provider. The example does not
-set a persistent global JWT or silently apply Inbox JWT to user APIs. App Profiles
-requiring additional user-data authorization must be validated separately; a
-personalization failure remains visible and blocks user-targeted tests.
+Every catalog row has a stable ID, description, configuration, permissions, auth context, steps, expected and actual result, status, error, timestamp and elapsed duration. Method completion produces `REQUIRES_MANUAL_VERIFICATION`, never automatic Pass. Negative tests may correctly produce errors; compare the expected rejection before confirming. Statuses are NOT_RUN, RUNNING, PASS, FAIL, BLOCKED, UNSUPPORTED and REQUIRES_MANUAL_VERIFICATION. The report includes all status counts, per-test auth mode, device model/Android version, timestamps/durations and sanitized errors.
 
-### Mobile Messaging / Inbox JWT
+Sanitized test outcomes persist in private Android preferences. Process death does not erase completed outcomes. Logs are application-scoped and bounded to 500 events, held in memory; no capture is claimed while the process is dead. Cold-start taps rely on the plugin's actual replay stream. Distinguish background, swipe-away/OS termination and force-stop: force-stop may suppress delivery until explicit relaunch. For restart tests, begin observation before leaving, relaunch, inspect actual tap evidence, then record the outcome.
 
-Verified against the official [JWT structure and generation example](https://github.com/infobip/mobile-messaging-sdk-android/wiki/JsonWebToken-%28JWT%29-structure-and-generation-example),
-linked by the [Huawei Inbox guide](https://github.com/infobip/mobile-messaging-sdk-huawei/wiki/Inbox).
-Inspection date: 2026-09-08.
+The event store omits raw notification bodies, titles, deep links, payloads, user PII, registration tokens, JWTs, keys, headers and raw exception text. It retains presence/match flags, counts, stable errors and RTC enums/numeric reasons. No free-text report notes are accepted, preventing accidental credential export. Verify raw payload contents only through controlled Portal/device observations, then manually confirm the corresponding test.
 
-The requested claims and 15-second default match the official example. One
-critical clarification: **decode the hex secret before signing**, rather than
-signing with UTF-8 characters of the hex string. No claims were added or removed.
-`ExampleJwtHelper.generate` produces compact, unpadded Base64url JWT segments:
+## Reused features and unsupported boundaries
 
-```text
-Header:  {alg: HS256, typ: JWT, kid: jwtKid}
-Payload: {typ: Bearer, jti: UUID-v4, sub: externalUserId,
-          iss: applicationCode, iat: unixSeconds, exp: unixSeconds + ttlSeconds,
-          infobip-api-key: applicationCode}
-Signature: HMAC-SHA256(decodedHexSecret, encodedHeader + '.' + encodedPayload)
-```
+Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpers, Inbox, User, Installation, native/embedded Chat and existing outgoing RTC screens. `HuaweiRtc.callApplication`, `hangup`, `getActiveCall`, and `events` remain the only RTC integration; token acquisition remains native. Production source and public APIs are untouched.
 
-Each generation uses `Random.secure()` for a new UUID v4 and integer UTC epoch
-seconds. The helper validates inputs before decoding, and validation exceptions
-never retain secret input. It never caches tokens. Generate/Test JWT keeps only
-masked subject/time/TTL metadata; it discards the token and does not prove backend
-authorization. Every actual fetch generates another fresh token.
+**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, local video preview/remote renderer and extra RTC media controls not exposed by this branch. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; screen navigation alone does not hang up.
 
-### Chat JWT decision: DIFFERENT CONTRACT
+See the existing [RTC scope](../docs/huawei-rtc-outgoing.md), [verification](../docs/huawei-rtc-outgoing-verification.md), [device plan](../docs/webrtc-core-device-validation.md), [WebRTC safeguards](../docs/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
 
-The plugin's `setChatJwtProvider` delegates to native `setWidgetJwtProvider`.
-The [official Live Chat authentication contract](https://www.infobip.com/docs/live-chat/users-and-authentication)
-uses a widget issuer and Base64-decoded widget secret, with a matching personalized
-user identity for mobile authentication:
+## Validation
 
-```text
-Header:  {alg: HS256, typ: JWT}
-Payload: {iat: unixSeconds, iss: chatWidgetId, jti: UUID-v4,
-          ski: chatKeyId, stp: externalPersonId, sub: externalUserId,
-          exp: unixSeconds + chatTtlSeconds}
-Signature: HMAC-SHA256(decodedBase64WidgetSecret, encodedHeader + '.' + encodedPayload)
-```
-
-`ChatJwtHelper` implements this separately. `prepareChat` installs a provider
-that invokes the helper **on every callback**, including reconnect/re-authentication.
-The default Chat TTL is 60 seconds for this test app; the documentation recommends
-a longer mobile TTL than the 15-second default used in its web examples. No
-optional session ID is invented. Chat JWT fields are required only when
-`chatAuth=jwt`. `chatAuth=installation` is for a widget without required mobile
-customer JWT authentication. Configure the Portal accordingly; the example cannot
-infer that setting. Restart the app when changing Chat configuration.
-
-Repository paths inspected: `lib/src/core/infobip_mobilemessaging_huawei.dart`,
-`android/src/main/kotlin/com/infobip/mobilemessaging/huawei/inbox/InboxManager.kt`,
-`chat/ChatManager.kt` in the same native package, and its `rtc/` sources.
-
-## Test user-targeted portal push
-
-Initialize, refresh Installation, register for remote notifications, grant
-notification permission (Android 13+), then personalize. Wait for the push
-registration ID and HMS token. Push readiness also requires an enabled push
-registration flag, installation and Android notification status, and the current
-user matching the configured external user ID. An enabled flag without an ID or
-HMS token does not mean ready.
-
-Open **Push Notifications**. **Send a notification to this external user from the
-Infobip Portal.** Select the matching test App Profile and target the external
-identity from your local configuration. The app receives and displays events; it
-does not send the Portal push. Check foreground receipt, background notification,
-tap, action tap and cold-start tap replay on a real Huawei device. Keep payloads
-free of credentials. Inspect channel-specific Android settings if delivery works
-but a visible notification does not appear.
-
-## Test both Inbox paths
-
-The dashboard and Inbox screen share an Inbox-only authentication selector.
-
-- **Application Code:** the controller first awaits `setJwt(null)`, then calls
-  `fetchInbox(externalUserId: ..., options: ...)` without an explicit JWT. A clear
-  failure aborts the fetch. Use a sandbox App Profile configured to permit this
-  path; it is not a bypass for profiles requiring JWT.
-- **JWT:** immediately before every `fetchInbox`, generate a new token and pass
-  it through the explicit `jwt:` argument. No generated token is passed to
-  `setJwt`, kept between requests or displayed. Sign with keys belonging to the
-  same test App Profile and external user.
-
-Both paths require initialization and a configured external user. Filters,
-counters and mark-seen controls remain available. `setInboxMessagesSeen` retains
-its existing external-user/message-ID arguments with **no JWT argument**. Its
-native installation context is unchanged. The follow-up fetch uses the selected
-auth path and a fresh token when JWT is selected. A successful seen callback is
-not proof of persistence in a differently scoped Inbox; re-fetch and confirm.
-See the [existing set-seen investigation](../docs/inbox-set-seen-investigation.md).
-
-## Test outgoing RTC
-
-Configure `rtcCallsConfigurationId` and a test account with Web and In-app Calls
-routing enabled. Grant Microphone and Nearby devices (Android 12+); Video also
-requires Camera. Use the dashboard permission buttons or Android App settings.
-Permissions are checked by an example-only host channel and rechecked before
-calling; denial leaves the relevant action disabled. An explicit `rtcIdentity`
-or a registered installation ID is required.
-
-Open the corresponding audio/video card, start a call, then watch for
-`established` and verify media at the receiving endpoint. This uses
-`HuaweiRtc.callApplication`, never `enableCalls()`. Native RTC token acquisition
-remains inside the plugin. Video retains the branch's existing limitation: no
-local preview or remote renderer. Hang up and wait for `finished` before changing
-user or leaving the test session. Leaving the RTC screen alone does not hang up.
-Read [RTC device validation](../docs/huawei-rtc-outgoing.md) for the branch's runtime
-scope, lifecycle limitations and routing setup.
-
-## Dependencies, security and validation
-
-The only added direct runtime dependency is [crypto 3.0.7](https://pub.dev/packages/crypto),
-maintained under dart.dev, supporting Dart >=3.4 (the example requires >=3.9), for
-HMAC-SHA256. Its BSD-3-Clause license permits redistribution subject to its notice
-conditions; Flutter includes dependency license notices. Its transitive
-`typed_data`/`collection` packages use BSD licenses. UUID generation uses Dart's
-secure random generator without a new UUID or authentication framework package.
-
-Application codes and identity IDs are masked. The example never logs signing
-secrets, JWTs or Authorization headers. Error UI shows the operation and known
-stable plugin code with a safe message, dropping raw backend messages, details
-and traces. Configuration `toString` hides all values. The SDK may persist normal
-installation/user state; the example never persists generated JWTs. Do not enable
-HTTP/SDK verbose logging while supplying credentials or capture credentials in
-build diagnostics. JSON defines and resulting APKs are test-only secret material.
-
-From the repository root, run `flutter pub get`,
-`dart format --output=none --set-exit-if-changed .`, `flutter analyze`, and
-`flutter test`. From `example/`, run `flutter pub get`, `flutter analyze`, and
-`flutter test`. Tests verify signature structure/bytes, validation and freshness,
-setup readiness, permission denial, Inbox call arguments and clear ordering, Chat
-provider callbacks, three-stage navigation and disabled controls.
-
-These tests use mocked native channels. They do not prove Infobip backend
-acceptance, HMS registration, portal delivery, Chat connectivity, or RTC media.
-See [verification results](../docs/guided-example-verification.md) for this change.
+From `example/`: `dart format lib test tool`, `flutter analyze`, `flutter test`, `flutter build apk --debug -t lib/main_local.dart`. Also validate root plugin analysis/tests without changing production code. Automated tests use synthetic fixtures only; they do not count as device report Passes. Current executed results are recorded in `VALIDATION.md`.

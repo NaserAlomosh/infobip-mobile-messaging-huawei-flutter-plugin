@@ -1,34 +1,40 @@
 /// Controlled SDK testing only. Never ship signing secrets in a production app.
-/// Load the ignored JSON file with --dart-define-from-file (see example/README).
+/// Values are injected by the local Dart launcher; empty defaults compile cleanly.
 final class ExampleConfig {
   const ExampleConfig({
-    this.applicationCode = const String.fromEnvironment(
-      'INFOBIP_APPLICATION_CODE',
-    ),
-    this.externalUserId = const String.fromEnvironment(
-      'INFOBIP_EXTERNAL_USER_ID',
-    ),
-    this.jwtKid = const String.fromEnvironment('INFOBIP_JWT_KID'),
-    this.jwtSecretKey = const String.fromEnvironment('INFOBIP_JWT_SECRET_KEY'),
-    this.jwtTtl = const Duration(
-      seconds: int.fromEnvironment('INFOBIP_JWT_TTL_SECONDS', defaultValue: 15),
-    ),
-    this.rtcCallsConfigurationId = const String.fromEnvironment(
-      'INFOBIP_RTC_CALLS_CONFIGURATION_ID',
-    ),
-    this.rtcIdentity = const String.fromEnvironment('INFOBIP_RTC_IDENTITY'),
-    this.chatAuth = const String.fromEnvironment('INFOBIP_CHAT_AUTH'),
-    this.chatWidgetId = const String.fromEnvironment('INFOBIP_CHAT_WIDGET_ID'),
-    this.chatKeyId = const String.fromEnvironment('INFOBIP_CHAT_KEY_ID'),
-    this.chatSecretKey = const String.fromEnvironment(
-      'INFOBIP_CHAT_SECRET_KEY',
-    ),
-    this.chatJwtTtl = const Duration(
-      seconds: int.fromEnvironment(
-        'INFOBIP_CHAT_JWT_TTL_SECONDS',
-        defaultValue: 60,
-      ),
-    ),
+    this.applicationCode = '',
+    this.externalUserId = '',
+    this.jwtKid = '',
+    this.jwtSecretKey = '',
+    this.jwtTtl = const Duration(seconds: 60),
+    this.rtcCallsConfigurationId = '',
+    this.rtcIdentity = '',
+    this.chatAuth = '',
+    this.chatWidgetId = '',
+    this.chatKeyId = '',
+    this.chatSecretKey = '',
+    this.chatJwtTtl = const Duration(seconds: 60),
+    this.jwtToken = '',
+    this.chatJwtToken = '',
+    this.firstName = 'Test',
+    this.lastName = 'User',
+    this.email = '',
+    this.phoneNumber = '',
+    this.inboxTopic = '',
+    this.inboxLimit = 20,
+    this.expectedNotificationTitle = '',
+    this.expectedNotificationBody = '',
+    this.expectedDeepLink = '',
+    this.environmentName = 'UAT',
+    this.enableAudioTesting = true,
+    this.enableVideoTesting = true,
+    this.installationPrimary = false,
+    this.installationPushEnabled = true,
+    this.installationAttributes = const <String, dynamic>{},
+    this.invalidExternalUserId = '',
+    this.chatMessage = '',
+    this.chatContextualData = '',
+    this.chatTheme = '',
   });
 
   final String applicationCode;
@@ -49,6 +55,48 @@ final class ExampleConfig {
   /// Base64-encoded Live Chat widget key, separate from Mobile Messaging.
   final String chatSecretKey;
   final Duration chatJwtTtl;
+
+  final String jwtToken;
+
+  final String chatJwtToken;
+
+  final String firstName;
+
+  final String lastName;
+
+  final String email;
+
+  final String phoneNumber;
+
+  final String inboxTopic;
+
+  final int inboxLimit;
+
+  final String expectedNotificationTitle;
+
+  final String expectedNotificationBody;
+
+  final String expectedDeepLink;
+
+  final String environmentName;
+
+  final bool enableAudioTesting;
+
+  final bool enableVideoTesting;
+
+  final bool installationPrimary;
+
+  final bool installationPushEnabled;
+
+  final Map<String, dynamic> installationAttributes;
+
+  final String invalidExternalUserId;
+
+  final String chatMessage;
+
+  final String chatContextualData;
+
+  final String chatTheme;
 
   @override
   String toString() => 'ExampleConfig(values hidden)';

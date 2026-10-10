@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:infobip_mobilemessaging_huawei_example/app.dart';
+import 'package:infobip_mobilemessaging_huawei_example/screens/home_screen.dart';
 import 'package:infobip_mobilemessaging_huawei_example/config/example_config.dart';
 import 'package:infobip_mobilemessaging_huawei_example/screens/inbox_screen.dart';
 import 'package:infobip_mobilemessaging_huawei_example/setup/example_controller.dart';
@@ -25,7 +25,7 @@ void main() {
     (tester) async {
       c.dispose();
       c = ExampleController(config: const ExampleConfig());
-      await tester.pumpWidget(ExampleApp(controller: c));
+      await tester.pumpWidget(MaterialApp(home: HomeScreen(controller: c)));
       expect(find.text('Application Setup'), findsOneWidget);
       expect(
         find.textContaining('provide INFOBIP_APPLICATION_CODE'),
@@ -46,7 +46,7 @@ void main() {
       c = ExampleController(
         config: const ExampleConfig(applicationCode: 'test-application'),
       );
-      await tester.pumpWidget(ExampleApp(controller: c));
+      await tester.pumpWidget(MaterialApp(home: HomeScreen(controller: c)));
       expect(
         tester
             .widget<FilledButton>(find.byKey(const ValueKey('next')))
@@ -84,7 +84,7 @@ void main() {
   ) async {
     await c.initialize();
     await c.personalize();
-    await tester.pumpWidget(ExampleApp(controller: c));
+    await tester.pumpWidget(MaterialApp(home: HomeScreen(controller: c)));
     expect(find.textContaining(testConfig.applicationCode), findsNothing);
     expect(find.textContaining(testConfig.jwtSecretKey), findsNothing);
     await tester.tap(find.text('Next'));
@@ -93,6 +93,8 @@ void main() {
     await tester.pumpAndSettle();
     final userButton = find.byKey(const ValueKey('open-User'));
     await tester.scrollUntilVisible(userButton, 250);
+    await tester.drag(find.byType(ListView), const Offset(0, -150));
+    await tester.pumpAndSettle();
     await tester.tap(userButton);
     await tester.pumpAndSettle();
     expect(find.text('Read user'), findsOneWidget);
@@ -113,7 +115,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(home: InboxScreen(controller: c)));
       await tester.tap(find.widgetWithText(FilledButton, 'Fetch Inbox'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.text('Mark seen'), 200);
+      await tester.scrollUntilVisible(
+        find.text('Mark seen'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Mark seen'));
       await tester.pumpAndSettle();
       final tokens = sdk

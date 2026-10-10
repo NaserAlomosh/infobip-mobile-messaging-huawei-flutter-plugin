@@ -21,6 +21,20 @@ class MainActivity : FlutterFragmentActivity() {
         permissionsChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "infobip_huawei_example/permissions").also { channel ->
             channel.setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "deviceInfo" -> result.success(mapOf(
+                        "model" to "${Build.MANUFACTURER} ${Build.MODEL}",
+                        "androidVersion" to Build.VERSION.RELEASE,
+                        "huaweiConfigured" to getString(R.string.example_huawei_app_id).isNotBlank(),
+                    ))
+                    "saveTestReport" -> {
+                        val report = call.argument<String>("report")
+                        if (report == null || report.length > 200000) result.error("invalid_argument", "Invalid report", null)
+                        else {
+                            getSharedPreferences("huawei_test_center", MODE_PRIVATE).edit().putString("report", report).apply()
+                            result.success(null)
+                        }
+                    }
+                    "readTestReport" -> result.success(getSharedPreferences("huawei_test_center", MODE_PRIVATE).getString("report", null))
                     "status" -> result.success(snapshot())
                     "request" -> {
                         if (pending != null) {

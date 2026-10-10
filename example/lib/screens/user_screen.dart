@@ -15,8 +15,12 @@ class UserScreen extends StatefulWidget {
 }
 
 class _UserScreenState extends State<UserScreen> {
-  final _firstName = TextEditingController();
-  final _lastName = TextEditingController();
+  late final _firstName = TextEditingController(
+    text: widget.controller.config.firstName,
+  );
+  late final _lastName = TextEditingController(
+    text: widget.controller.config.lastName,
+  );
 
   bool _loading = false;
   String _result = 'No user operation performed.';
@@ -45,10 +49,10 @@ class _UserScreenState extends State<UserScreen> {
   });
 
   String _describe(UserData user) => [
-    'First name: ${user.firstName ?? 'not set'}',
-    'Last name: ${user.lastName ?? 'not set'}',
+    'First name: ${masked(user.firstName)}',
+    'Last name: ${masked(user.lastName)}',
     'Gender: ${user.gender?.name ?? 'not set'}',
-    'Birthday: ${user.birthday ?? 'not set'}',
+    'Birthday: ${masked(user.birthday)}',
     'Tags: ${user.tags?.length ?? 0}',
   ].join('\n');
 

@@ -16,6 +16,7 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
+        maven("https://developer.huawei.com/repo/")
         google()
         mavenCentral()
         gradlePluginPortal()

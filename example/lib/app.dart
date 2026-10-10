@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
-import 'screens/home_screen.dart';
+import 'screens/test_center_screen.dart';
 import 'setup/example_controller.dart';
 
 class ExampleApp extends StatefulWidget {
@@ -18,10 +18,16 @@ class _ExampleAppState extends State<ExampleApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _controller.startObserving();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _controller.session.log(
+      'SDK',
+      'Application lifecycle',
+      details: {'state': state.name},
+    );
     if (state == AppLifecycleState.resumed) unawaited(_controller.refresh());
   }
 
@@ -34,8 +40,8 @@ class _ExampleAppState extends State<ExampleApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Infobip Huawei SDK Example',
+    title: 'Huawei SDK Test Center',
     theme: ThemeData(colorSchemeSeed: Colors.blue, useMaterial3: true),
-    home: HomeScreen(controller: _controller),
+    home: TestCenterScreen(controller: _controller),
   );
 }

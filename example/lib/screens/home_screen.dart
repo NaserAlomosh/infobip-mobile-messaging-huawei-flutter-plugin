@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final screen = switch (feature) {
       ExampleFeature.push => const NotificationsScreen(),
       ExampleFeature.inbox => InboxScreen(controller: c),
-      ExampleFeature.chat => const ChatScreen(),
+      ExampleFeature.chat => ChatScreen(controller: c),
       ExampleFeature.rtcAudio => HuaweiRtcScreen(controller: c, video: false),
       ExampleFeature.rtcVideo => HuaweiRtcScreen(controller: c, video: true),
       ExampleFeature.user => UserScreen(controller: c),
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           c.applicationCodeConfigured
               ? 'Configured · ${masked(c.config.applicationCode)}'
-              : 'Missing · provide INFOBIP_APPLICATION_CODE in your local configuration.',
+              : 'Missing · provide INFOBIP_APPLICATION_CODE in lib/config/example_test_config.dart.',
         ),
         const Text(
           'The Application Code initializes the Mobile Messaging SDK for your test app profile.',
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'Never embed signing secrets in a production mobile application. This local configuration is for controlled SDK testing only.',
         ),
         Text(
-          'Configure example_config.local.json using the example README, then rebuild. No credentials are entered on these screens.',
+          'Configure lib/config/example_test_config.dart using the example README, then rebuild. No credentials are entered on these screens.',
         ),
       ],
     ),

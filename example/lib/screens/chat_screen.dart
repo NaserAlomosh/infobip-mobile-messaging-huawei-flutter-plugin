@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 import '../setup/safe_display.dart';
+import '../setup/example_controller.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({this.controller, super.key});
+  final ExampleController? controller;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -15,10 +17,16 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final InfobipHuaweiChatController _chatController =
       InfobipHuaweiChatController();
-  final _message = TextEditingController();
-  final _contextualData = TextEditingController();
+  late final _message = TextEditingController(
+    text: widget.controller?.config.chatMessage,
+  );
+  late final _contextualData = TextEditingController(
+    text: widget.controller?.config.chatContextualData,
+  );
   final _draft = TextEditingController();
-  final _theme = TextEditingController();
+  late final _theme = TextEditingController(
+    text: widget.controller?.config.chatTheme,
+  );
   StreamSubscription<int>? _unreadSubscription;
   int? _unreadCount;
   bool _loading = false;
@@ -53,6 +61,11 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _loading = true);
     try {
       final result = await operation();
+      widget.controller?.session.log(
+        'CHAT',
+        'Control operation completed',
+        status: 'REQUIRES_MANUAL_VERIFICATION',
+      );
       if (mounted) setState(() => _result = result);
     } on PlatformException catch (error) {
       if (mounted) setState(() => _result = _platformFailure(error));
@@ -61,6 +74,11 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() => _result = safeFailure('Chat operation', error));
       }
     } on FormatException catch (error) {
+      if (mounted) {
+        setState(() => _result = safeFailure('Chat operation', error));
+      }
+    } catch (error) {
+      widget.controller?.session.log('ERROR', 'Chat control failed');
       if (mounted) {
         setState(() => _result = safeFailure('Chat operation', error));
       }
@@ -291,6 +309,10 @@ class _ChatScreenState extends State<ChatScreen> {
               child: InfobipHuaweiChatView(
                 controller: _chatController,
                 onEvent: (event) {
+                  widget.controller?.session.log(
+                    'CHAT',
+                    event.runtimeType.toString(),
+                  );
                   if (!mounted) return;
                   switch (event) {
                     case InfobipHuaweiChatLoadedEvent(:final success):
@@ -308,6 +330,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   }
                 },
                 onError: (error) {
+                  widget.controller?.session.log(
+                    'ERROR',
+                    'Chat view error',
+                    details: {'code': error.code.name},
+                  );
                   if (mounted) {
                     setState(
                       () => _result =

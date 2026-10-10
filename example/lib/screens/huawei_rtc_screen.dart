@@ -99,6 +99,68 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
     }
   }
 
+  Future<void> _probe({bool deniedPermission = false}) async {
+    try {
+      if (deniedPermission) {
+        await c.refresh();
+        final permissions = c.permissions;
+        if (permissions.microphone == true &&
+            permissions.nearbyDevices == true &&
+            (!widget.video || permissions.camera == true)) {
+          setState(
+            () => _result =
+                'Revoke a required permission in Android settings first.',
+          );
+          return;
+        }
+      } else if (!_active) {
+        setState(
+          () => _result =
+              'Start and keep a call active before testing a second call.',
+        );
+        return;
+      }
+      final call = await HuaweiRtc.callApplication(
+        HuaweiRtcCallRequest(
+          callsConfigurationId: c.config.rtcCallsConfigurationId,
+          identity: c.config.rtcIdentity.isEmpty ? null : c.config.rtcIdentity,
+          type: widget.video
+              ? HuaweiRtcCallType.video
+              : HuaweiRtcCallType.audio,
+        ),
+      );
+      if (mounted) {
+        setState(
+          () => _result =
+              'Unexpected native call returned: ${call.status.name}. Verify and hang up.',
+        );
+      }
+    } catch (error) {
+      final summary = safeFailure('RTC rejection probe', error);
+      c.session.log('RTC', 'Rejection probe', details: {'summary': summary});
+      if (mounted) setState(() => _result = summary);
+    }
+  }
+
+  Future<void> _refreshActive() async {
+    try {
+      final call = await HuaweiRtc.getActiveCall();
+      c.session.log(
+        'RTC',
+        'Active call snapshot',
+        details: {'status': call?.status.name, 'type': call?.type.name},
+      );
+      if (mounted) {
+        setState(() {
+          _active = call != null && call.status != HuaweiRtcCallStatus.finished;
+          _result = 'Active call: ${call?.status.name ?? 'none'}';
+        });
+      }
+    } catch (error) {
+      if (mounted) setState(() => _result = safeFailure('RTC snapshot', error));
+    }
+  }
+
   Future<void> _hangup() async {
     try {
       await HuaweiRtc.hangup();
@@ -176,6 +238,20 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
                             : HuaweiRtcCallType.audio,
                       ),
                 child: Text(widget.video ? 'Video call' : 'Audio call'),
+              ),
+              OutlinedButton(
+                onPressed: _starting ? null : _refreshActive,
+                child: const Text('Refresh active call'),
+              ),
+              OutlinedButton(
+                onPressed: _active && !_starting ? () => _probe() : null,
+                child: const Text('Attempt second call'),
+              ),
+              OutlinedButton(
+                onPressed: _starting
+                    ? null
+                    : () => _probe(deniedPermission: true),
+                child: const Text('Probe denied permission'),
               ),
               OutlinedButton(
                 onPressed: _active && !_starting ? _hangup : null,
