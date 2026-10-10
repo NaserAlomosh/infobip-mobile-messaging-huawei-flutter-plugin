@@ -1,24 +1,7 @@
-// Load AGC tooling only for a real locally configured Huawei host.
-buildscript {
-    if (file("agconnect-services.json").exists()) {
-        repositories {
-            maven("https://developer.huawei.com/repo/")
-            google()
-            mavenCentral()
-        }
-        dependencies { classpath("com.huawei.agconnect:agcp:1.9.1.301") }
-    }
-}
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
-}
-
-// An empty checkout builds; real HMS registration requires the local AGC file.
-if (file("agconnect-services.json").exists()) {
-    apply(plugin = "com.huawei.agconnect")
 }
 
 val agcFile = file("agconnect-services.json")
