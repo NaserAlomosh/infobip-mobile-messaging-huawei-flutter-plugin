@@ -32,7 +32,8 @@ class HuaweiRtcPluginLifecycleTest {
         assertSame(manager, field("huaweiRtcManager").get(plugin))
         plugin.onDetachedFromActivity()
         assertNull(field("activity").get(plugin))
-        verifyNoInteractions(manager)
+        verify(manager, times(2)).detachVideoViews()
+        verifyNoMoreInteractions(manager)
     }
 
     @Test fun `engine detach disposes manager and releases references`() {

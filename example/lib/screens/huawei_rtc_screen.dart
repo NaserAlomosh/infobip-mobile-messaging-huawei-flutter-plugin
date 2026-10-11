@@ -7,7 +7,7 @@ import '../setup/example_controller.dart';
 import '../setup/feature_readiness.dart';
 import '../setup/safe_display.dart';
 
-/// Deliberately small device-validation surface, not a call UI or video renderer.
+/// Device-validation surface for the existing outgoing call and camera views.
 class HuaweiRtcScreen extends StatefulWidget {
   const HuaweiRtcScreen({
     required this.controller,
@@ -27,15 +27,18 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
   StreamSubscription<HuaweiRtcEvent>? _subscription;
   bool _starting = false;
   bool _active = false;
+  HuaweiRtcCall? _activeCall;
   String _result = 'Start a call, then watch for an established event.';
 
   @override
   void initState() {
     super.initState();
+    unawaited(_refreshActive());
     _subscription = HuaweiRtc.events.listen(
       (event) {
         if (!mounted) return;
         setState(() {
+          _activeCall = event.call;
           _active =
               event.call != null &&
               event.call!.status != HuaweiRtcCallStatus.finished;
@@ -81,6 +84,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
       );
       if (mounted) {
         setState(() {
+          _activeCall = call;
           _active = call.status != HuaweiRtcCallStatus.finished;
           _result =
               'Native ${call.type.name} call created; watch events for establishment.';
@@ -152,6 +156,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
       );
       if (mounted) {
         setState(() {
+          _activeCall = call;
           _active = call != null && call.status != HuaweiRtcCallStatus.finished;
           _result = 'Active call: ${call?.status.name ?? 'none'}';
         });
@@ -191,15 +196,14 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
           'Huawei outgoing RTC · ${widget.video ? 'Video' : 'Audio'}',
         ),
       ),
-      body: ListView(
+      body: SafeArea(child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
             'Device test only. Grant Microphone, Camera (video), and Nearby devices '
             '(Android 12+) in Android App info → Permissions, then return here. '
             'Use a test account with Web and In-app Calls enabled. '
-            'Keep the app in the foreground. Video is transmitted without a local '
-            'preview or remote video renderer; confirm media at the receiving endpoint.',
+            'Keep the app in the foreground. Remote camera video appears when the agent publishes it.',
           ),
           Text(
             'Calls configuration: ${masked(c.config.rtcCallsConfigurationId)}',
@@ -260,6 +264,30 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          if (_active && _activeCall?.type == HuaweiRtcCallType.video)
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: HuaweiRtcVideoView(
+                      callId: _activeCall!.id,
+                      source: HuaweiRtcVideoSource.remote,
+                    ),
+                  ),
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    width: 100,
+                    height: 140,
+                    child: HuaweiRtcVideoView(
+                      callId: _activeCall!.id,
+                      source: HuaweiRtcVideoSource.local,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Text(_result),
           const Text(
             'Leaving this screen does not hang up. Return here to end the call.',
@@ -268,7 +296,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
           const Text('Recent events'),
           ..._events.map(Text.new),
         ],
-      ),
+      )),
     ),
   );
 }

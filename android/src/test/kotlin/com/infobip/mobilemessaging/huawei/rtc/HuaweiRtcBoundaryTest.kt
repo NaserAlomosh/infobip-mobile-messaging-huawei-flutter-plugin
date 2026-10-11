@@ -131,4 +131,23 @@ class HuaweiRtcBoundaryTest {
             return failure
         }
     }
+    @Test fun `camera forwarding is additive and detachable without changing lifecycle callbacks`() {
+        val lifecycle = mutableListOf<String>()
+        val cameras = mutableListOf<Boolean>()
+        val listener = RtcListener { type, _ -> lifecycle += type }
+        listener.cameraChanged = { cameras += it }
+        listener.onCameraVideoAdded(mock(com.infobip.webrtc.sdk.api.event.call.CameraVideoAddedEvent::class.java))
+        listener.onCameraVideoUpdated(mock(com.infobip.webrtc.sdk.api.event.call.CameraVideoUpdatedEvent::class.java))
+        listener.onCameraVideoRemoved(mock(com.infobip.webrtc.sdk.api.event.call.CameraVideoRemovedEvent::class.java))
+        listener.onParticipantCameraVideoAdded(mock(com.infobip.webrtc.sdk.api.event.call.ParticipantCameraVideoAddedEvent::class.java))
+        listener.onParticipantCameraVideoRemoved(mock(com.infobip.webrtc.sdk.api.event.call.ParticipantCameraVideoRemovedEvent::class.java))
+        assertEquals(listOf(true, true, true, false, false), cameras)
+        assertTrue(lifecycle.isEmpty())
+        listener.detachRendering()
+        listener.onCameraVideoAdded(mock(com.infobip.webrtc.sdk.api.event.call.CameraVideoAddedEvent::class.java))
+        listener.onEstablished(mock(com.infobip.webrtc.sdk.api.event.call.CallEstablishedEvent::class.java))
+        assertEquals(5, cameras.size)
+        assertEquals(listOf("established"), lifecycle)
+    }
+
 }

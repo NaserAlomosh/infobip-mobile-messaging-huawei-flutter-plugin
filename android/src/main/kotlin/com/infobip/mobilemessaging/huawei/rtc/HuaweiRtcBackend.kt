@@ -56,6 +56,8 @@ internal fun checkRtcPermissions(context: Context, video: Boolean) {
 internal class RtcListener(callback: (String, Int?) -> Unit) : DefaultApplicationCallEventListener() {
     companion object { val detached = DefaultApplicationCallEventListener() }
     @Volatile private var callback: ((String, Int?) -> Unit)? = callback
+    @Volatile var cameraChanged: ((Boolean) -> Unit)? = null
+    fun detachRendering() { cameraChanged = null }
     fun detach() { callback = null }
     private fun emit(type: String, reason: ErrorCode? = null) { callback?.invoke(type, reason?.id) }
     override fun onRinging(event: CallRingingEvent) = emit("ringing")
@@ -66,4 +68,9 @@ internal class RtcListener(callback: (String, Int?) -> Unit) : DefaultApplicatio
     override fun onError(event: ErrorEvent) = emit("error", event.errorCode)
     override fun onReconnecting(event: ReconnectingEvent) = emit("reconnecting")
     override fun onReconnected(event: ReconnectedEvent) = emit("reconnected")
+    override fun onCameraVideoAdded(event: CameraVideoAddedEvent) { cameraChanged?.invoke(true) }
+    override fun onCameraVideoUpdated(event: CameraVideoUpdatedEvent) { cameraChanged?.invoke(true) }
+    override fun onCameraVideoRemoved(event: CameraVideoRemovedEvent) { cameraChanged?.invoke(true) }
+    override fun onParticipantCameraVideoAdded(event: ParticipantCameraVideoAddedEvent) { cameraChanged?.invoke(false) }
+    override fun onParticipantCameraVideoRemoved(event: ParticipantCameraVideoRemovedEvent) { cameraChanged?.invoke(false) }
 }

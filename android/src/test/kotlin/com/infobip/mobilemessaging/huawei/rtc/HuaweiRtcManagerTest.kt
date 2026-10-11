@@ -432,4 +432,68 @@ class HuaweiRtcManagerTest {
         assertEquals(0, hangups)
         assertNotNull(invoke("getActiveCall").value)
     }
+    @Test fun `audio and wrong call id never initialize video renderers`() {
+        val view = mock(HuaweiRtcVideoViewOwner::class.java)
+        start()
+        assertNull(manager.bindVideo(view, HuaweiRtcVideoOptions("native-call-id", true)))
+        verifyNoInteractions(view)
+        listener.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        start("video")
+        assertNull(manager.bindVideo(view, HuaweiRtcVideoOptions("wrong-id", false)))
+        verifyNoInteractions(view)
+    }
+
+    @Test fun `rendering failure preserves establishment events hangup and terminal cleanup`() {
+        manager.onListen(null, sink)
+        val reply = start("video")
+        val view = mock(HuaweiRtcVideoViewOwner::class.java)
+        `when`(view.initializeRenderer(anyBoolean())).thenReturn(mock(com.infobip.webrtc.sdk.api.model.video.VideoRenderer::class.java))
+        `when`(call.remoteVideos()).thenThrow(IllegalStateException())
+        assertNull(manager.bindVideo(view, HuaweiRtcVideoOptions("native-call-id", false)))
+        assertEquals(1, reply.completions)
+        assertNull(reply.code)
+        assertEquals(0, hangups)
+        listener.onEstablished(CallEstablishedEvent()); idle()
+        assertEquals("established", events.last()["type"])
+        assertEquals(setOf("type", "call", "nativeErrorCode", "sequence"), events.last().keys)
+        invoke("hangup")
+        assertEquals(1, hangups)
+        listener.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        assertNull(invoke("getActiveCall").value)
+        assertEquals("finished", events.last()["type"])
+    }
+
+    @Test fun `view Activity and terminal cleanup never add hangups and old camera callback stays stale`() {
+        start("video")
+        val track = mock(com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack::class.java)
+        val renderer = mock(com.infobip.webrtc.sdk.api.model.video.VideoRenderer::class.java)
+        val view = mock(HuaweiRtcVideoViewOwner::class.java)
+        `when`(view.initializeRenderer(anyBoolean())).thenReturn(renderer)
+        `when`(call.localCameraTrack()).thenReturn(track)
+        assertNotNull(manager.bindVideo(view, HuaweiRtcVideoOptions("native-call-id", true)))
+        manager.detachVideoViews()
+        assertEquals(0, hangups)
+        verify(track).removeSink(renderer)
+        val old = listener
+        old.onCameraVideoUpdated(CameraVideoUpdatedEvent(track))
+        old.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        start("video")
+        old.onCameraVideoAdded(CameraVideoAddedEvent(track)); idle()
+        verify(track, times(1)).addSink(renderer)
+        verify(view, times(1)).releaseRenderer()
+    }
+
+    @Test fun `engine cleanup with a broken renderer still performs existing hangup and release`() {
+        start("video")
+        val view = mock(HuaweiRtcVideoViewOwner::class.java)
+        `when`(view.initializeRenderer(anyBoolean())).thenReturn(mock(com.infobip.webrtc.sdk.api.model.video.VideoRenderer::class.java))
+        assertNotNull(manager.bindVideo(view, HuaweiRtcVideoOptions("native-call-id", true)))
+        doThrow(IllegalStateException()).`when`(view).releaseRenderer()
+        manager.dispose()
+        manager.dispose()
+        assertEquals(1, hangups)
+        verify(call).setEventListener(RtcListener.detached)
+        verify(view, times(1)).releaseRenderer()
+    }
+
 }

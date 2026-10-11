@@ -43,6 +43,36 @@ internal class HuaweiRtcManager(
     private var sink: EventChannel.EventSink? = null
     private var lastEvent: Map<String, Any?>? = null
     private var sequence = 0L
+    private val videoBindings = HuaweiRtcVideoBindings()
+
+    fun bindVideo(view: HuaweiRtcVideoViewOwner, options: HuaweiRtcVideoOptions): HuaweiRtcVideoBindings.Binding? {
+        var binding: HuaweiRtcVideoBindings.Binding? = null
+        HuaweiRtcVideoBindings.rendering("session binding") {
+            check(Looper.myLooper() == main.looper)
+            val current = session
+            val call = current?.call
+            if (!disposed && !cleaning && canStartCall() && current != null &&
+                current.input.video && call != null && call.id() == options.callId &&
+                call.status() != CallStatus.FINISHED && call.status() != CallStatus.FINISHING) {
+                binding = videoBindings.bind(current, call, view, options)
+            }
+        }
+        return binding
+    }
+
+    fun detachVideoViews() {
+        HuaweiRtcVideoBindings.rendering("view detach") { videoBindings.disposeViews() }
+    }
+
+    private fun refreshVideo(current: Session, localChanged: Boolean) {
+        if (disposed || session !== current || !current.input.video) return
+        HuaweiRtcVideoBindings.rendering("video refresh") {
+            val call = current.call ?: return@rendering
+            if (call.status() == CallStatus.FINISHED || call.status() == CallStatus.FINISHING) {
+                videoBindings.endSession(current)
+            } else videoBindings.refresh(current, call, localChanged)
+        }
+    }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) = onMain {
         try {
@@ -126,6 +156,9 @@ internal class HuaweiRtcManager(
             main.post { nativeEvent(current, type, reason) }
         }
         current.listener = listener
+        listener.cameraChanged = { localChanged ->
+            main.post { refreshVideo(current, localChanged) }
+        }
         try {
             checkReady(current.input) // permissions / initialization can change during the HTTP request
             if (backend.hasActiveCall()) throw RtcFailure("rtc_call_already_active", "Another RTC call is active")
@@ -191,6 +224,8 @@ internal class HuaweiRtcManager(
     }
 
     private fun release(current: Session) {
+        current.listener?.detachRendering()
+        HuaweiRtcVideoBindings.rendering("session rendering cleanup") { videoBindings.endSession(current) }
         current.timeout?.let(main::removeCallbacks)
         current.tokenTask?.cancel(true)
         current.listener?.detach() // protects even callbacks already holding the old listener
@@ -244,6 +279,7 @@ internal class HuaweiRtcManager(
         check(Looper.myLooper() == main.looper)
         if (disposed) return
         disposed = true
+        detachVideoViews()
         sink = null
         lastEvent = null
         session?.let { current ->

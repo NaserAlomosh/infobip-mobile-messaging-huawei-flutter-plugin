@@ -17,6 +17,7 @@ import com.infobip.mobilemessaging.huawei.installation.InstallationManager
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import com.infobip.mobilemessaging.huawei.plugin.NativeEventBridge
 import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcManager
+import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcVideoPlatformViewFactory
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import com.infobip.mobilemessaging.huawei.user.UserManager
@@ -149,6 +150,15 @@ class InfobipMobileMessagingHuaweiPlugin :
                 chatManager = requireNotNull(chatManager),
             ),
         )
+        try {
+            val registered = binding.platformViewRegistry.registerViewFactory(
+                HuaweiRtcVideoPlatformViewFactory.VIEW_TYPE,
+                HuaweiRtcVideoPlatformViewFactory(requireNotNull(huaweiRtcManager)),
+            )
+            if (!registered) Log.e(TAG, "RTC video view registration unavailable")
+        } catch (error: Exception) {
+            Log.e(TAG, "RTC video view registration failed (${error.javaClass.simpleName})")
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -186,7 +196,7 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
-        activity = null
+        try { huaweiRtcManager?.detachVideoViews() } finally { activity = null }
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
@@ -194,7 +204,7 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onDetachedFromActivity() {
-        activity = null
+        try { huaweiRtcManager?.detachVideoViews() } finally { activity = null }
     }
 
     override fun onMethodCall(
