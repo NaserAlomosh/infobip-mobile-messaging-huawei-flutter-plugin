@@ -1,0 +1,258 @@
+Published artifact API inspection for the outgoing extension. No classes are instantiated.
+
+com.infobip:infobip-rtc:2.5.28
+Compiled from "InfobipRTC.java"
+public interface com.infobip.webrtc.sdk.api.InfobipRTC {
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+  public abstract void disablePushNotification(java.lang.String, android.content.Context);
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest, com.infobip.webrtc.sdk.api.options.ApplicationCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest, com.infobip.webrtc.sdk.api.options.WebrtcCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest, com.infobip.webrtc.sdk.api.options.PhoneCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest, com.infobip.webrtc.sdk.api.options.ViberCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest, com.infobip.webrtc.sdk.api.options.RoomCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract boolean isIncomingCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract boolean isIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract void handleIncomingCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void handleIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract com.infobip.webrtc.sdk.api.call.Call getActiveCall();
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall getActiveApplicationCall();
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall getActiveRoomCall();
+  public static com.infobip.webrtc.sdk.api.InfobipRTC getInstance();
+  public static void setLogLevel(java.util.logging.Level);
+}
+Compiled from "CallApplicationRequest.java"
+public class com.infobip.webrtc.sdk.api.request.CallApplicationRequest {
+  public com.infobip.webrtc.sdk.api.request.CallApplicationRequest(java.lang.String, android.content.Context, java.lang.String, com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener);
+  public java.lang.String getToken();
+  public android.content.Context getContext();
+  public java.lang.String getCallsConfigurationId();
+  public com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener getApplicationCallEventListener();
+}
+Compiled from "ApplicationCallOptions.java"
+public class com.infobip.webrtc.sdk.api.options.ApplicationCallOptions {
+  public boolean isAudio();
+  public boolean isVideo();
+  public com.infobip.webrtc.sdk.api.options.AudioOptions getAudioOptions();
+  public com.infobip.webrtc.sdk.api.options.VideoOptions getVideoOptions();
+  public java.util.Map<java.lang.String, java.lang.String> getCustomData();
+  public boolean isDataChannel();
+  public com.infobip.webrtc.sdk.api.options.PlatformOptions getPlatform();
+  public boolean isAutoReconnect();
+  public static com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder builder();
+}
+Compiled from "ApplicationCallOptions.java"
+public final class com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder {
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder audio(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder video(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder entityId(java.lang.String);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder audioOptions(com.infobip.webrtc.sdk.api.options.AudioOptions);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder videoOptions(com.infobip.webrtc.sdk.api.options.VideoOptions);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder customData(java.util.Map<java.lang.String, java.lang.String>);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder dataChannel(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder platform(com.infobip.webrtc.sdk.api.options.PlatformOptions);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder autoReconnect(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions build();
+}
+Compiled from "ApplicationCall.java"
+public interface com.infobip.webrtc.sdk.api.call.ApplicationCall {
+  public abstract java.lang.String id();
+  public abstract com.infobip.webrtc.sdk.api.options.ApplicationCallOptions options();
+  public abstract java.util.Map<java.lang.String, java.lang.String> customData();
+  public abstract com.infobip.webrtc.sdk.api.model.CallStatus status();
+  public abstract int duration();
+  public abstract java.util.Date startTime();
+  public abstract java.util.Date establishTime();
+  public abstract java.util.Date endTime();
+  public abstract java.lang.String callsConfigurationId();
+  public abstract java.util.List<com.infobip.webrtc.sdk.api.model.participant.Participant> participants();
+  public abstract java.util.Map<java.lang.String, com.infobip.webrtc.sdk.api.model.RemoteVideo> remoteVideos();
+  public abstract void mute(boolean) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract boolean muted();
+  public abstract void speakerphone(boolean);
+  public abstract boolean speakerphone();
+  public abstract void sendDTMF(java.lang.String) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void cameraVideo(boolean) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void startScreenShare(com.infobip.webrtc.sdk.api.model.video.ScreenCapturer) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void resetScreenShare();
+  public abstract void stopScreenShare() throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract boolean hasCameraVideo();
+  public abstract boolean hasScreenShare();
+  public abstract com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack localCameraTrack();
+  public abstract com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack localScreenShareTrack();
+  public abstract com.infobip.webrtc.sdk.api.device.AudioDeviceManager audioDeviceManager();
+  public abstract void setEventListener(com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener getEventListener();
+  public abstract void setNetworkQualityEventListener(com.infobip.webrtc.sdk.api.event.listener.NetworkQualityEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.NetworkQualityEventListener getNetworkQualityEventListener();
+  public abstract void setParticipantNetworkQualityEventListener(com.infobip.webrtc.sdk.api.event.listener.ParticipantNetworkQualityEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.ParticipantNetworkQualityEventListener getParticipantNetworkQualityEventListener();
+  public abstract void cameraOrientation(com.infobip.webrtc.sdk.api.options.VideoOptions$CameraOrientation);
+  public abstract com.infobip.webrtc.sdk.api.options.VideoOptions$CameraOrientation cameraOrientation();
+  public abstract void pauseIncomingVideo() throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void resumeIncomingVideo() throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract com.infobip.webrtc.sdk.api.call.DataChannel dataChannel();
+  public abstract void hangup();
+  public abstract void audioQualityMode(com.infobip.webrtc.sdk.api.options.AudioOptions$AudioQualityMode);
+  public abstract com.infobip.webrtc.sdk.api.options.AudioOptions$AudioQualityMode audioQualityMode();
+  public abstract com.infobip.webrtc.sdk.videofilter.VideoFilter getVideoFilter();
+  public abstract void setVideoFilter(com.infobip.webrtc.sdk.videofilter.VideoFilter);
+  public abstract void clearVideoFilter();
+  public abstract com.infobip.webrtc.sdk.api.model.RecordingState getRecordingState();
+}
+Compiled from "ApplicationCallEventListener.java"
+public interface com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener {
+  public abstract void onRinging(com.infobip.webrtc.sdk.api.event.call.CallRingingEvent);
+  public abstract void onEarlyMedia(com.infobip.webrtc.sdk.api.event.call.CallEarlyMediaEvent);
+  public abstract void onEstablished(com.infobip.webrtc.sdk.api.event.call.CallEstablishedEvent);
+  public abstract void onHangup(com.infobip.webrtc.sdk.api.event.call.CallHangupEvent);
+  public abstract void onError(com.infobip.webrtc.sdk.api.event.call.ErrorEvent);
+  public abstract void onCameraVideoAdded(com.infobip.webrtc.sdk.api.event.call.CameraVideoAddedEvent);
+  public abstract void onCameraVideoUpdated(com.infobip.webrtc.sdk.api.event.call.CameraVideoUpdatedEvent);
+  public abstract void onCameraVideoRemoved(com.infobip.webrtc.sdk.api.event.call.CameraVideoRemovedEvent);
+  public abstract void onScreenShareAdded(com.infobip.webrtc.sdk.api.event.call.ScreenShareAddedEvent);
+  public abstract void onScreenShareRemoved(com.infobip.webrtc.sdk.api.event.call.ScreenShareRemovedEvent);
+  public abstract void onConferenceJoined(com.infobip.webrtc.sdk.api.event.call.ConferenceJoinedEvent);
+  public abstract void onConferenceLeft(com.infobip.webrtc.sdk.api.event.call.ConferenceLeftEvent);
+  public abstract void onParticipantJoining(com.infobip.webrtc.sdk.api.event.call.ParticipantJoiningEvent);
+  public abstract void onParticipantJoined(com.infobip.webrtc.sdk.api.event.call.ParticipantJoinedEvent);
+  public abstract void onParticipantLeft(com.infobip.webrtc.sdk.api.event.call.ParticipantLeftEvent);
+  public abstract void onParticipantCameraVideoAdded(com.infobip.webrtc.sdk.api.event.call.ParticipantCameraVideoAddedEvent);
+  public abstract void onParticipantCameraVideoRemoved(com.infobip.webrtc.sdk.api.event.call.ParticipantCameraVideoRemovedEvent);
+  public abstract void onParticipantScreenShareAdded(com.infobip.webrtc.sdk.api.event.call.ParticipantScreenShareAddedEvent);
+  public abstract void onParticipantScreenShareRemoved(com.infobip.webrtc.sdk.api.event.call.ParticipantScreenShareRemovedEvent);
+  public abstract void onParticipantMuted(com.infobip.webrtc.sdk.api.event.call.ParticipantMutedEvent);
+  public abstract void onParticipantUnmuted(com.infobip.webrtc.sdk.api.event.call.ParticipantUnmutedEvent);
+  public abstract void onParticipantDeaf(com.infobip.webrtc.sdk.api.event.call.ParticipantDeafEvent);
+  public abstract void onParticipantUndeaf(com.infobip.webrtc.sdk.api.event.call.ParticipantUndeafEvent);
+  public abstract void onParticipantBlinded(com.infobip.webrtc.sdk.api.event.call.ParticipantBlindedEvent);
+  public abstract void onParticipantUnblinded(com.infobip.webrtc.sdk.api.event.call.ParticipantUnblindedEvent);
+  public abstract void onStartedTalking(com.infobip.webrtc.sdk.api.event.call.StartedTalkingEvent);
+  public abstract void onStoppedTalking(com.infobip.webrtc.sdk.api.event.call.StoppedTalkingEvent);
+  public abstract void onParticipantStartedTalking(com.infobip.webrtc.sdk.api.event.call.ParticipantStartedTalkingEvent);
+  public abstract void onParticipantStoppedTalking(com.infobip.webrtc.sdk.api.event.call.ParticipantStoppedTalkingEvent);
+  public abstract void onDialogJoined(com.infobip.webrtc.sdk.api.event.call.DialogJoinedEvent);
+  public abstract void onDialogLeft(com.infobip.webrtc.sdk.api.event.call.DialogLeftEvent);
+  public abstract void onReconnecting(com.infobip.webrtc.sdk.api.event.call.ReconnectingEvent);
+  public abstract void onReconnected(com.infobip.webrtc.sdk.api.event.call.ReconnectedEvent);
+  public abstract void onParticipantDisconnected(com.infobip.webrtc.sdk.api.event.call.ParticipantDisconnectedEvent);
+  public abstract void onParticipantReconnected(com.infobip.webrtc.sdk.api.event.call.ParticipantReconnectedEvent);
+  public abstract void onCallRecordingStarted(com.infobip.webrtc.sdk.api.event.call.CallRecordingStartedEvent);
+  public abstract void onCallRecordingStopped(com.infobip.webrtc.sdk.api.event.call.CallRecordingStoppedEvent);
+  public abstract void onDialogRecordingStarted(com.infobip.webrtc.sdk.api.event.call.DialogRecordingStartedEvent);
+  public abstract void onDialogRecordingStopped(com.infobip.webrtc.sdk.api.event.call.DialogRecordingStoppedEvent);
+  public abstract void onConferenceRecordingStarted(com.infobip.webrtc.sdk.api.event.call.ConferenceRecordingStartedEvent);
+  public abstract void onConferenceRecordingStopped(com.infobip.webrtc.sdk.api.event.call.ConferenceRecordingStoppedEvent);
+  public abstract void onRoleChanged(com.infobip.webrtc.sdk.api.event.call.RoleChangedEvent);
+  public abstract void onParticipantRoleChanged(com.infobip.webrtc.sdk.api.event.call.ParticipantRoleChangedEvent);
+  public abstract void onTalkingWhileMuted(com.infobip.webrtc.sdk.api.event.call.TalkingWhileMutedEvent);
+  public abstract void onMessageReceived(com.infobip.webrtc.sdk.api.event.call.MessageReceivedEvent);
+  public abstract void onMachineDetectionFinished(com.infobip.webrtc.sdk.api.event.call.MachineDetectionFinishedEvent);
+  public abstract void onMachineDetectionFailed(com.infobip.webrtc.sdk.api.event.call.MachineDetectionFailedEvent);
+}
+Compiled from "CallStatus.java"
+public final class com.infobip.webrtc.sdk.api.model.CallStatus extends java.lang.Enum<com.infobip.webrtc.sdk.api.model.CallStatus> {
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus INITIALIZING;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus INITIALIZED;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus CALLING;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus RINGING;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus CONNECTING;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus ESTABLISHED;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus FINISHING;
+  public static final com.infobip.webrtc.sdk.api.model.CallStatus FINISHED;
+  public static com.infobip.webrtc.sdk.api.model.CallStatus[] values();
+  public static com.infobip.webrtc.sdk.api.model.CallStatus valueOf(java.lang.String);
+}
+Compiled from "CallHangupEvent.java"
+public class com.infobip.webrtc.sdk.api.event.call.CallHangupEvent {
+  public com.infobip.webrtc.sdk.api.event.call.CallHangupEvent(com.infobip.webrtc.sdk.api.model.ErrorCode, com.infobip.webrtc.sdk.api.model.stats.TotalMediaStats);
+  public com.infobip.webrtc.sdk.api.model.ErrorCode getErrorCode();
+  public com.infobip.webrtc.sdk.api.model.stats.TotalMediaStats getTotalMediaStats();
+}
+Compiled from "ErrorEvent.java"
+public class com.infobip.webrtc.sdk.api.event.call.ErrorEvent {
+  public com.infobip.webrtc.sdk.api.event.call.ErrorEvent(com.infobip.webrtc.sdk.api.model.ErrorCode);
+  public com.infobip.webrtc.sdk.api.model.ErrorCode getErrorCode();
+}
+Compiled from "ErrorCode.java"
+public class com.infobip.webrtc.sdk.api.model.ErrorCode {
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode NORMAL_HANGUP;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode ANSWERED_ELSEWHERE;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode MACHINE_DETECTED;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode HUMAN_DETECTED;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode DEVICE_FORBIDDEN;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode DEVICE_NOT_FOUND;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode DEVICE_UNAVAILABLE;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode MEDIA_ERROR;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode NO_ANSWER;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode BUSY;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode CANCELLED;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode REJECTED;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode FORBIDDEN;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode INSUFFICIENT_FUNDS;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode UNAUTHENTICATED;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode DESTINATION_NOT_FOUND;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode DESTINATION_UNAVAILABLE;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode INVALID_DESTINATION;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode INVALID_REQUEST;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode REQUEST_TIMEOUT;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode NETWORK_ERROR;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode SERVICE_UNAVAILABLE;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode UNKNOWN;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode FEATURE_UNAVAILABLE;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode URL_NOT_FOUND;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode URL_UNREACHABLE;
+  public static final com.infobip.webrtc.sdk.api.model.ErrorCode INVALID_RESPONSE;
+  public com.infobip.webrtc.sdk.api.model.ErrorCode(int, java.lang.String, java.lang.String);
+  public int getId();
+  public java.lang.String getName();
+  public java.lang.String getDescription();
+}
+
+com.infobip:infobip-mobile-messaging-api-java:15.1.0
+Compiled from "MobileApiRtc.java"
+public interface org.infobip.mobile.messaging.api.rtc.MobileApiRtc {
+  public abstract org.infobip.mobile.messaging.api.rtc.TokenResponse getToken(org.infobip.mobile.messaging.api.rtc.TokenBody);
+}
+Compiled from "TokenBody.java"
+public class org.infobip.mobile.messaging.api.rtc.TokenBody {
+  public java.lang.String toString();
+  public org.infobip.mobile.messaging.api.rtc.TokenBody(java.lang.String, java.lang.Long);
+  public java.lang.String getIdentity();
+  public java.lang.Long getTimeToLive();
+}
+Compiled from "TokenResponse.java"
+public class org.infobip.mobile.messaging.api.rtc.TokenResponse {
+  public java.lang.String getToken();
+  public java.lang.String getExpirationTime();
+  public void setToken(java.lang.String);
+  public void setExpirationTime(java.lang.String);
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+  public org.infobip.mobile.messaging.api.rtc.TokenResponse();
+  public org.infobip.mobile.messaging.api.rtc.TokenResponse(java.lang.String, java.lang.String);
+}
+
+com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0
+Compiled from "MobileApiResourceProvider.java"
+public class org.infobip.mobile.messaging.mobileapi.MobileApiResourceProvider {
+  public org.infobip.mobile.messaging.mobileapi.MobileApiResourceProvider();
+  public org.infobip.mobile.messaging.api.messages.MobileApiMessages getMobileApiMessages(android.content.Context);
+  public org.infobip.mobile.messaging.api.version.MobileApiVersion getMobileApiVersion(android.content.Context);
+  public org.infobip.mobile.messaging.api.appinstance.MobileApiAppInstance getMobileApiAppInstance(android.content.Context);
+  public org.infobip.mobile.messaging.api.appinstance.MobileApiUserData getMobileApiUserData(android.content.Context);
+  public org.infobip.mobile.messaging.api.chat.MobileApiChat getMobileApiChat(android.content.Context);
+  public org.infobip.mobile.messaging.api.baseurl.MobileApiBaseUrl getMobileApiBaseUrl(android.content.Context);
+  public org.infobip.mobile.messaging.api.inbox.MobileApiInbox getMobileApiInbox(android.content.Context);
+  public org.infobip.mobile.messaging.api.rtc.MobileApiRtc getMobileApiRtc(android.content.Context);
+  public org.infobip.mobile.messaging.api.clickreporter.MobileApiClickReporter getMobileApiClickReporter(android.content.Context);
+  public java.lang.String removeNotSupportedChars(java.lang.String);
+}

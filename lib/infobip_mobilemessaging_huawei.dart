@@ -5,6 +5,9 @@ library;
 
 export 'src/core/infobip_mobilemessaging_huawei.dart';
 export 'src/configuration/web_rtc_ui.dart';
+export 'src/rtc/huawei_rtc.dart';
+export 'src/rtc/huawei_rtc_screen_as_camera.dart';
+export 'src/rtc/huawei_rtc_video_view.dart';
 export 'src/notifications/notification_events.dart';
 export 'src/notifications/message.dart';
 export 'src/notifications/push_message.dart';

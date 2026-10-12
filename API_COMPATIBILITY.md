@@ -4,6 +4,17 @@ This document summarizes the public API coverage of
 `infobip_mobilemessaging_huawei` v1.0.0 against the Infobip Huawei
 Mobile Messaging Android SDK 8.14.0.
 
+## Huawei outgoing RTC extension (separate from official parity)
+
+[`HuaweiRtc`](docs/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
+hangup, native call snapshots and typed events via RTC Core 2.5.28. Tokens are acquired
+internally through Huawei MM. `callsConfigurationId` is explicitly separate from the
+WebRTCUI push configuration. This is a Huawei/plugin extension, not an official
+Mobile Messaging Flutter parity method. Audio/video/hangup are code/unit verified;
+device verification is pending. `enableCalls`, `enableChatCalls`, `disableCalls` and
+HMS incoming-call signaling remain unsupported/guarded. See the
+[implementation verification](docs/huawei-rtc-outgoing-verification.md).
+
 ## Default Message Storage
 
 The official Flutter plugin at commit

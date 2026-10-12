@@ -16,6 +16,10 @@ import com.infobip.mobilemessaging.huawei.inbox.InboxManager
 import com.infobip.mobilemessaging.huawei.installation.InstallationManager
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import com.infobip.mobilemessaging.huawei.plugin.NativeEventBridge
+import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcManager
+import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcVideoPlatformViewFactory
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import com.infobip.mobilemessaging.huawei.user.UserManager
 import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
 import com.infobip.mobilemessaging.huawei.webrtc.WebRtcFailure
@@ -26,6 +30,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
 import org.infobip.mobile.messaging.chat.view.styles.PluginChatCustomization
 
 class InfobipMobileMessagingHuaweiPlugin :
@@ -46,8 +51,36 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var inboxManager: InboxManager? = null
     private var chatManager: ChatManager? = null
     private var webRtcOperations: WebRtcOperations? = null
+    private var huaweiRtcManager: HuaweiRtcManager? = null
+    private var huaweiRtcChannel: MethodChannel? = null
+    private var huaweiRtcEvents: EventChannel? = null
+    private var screenCaptureEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
+    private var rtcActivityBinding: ActivityPluginBinding? = null
+    private val rtcIntentListener = PluginRegistry.NewIntentListener { intent ->
+        huaweiRtcManager?.handleNotificationIntent(intent)
+        false
+    }
+    private val captureResultListener = PluginRegistry.ActivityResultListener { request, result, data ->
+        huaweiRtcManager?.screenCapture?.permission(request, result, data) ?: false
+    }
+    private fun attachRtcActivity(binding: ActivityPluginBinding) {
+        rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
+        rtcActivityBinding = binding
+        binding.addOnNewIntentListener(rtcIntentListener)
+        binding.addActivityResultListener(captureResultListener)
+        activity = binding.activity
+        huaweiRtcManager?.screenCapture?.attach(binding.activity)
+        binding.activity.intent?.let { huaweiRtcManager?.handleNotificationIntent(it) }
+    }
+    private fun detachRtcActivity() {
+        huaweiRtcManager?.screenCapture?.detach()
+        rtcActivityBinding?.removeActivityResultListener(captureResultListener)
+        rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
+        rtcActivityBinding = null
+        activity = null
+    }
     private var drawableLoader: PluginChatCustomization.DrawableLoader? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -63,6 +96,27 @@ class InfobipMobileMessagingHuaweiPlugin :
             MobileMessagingInitializer(binding.applicationContext) {
                 chatManager?.activate()
             }
+        huaweiRtcManager = HuaweiRtcManager(
+            binding.applicationContext,
+            initialized = { initializer?.isInitialized == true },
+            canStartCall = {
+                activity?.let {
+                    !it.isFinishing && !it.isDestroyed &&
+                        ((it as? LifecycleOwner)?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) ?: it.hasWindowFocus())
+                } == true
+            },
+        )
+        huaweiRtcChannel = MethodChannel(binding.binaryMessenger, HuaweiRtcManager.METHOD_CHANNEL).also {
+            it.setMethodCallHandler(huaweiRtcManager)
+        }
+        huaweiRtcManager?.configureScreenCapture(binding.applicationContext)
+        screenCaptureEvents = EventChannel(binding.binaryMessenger,
+            com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcScreenCaptureController.EVENTS).also {
+            it.setStreamHandler(huaweiRtcManager?.screenCapture)
+        }
+        huaweiRtcEvents = EventChannel(binding.binaryMessenger, HuaweiRtcManager.EVENT_CHANNEL).also {
+            it.setStreamHandler(huaweiRtcManager)
+        }
         webRtcOperations =
             WebRtcOperations(
                 context = binding.applicationContext,
@@ -127,9 +181,27 @@ class InfobipMobileMessagingHuaweiPlugin :
                 chatManager = requireNotNull(chatManager),
             ),
         )
+        try {
+            val registered = binding.platformViewRegistry.registerViewFactory(
+                HuaweiRtcVideoPlatformViewFactory.VIEW_TYPE,
+                HuaweiRtcVideoPlatformViewFactory(requireNotNull(huaweiRtcManager)),
+            )
+            if (!registered) Log.e(TAG, "RTC video view registration unavailable")
+        } catch (error: Exception) {
+            Log.e(TAG, "RTC video view registration failed (${error.javaClass.simpleName})")
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        detachRtcActivity()
+        huaweiRtcManager?.dispose()
+        huaweiRtcChannel?.setMethodCallHandler(null)
+        huaweiRtcEvents?.setStreamHandler(null)
+        screenCaptureEvents?.setStreamHandler(null)
+        screenCaptureEvents = null
+        huaweiRtcManager = null
+        huaweiRtcChannel = null
+        huaweiRtcEvents = null
         inboxManager?.setJwt(null)
         methodChannel?.setMethodCallHandler(null)
         eventChannel?.setStreamHandler(null)
@@ -154,19 +226,19 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
+        attachRtcActivity(binding)
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
-        activity = null
+        try { huaweiRtcManager?.detachVideoViews() } finally { detachRtcActivity() }
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        activity = binding.activity
+        attachRtcActivity(binding)
     }
 
     override fun onDetachedFromActivity() {
-        activity = null
+        try { huaweiRtcManager?.detachVideoViews() } finally { detachRtcActivity() }
     }
 
     override fun onMethodCall(
@@ -181,8 +253,15 @@ class InfobipMobileMessagingHuaweiPlugin :
             ChannelContract.CLEANUP -> {
                 val manager = cleanupManager ?: return detached(result)
                 val rtc = webRtcOperations ?: return detached(result)
+                val outgoingRtc = huaweiRtcManager ?: return detached(result)
+                val outgoingFailure = outgoingRtc.prepareCleanup()
+                if (outgoingFailure != null) {
+                    result.error(outgoingFailure.code, outgoingFailure.message, null)
+                    return
+                }
                 rtc.cleanup { failure ->
                     mainHandler.post {
+                        outgoingRtc.completeCleanup()
                         if (webRtcOperations !== rtc || cleanupManager !== manager) {
                             detached(result)
                         } else if (failure != null) result.error(failure.code, failure.message, null)

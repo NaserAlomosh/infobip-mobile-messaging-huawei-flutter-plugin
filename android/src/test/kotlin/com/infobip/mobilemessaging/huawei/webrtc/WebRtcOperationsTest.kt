@@ -235,6 +235,7 @@ class WebRtcOperationsTest {
         val operations = WebRtcOperations(null, { true }, { WebRtcConfiguration("rtc") })
         assertEquals("webrtc_unsupported", operations.enableCallsResult("identity").single()?.code)
         assertEquals("webrtc_unsupported", operations.enableChatCallsResult().single()?.code)
+        assertEquals("webrtc_not_enabled", operations.disableCallsResult().single()?.code)
     }
 
     private fun operations(

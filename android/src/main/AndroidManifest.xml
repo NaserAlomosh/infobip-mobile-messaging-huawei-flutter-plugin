@@ -1,5 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application>
+        <service android:name="com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcScreenCaptureService"
+            android:exported="false" android:stopWithTask="true"
+            android:foregroundServiceType="mediaProjection" />
+        <service android:name="com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcCallService"
+            android:exported="false" android:stopWithTask="false"
+            android:foregroundServiceType="microphone|camera" />
         <!-- Use only the SDK system tap broadcasts, not its duplicate local broadcasts. -->
         <receiver android:name="com.infobip.mobilemessaging.huawei.plugin.NotificationTapReceiver"
             android:exported="false">

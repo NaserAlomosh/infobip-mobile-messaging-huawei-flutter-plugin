@@ -116,7 +116,15 @@ changing the value does not alter the active SDK instance, but is used by the fi
 initialization after cleanup. This stores regular Mobile Messaging messages, not
 Mobile Inbox or Chat history.
 
-WebRTC APIs are retained, but RTC UI 15.1.0 integration is disabled for Huawei-only production use because of unresolved Firebase linkage and transport support. See
+**Outgoing audio/video calls:** the separate [`HuaweiRtc` extension](docs/huawei-rtc-outgoing.md)
+uses RTC Core 2.5.28 and internally acquires RTC tokens through initialized Huawei
+Mobile Messaging. It provides typed application-call requests, events, active-call
+snapshots and hangup. It is code/unit verified; Huawei device validation is pending.
+
+**Official incoming-call APIs remain unsupported/guarded:** `enableCalls`,
+`enableChatCalls` and `disableCalls` do not place outgoing calls. RTC UI 15.1.0
+integration remains disabled because of unresolved Firebase linkage and HMS transport support. See
+[the direct RTC Core investigation](docs/webrtc-core-research.md) for verified API/dependency limitations, and
 [`docs/webrtc-configuration.md`](docs/webrtc-configuration.md) for initialization,
 runtime usage, and dependency configuration.
 
@@ -265,15 +273,18 @@ Chat does not expose thread commands, programmatic attachments, raw received-mes
 
 ## Example
 
-The example covers initialization, notifications, user, installation, Inbox, and Chat. Supply a non-production application code at runtime:
+The example guides testers through **Application Setup → User & Installation Setup → Features**, with per-feature readiness for Push, Inbox, Chat, outgoing RTC Audio/Video, User and Installation. Follow the [example guide](example/README.md) for configuration and the exact authentication contracts.
 
 ```sh
 cd example
-flutter run \
-  --dart-define=INFOBIP_APPLICATION_CODE=YOUR_APPLICATION_CODE
+cp example_config.example.json example_config.local.json
+# Fill the ignored local JSON with controlled test configuration.
+flutter run --dart-define-from-file=example_config.local.json
 ```
 
 It intentionally contains neither a real Infobip Application Code nor Huawei credentials. Add your own ignored `android/app/agconnect-services.json` and host Gradle configuration before testing HMS push on a device.
+
+**Never embed signing secrets in a production mobile application. This local configuration is for controlled SDK testing only.** The example generates short-lived tokens on demand; Mobile Messaging/Inbox and Chat use separate JWT contracts and signing configuration.
 
 ## Limitations
 
