@@ -1,10 +1,40 @@
 # 1.0.0
 
-- Initial Android Flutter plugin release for Infobip Mobile Messaging on Huawei devices.
-- Added SDK initialization and remote notification registration.
-- Added notification, action, registration, and installation event streams.
-- Added user personalization and profile management.
-- Added installation management and Inbox support.
-- Added embedded In-App Chat with unread counters, text messages, contextual data, language, theme, and back-navigation controls.
-- Aligned Message, Installation, UserData, PersonalizeContext, Inbox, and FilterOptions with the official Infobip Flutter model names.
-- Added Huawei 8.14.0 message and installation fields while retaining deprecated pre-v1 aliases.
+First stable release preparation; publication is pending release gates.
+
+- Added Huawei HMS Push registration and Infobip Mobile Messaging initialization.
+- Added message, notification tap/action, registration, installation and user events.
+- Added user personalization, installation management, custom events and Mobile Inbox.
+- Added native and embedded Infobip Chat, native attachments, unread counters,
+  view-scoped text/context/language/theme/back navigation, typed runtime events,
+  global customization and Chat notification overrides.
+- Added Chat JWT provider authentication, separate from Mobile Messaging JWTs.
+- Added outgoing RTC Core application audio/video calls with native backend token
+  acquisition, typed lifecycle events and active-call snapshots.
+- Added local/remote video rendering, microphone mute, audio routing, speaker,
+  camera enable/switch controls and SDK duration/readback.
+- Added ongoing RTC foreground notifications with return-to-call and hangup actions.
+- Added Android 10+ Screen-as-Camera sharing through MediaProjection and VideoFilter,
+  fresh consent, capture foreground notification/Stop and camera restoration.
+- Hardened call/capture ownership, cleanup retries, bounded Stop, late callback
+  rejection and Activity/engine lifecycle handling.
+- Reduced screen-capture work with reused conversion scratch storage, latest-frame
+  draining, blocked-generation rejection and cached geometry. SDK output Bitmaps
+  remain independent; physical CPU/memory improvements are not quantified.
+- Improved screen publication orientation, aspect-preserving fit-center output,
+  resize-triggered Stop and unmirrored local screen preview. RTC Core 2.5.28 camera
+  output remains 640×480, limiting portrait readability.
+- Bounded Chat JWT requests at 25 seconds in Dart and 30 seconds natively, with
+  32-request limits, safe failure and stale-result protection (CHAT-01).
+- Made failed Chat activation retryable with the same application code after a
+  one-second cooldown while retaining Mobile Messaging initialization (CHAT-02).
+- Made plugin cleanup failure-safe: clear callbacks/state after native success,
+  share concurrent cleanup and reject conflicting lifecycle operations (API-01).
+  Vendor-internal cleanup is not guaranteed to roll back partial failures.
+- Aligned public Message, Installation, UserData, PersonalizeContext, Inbox and
+  FilterOptions names with the official Flutter models; retained deprecated aliases.
+- Added release integration/security guides and explicit package exclusions.
+
+Known release gates: missing owner-authorized LICENSE, unresolved Huawei Mobile
+Messaging 8.14.0 dependency authorization-header logging, and outstanding physical
+Huawei/backend acceptance. No security certification or publication is claimed.

@@ -90,7 +90,7 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | --- | --- | --- |
 | Initialize with Application Code | **Adapted** | Asynchronous and application-context scoped. |
 | Configure JWT | **Adapted** | `setJwt` sets or clears the in-memory JWT used by supported requests. |
-| SDK shutdown / reset | **Unsupported** | Flutter engine detachment does not reset the native SDK singleton. |
+| Local SDK cleanup | **Supported** | `cleanup()` removes local SDK state after native success; engine detachment alone does not reset the singleton. |
 
 ---
 
@@ -805,3 +805,20 @@ No test exclusions, Gradle changes, standard Android Mobile Messaging SDK,
 WebRTC implementation/configuration changes, or unrelated test fixes are part
 of this change. No application/plugin compile errors remain in the baseline
 build; the full native test-suite limitation above remains separate.
+
+## Current outgoing RTC and screen-sharing extension
+
+The historical official-API audits above do not define the later outgoing RTC
+extension. The current exported `HuaweiRtc`, `HuaweiRtcCallRequest`,
+`HuaweiRtcVideoView`, `HuaweiRtcControls` and `HuaweiRtcScreenAsCamera` support
+outgoing audio/video application calls, local/remote camera rendering, current-call
+controls, call notification return and Android 10+ screen sharing through camera
+substitution. No incoming HMS signaling or separate screen-sharing track is added.
+See the [current README](README.md) and [screen-sharing guide](docs/screen-sharing.md).
+
+Chat initialization includes retryable activation (one-second cooldown); JWT
+provider requests have 25-second Dart and 30-second native deadlines, each with
+32-request limits. Cleanup preserves Dart Chat registrations on native rejection;
+success clears them. Vendor-internal cleanup is not guaranteed to roll back.
+See [reliability evidence](docs/huawei-chat-api-reliability.md) and
+[security guidance](SECURITY.md) for the unresolved upstream logging issue.

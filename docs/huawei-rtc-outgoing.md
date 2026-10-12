@@ -81,11 +81,12 @@ permission dialog is launched by the plugin, and no Activity is passed to Core.
 
 Audio uses the actual `ApplicationCallOptions.builder().audio(true).video(false)`.
 Video uses `.audio(true).video(true)` and therefore requests real camera media.
-The only media control exposed in this MVP is native `ApplicationCall.hangup()`.
-Mute, routing, camera switching, video toggles, screen sharing and renderers are
-deliberately not exposed. There is **no local preview or remote video view** in
-this first API. Confirm outgoing video at the receiving endpoint. A host needing
-an in-app rendered video conversation needs a subsequent renderer integration.
+Current controls include microphone mute, audio routing, speaker selection, camera
+switching and camera enablement. `HuaweiRtcVideoView` renders local/remote camera
+tracks; `HuaweiRtcScreenAsCamera` replaces camera output for sharing. See the
+[current integration guide](../README.md), [screen-sharing guide](screen-sharing.md),
+[controls](huawei-rtc-call-controls.md) and [call notifications](huawei-rtc-ongoing-call.md).
+Earlier verification reports retain their historical scope.
 
 ## Token acquisition and privacy
 
@@ -146,6 +147,7 @@ Every event has a typed `type`, optional call snapshot, optional numeric
 | `finished` | `onHangup`, including numeric termination reason when available |
 | `error` | `onError`; **not necessarily terminal** |
 | `reconnecting` / `reconnected` | Corresponding Core callbacks |
+| `returnToCall` | Validated ongoing-notification tap; consume `takeNotificationCall` |
 
 Statuses map exactly to Core's `INITIALIZING`, `INITIALIZED`, `CALLING`, `RINGING`,
 `CONNECTING`, `ESTABLISHED`, `FINISHING`, `FINISHED`. There is no separate
@@ -182,10 +184,12 @@ If engine-disposal hangup throws, disposal cannot report remote termination; the
 Core singleton's active-call check prevents a new engine from overlapping the
 remaining call. No undocumented singleton reset/unregister API is invoked.
 
-There is no foreground call service or persistent call notification in this MVP.
-Foreground use is the supported validation target. Background/locked-screen media
-and process death recovery are **NOT_VERIFIED**, with no guarantee of continuation.
-Do not use this API as an incoming registration or background calling service.
+The current extension starts a microphone/camera foreground call service before
+media and supplies an ongoing notification with return-to-call/hangup actions.
+Start from the foreground; notification permission is host-owned. See
+[call notifications](huawei-rtc-ongoing-call.md). Background/locked-screen media
+and process-death behavior require physical Huawei validation; continuation is
+not guaranteed. Incoming HMS registration remains unsupported.
 
 ## Stable errors
 
@@ -207,15 +211,15 @@ Existing official methods keep their `webrtc_*` guards (including
 
 ## Device testing
 
-Open the existing example's **Huawei outgoing RTC** screen after initialization.
-Grant permissions in Android App info → Permissions. Enter a test Calls
-configuration ID and optionally a test identity; nothing is persisted or hardcoded.
-Exercise audio, video and hangup and observe the bounded event list. Leaving that
-screen cancels its event listener but does not hang up; return to end the call.
-Use the [repository device checklist](webrtc-core-device-validation.md).
+Use the [current example guide](../example/README.md): configure the ignored local
+Dart test fields and actual Huawei host, initialize, grant call permissions in
+Setup, then open **Huawei RTC Audio** or **Huawei RTC Video**. Configure Calls
+routing and an optional authorized token subject. Exercise rendering, controls,
+notifications, sharing and hangup; leaving a route does not end the call.
 
-No feature in this implementation is DEVICE_VERIFIED. External Huawei evidence
-from a different Flutter plugin does not change this repository's status.
+No physical Huawei/backend test was performed by this documentation task.
+Historical reports and supplied device observations retain their own scope;
+unit tests do not establish live authentication, delivery or peer media.
 
 [provider]: https://github.com/infobip/mobile-messaging-sdk-huawei/blob/5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824/infobip-mobile-messaging-huawei-sdk/src/main/java/org/infobip/mobile/messaging/mobileapi/MobileApiResourceProvider.java
 [service]: https://github.com/infobip/mobile-messaging-sdk-android/blob/d2755309de0b3f68d1ef1ed8302d65d75b3526c6/infobip-mobile-messaging-api-java/src/main/java/org/infobip/mobile/messaging/api/rtc/MobileApiRtc.java

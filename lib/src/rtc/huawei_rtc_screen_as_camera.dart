@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 
-/// Experimental camera-stream substitution, not Infobip native screen sharing.
+/// Lifecycle phases for screen sharing through camera-stream substitution.
 enum ScreenAsCameraPhase {
   idle,
   requestingPermission,
@@ -74,7 +74,11 @@ final class ScreenAsCameraException implements Exception {
   String toString() => 'ScreenAsCameraException($code)';
 }
 
-/// Device-test POC. Camera must remain enabled. Android 10+ only.
+/// Screen sharing through the outgoing camera stream. Android 10+ only.
+///
+/// Requires an established video call, enabled camera and fresh user consent.
+/// This replaces camera output through a VideoFilter; no separate track is added.
+/// See `docs/screen-sharing.md` for permissions, shutdown and output limitations.
 abstract final class HuaweiRtcScreenAsCamera {
   static const _methods = MethodChannel(
     'infobip_mobilemessaging_huawei/huawei_rtc',
