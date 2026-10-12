@@ -1,8 +1,6 @@
 > Task :app:dependencies
 
-------------------------------------------------------------
 Project ':app'
-------------------------------------------------------------
 
 debugRuntimeClasspath - Runtime classpath of '/debug'.
 +--- org.jetbrains.kotlin:kotlin-stdlib:2.1.0
