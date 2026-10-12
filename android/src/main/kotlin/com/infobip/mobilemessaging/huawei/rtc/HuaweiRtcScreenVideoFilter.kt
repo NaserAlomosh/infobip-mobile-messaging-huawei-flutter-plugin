@@ -9,7 +9,7 @@ import android.graphics.RectF
 import com.infobip.webrtc.sdk.videofilter.VideoFilter
 import com.infobip.webrtc.sdk.videofilter.VideoFilterManager
 
-/** Experimental camera substitution. No SDK implementation classes or native screen track. */
+/** Screen-as-Camera substitution through the public filter API. */
 internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: (Long) -> Unit,
     private val screenFrame: (Long) -> Unit, private val filterStopped: () -> Unit) : VideoFilter {
     private val lock = Any()

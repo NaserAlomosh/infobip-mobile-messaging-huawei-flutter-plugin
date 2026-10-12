@@ -60,6 +60,13 @@ internal class HuaweiRtcVideoPlatformView(
 
     override fun showVideo() { renderer?.visibility = View.VISIBLE }
 
+    override fun layoutScreenPreview(enabled: Boolean) {
+        // MATCH_PARENT supplies EXACTLY measurements, overriding the public SDK fit
+        // scaling policy. WRAP_CONTENT allows it to preserve the whole video aspect.
+        val size = if (enabled) FrameLayout.LayoutParams.WRAP_CONTENT else FrameLayout.LayoutParams.MATCH_PARENT
+        renderer?.layoutParams = FrameLayout.LayoutParams(size, size, android.view.Gravity.CENTER)
+    }
+
     override fun clearImage() {
         renderer?.visibility = View.INVISIBLE
         renderer?.clearImage()

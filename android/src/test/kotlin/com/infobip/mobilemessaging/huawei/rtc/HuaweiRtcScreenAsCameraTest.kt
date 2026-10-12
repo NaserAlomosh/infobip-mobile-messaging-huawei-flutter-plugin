@@ -142,19 +142,28 @@ class HuaweiRtcScreenAsCameraTest {
         `when`(projection.createVirtualDisplay(anyString(), anyInt(), anyInt(), anyInt(), anyInt(),
             any(Surface::class.java), isNull(), any(Handler::class.java))).thenReturn(display)
         doAnswer { callback?.onStop(); null }.`when`(projection).stop()
-        val capture = HuaweiRtcScreenCaptureController(app, owner = { owner }, sdkInt = { 29 },
-            projectionProvider = { _, _ -> projection })
+        val previewStates = mutableListOf<Boolean>()
+        lateinit var capture: HuaweiRtcScreenCaptureController
+        capture = HuaweiRtcScreenCaptureController(app, owner = { owner }, sdkInt = { 29 },
+            projectionProvider = { _, _ -> projection }, previewChanged = {
+                previewStates.add(capture.substituting(it.identity))
+            })
         capture.attach(host)
         capture.start("A", Reply())
         capture.permission(request, Activity.RESULT_OK, Intent())
         requireNotNull(HuaweiRtcScreenCaptureService.lease).complete(true)
         assertNotNull(callback)
+        assertTrue(capture.substituting("session-A"))
+        assertFalse(capture.substituting("session-B"))
+        assertEquals(true, previewStates.last())
         // An SDK screen-stop failure must be irrelevant, including indefinite reconnection.
         doThrow(IllegalStateException("signaling unavailable")).`when`(call).stopScreenShare()
         if (revoked) callback?.onStop()
         if (ending) { `when`(call.status()).thenReturn(CallStatus.FINISHING); capture.endCall() }
         val reply = Reply()
         capture.stop("A", reply)
+        assertFalse(capture.substituting("session-A"))
+        assertEquals(false, previewStates.last())
         val lease = HuaweiRtcScreenCaptureService.lease
         HuaweiRtcScreenCaptureService.lease = null
         lease?.ended?.invoke()
@@ -172,6 +181,21 @@ class HuaweiRtcScreenAsCameraTest {
         verify(call, never()).stopScreenShare()
         verify(call, never()).hangup()
         assertFalse(capture.busy())
+    }
+    @Test fun `preview notification failure cannot prevent bounded stop or consent cancellation`() {
+        val capture = HuaweiRtcScreenCaptureController(app, owner = { owner }, sdkInt = { 29 },
+            previewChanged = { throw IllegalStateException("renderer unavailable") })
+        capture.attach(host)
+        capture.start("A", Reply())
+        assertFalse(capture.substituting("session-A"))
+        val stop = Reply(); capture.stop("A", stop)
+        assertEquals(1, stop.completions)
+        assertFalse(capture.busy())
+        capture.start("A", Reply())
+        capture.permission(request, Activity.RESULT_CANCELED, null)
+        assertFalse(capture.substituting("session-A"))
+        assertFalse(capture.busy())
+        capture.endCall()
     }
     @Test fun `reader callback and service failures retain resources until independent retries succeed`() {
         val projection = mock(MediaProjection::class.java)

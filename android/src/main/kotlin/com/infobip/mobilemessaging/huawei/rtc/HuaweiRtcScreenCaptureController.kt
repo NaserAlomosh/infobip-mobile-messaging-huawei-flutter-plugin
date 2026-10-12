@@ -22,7 +22,7 @@ import java.util.UUID
 
 internal data class ScreenCaptureCall(val identity: String, val call: ApplicationCall, val video: Boolean)
 
-/** Experimental, main-thread session controller; owns the exact projection it acquires. */
+/** Main-thread session controller; owns the exact projection it acquires. */
 internal class HuaweiRtcScreenCaptureController(context: Context, private val owner: () -> ScreenCaptureCall?,
     private val sdkInt: () -> Int = { Build.VERSION.SDK_INT },
     private val projectionProvider: (Int, Intent) -> MediaProjection? = { code, data ->
@@ -37,7 +37,8 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
     },
     private val stopService: () -> Boolean = {
         context.applicationContext.stopService(Intent(context, HuaweiRtcScreenCaptureService::class.java))
-    }) : EventChannel.StreamHandler {
+    },
+    private val previewChanged: (ScreenCaptureCall) -> Unit = {}) : EventChannel.StreamHandler {
     private val app = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
@@ -84,6 +85,10 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
     fun attach(value: Activity) { activity = value }
     fun detach() { activity = null; session?.let { stop(it, "activity_detached") } }
     fun busy() = session != null
+    // Main-thread preview policy only; never changes captured or submitted pixels.
+    fun substituting(identity: String): Boolean = session?.let {
+        it.owner.identity == identity && it.epoch != 0L && !it.stopRequested
+    } == true
     private fun valid(c: Capture): Boolean = owner()?.let {
         it.identity == c.owner.identity && it.call === c.owner.call &&
             it.call.status() != CallStatus.FINISHED && it.call.status() != CallStatus.FINISHING
@@ -199,6 +204,7 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
             val reader = readerProvider(w, h)
             c.reader = reader
             c.epoch = c.filter.begin()
+            safely { previewChanged(c.owner) }
             val frames = HuaweiRtcScreenFrameProcessor(w, h)
             c.frames = frames
             reader.setOnImageAvailableListener({ source ->
@@ -310,7 +316,11 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
     private fun value(c: Capture) = mapOf<String, Any?>("callId" to c.callId, "state" to c.state,
         "framesBlocked" to (c.stopRequested || c.epoch == 0L), "projectionTerminated" to c.terminated,
         "resourcesReleased" to c.released, "cameraOutputRestored" to c.restored, "error" to c.error)
-    private fun publish(c: Capture) { last = value(c); deliver(last) }
+    private fun publish(c: Capture) {
+        last = value(c)
+        safely { previewChanged(c.owner) }
+        deliver(last)
+    }
     private fun safely(action: () -> Unit) { try { action() } catch (_: Exception) { /* Engine loss cannot prevent capture teardown. */ } }
     private fun deliver(value: Map<String, Any?>) {
         try { sink?.success(value) } catch (_: Exception) { sink = null }

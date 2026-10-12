@@ -4,6 +4,8 @@ import com.infobip.webrtc.sdk.api.call.ApplicationCall
 import com.infobip.webrtc.sdk.api.model.RemoteVideo
 import com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack
 import com.infobip.webrtc.sdk.api.model.video.VideoRenderer
+import com.infobip.webrtc.sdk.api.options.VideoOptions.CameraOrientation
+import org.webrtc.RendererCommon.ScalingType
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,6 +28,70 @@ class HuaweiRtcVideoBindingsTest {
     private fun remote(track: RTCVideoTrack?): HuaweiRtcVideoBindings.Binding? {
         `when`(call.remoteVideos()).thenReturn(camera("agent", track))
         return bindings.bind(session, call, owner, options)
+    }
+
+    @Test fun `screen preview disables selfie mirror uses fit and restores camera without rebinding track`() {
+        val track = mock(RTCVideoTrack::class.java)
+        `when`(call.localCameraTrack()).thenReturn(track)
+        `when`(call.cameraOrientation()).thenReturn(CameraOrientation.FRONT)
+        bindings.bind(session, call, owner, options.copy(local = true))
+        verify(owner).initializeRenderer(true)
+        repeat(3) { bindings.updatePreview(session, call, true) }
+        verify(renderer, times(1)).setMirror(false)
+        verify(renderer, times(1)).setScalingType(ScalingType.SCALE_ASPECT_FIT)
+        verify(owner, times(1)).layoutScreenPreview(true)
+        repeat(3) { bindings.updatePreview(session, call, false) }
+        verify(renderer, times(1)).setMirror(true)
+        verify(renderer, times(1)).setScalingType(ScalingType.SCALE_ASPECT_BALANCED)
+        verify(owner, times(1)).layoutScreenPreview(false)
+        verify(track, times(1)).addSink(renderer)
+        verify(track, never()).removeSink(renderer)
+        verify(call, never()).setVideoFilter(any())
+        verify(call, never()).cameraVideo(anyBoolean())
+    }
+
+    @Test fun `late local preview during screen output starts unmirrored and fit then back camera stays unmirrored`() {
+        `when`(call.cameraOrientation()).thenReturn(CameraOrientation.FRONT)
+        bindings.bind(session, call, owner, options.copy(local = true), screenOutput = true)
+        verify(owner).initializeRenderer(false)
+        verify(renderer).setScalingType(ScalingType.SCALE_ASPECT_FIT)
+        `when`(call.cameraOrientation()).thenReturn(CameraOrientation.BACK)
+        bindings.updatePreview(session, call, false)
+        verify(renderer, never()).setMirror(true)
+        verify(renderer).setScalingType(ScalingType.SCALE_ASPECT_BALANCED)
+    }
+
+    @Test fun `preview updates ignore stale sessions remote views and disposed renderers`() {
+        remote(mock(RTCVideoTrack::class.java))
+        bindings.updatePreview(session, call, true)
+        verifyNoInteractions(renderer)
+        bindings.disposeViews()
+        clearInvocations(renderer)
+        `when`(call.cameraOrientation()).thenReturn(CameraOrientation.FRONT)
+        bindings.bind(session, call, owner, options.copy(local = true))
+        bindings.updatePreview(Any(), call, true)
+        verifyNoInteractions(renderer)
+        bindings.endSession(session)
+        bindings.updatePreview(session, call, true)
+        verifyNoInteractions(renderer)
+    }
+
+    @Test fun `preview control failure releases view without changing call or preventing other local views`() {
+        val track = mock(RTCVideoTrack::class.java)
+        `when`(call.localCameraTrack()).thenReturn(track)
+        `when`(call.cameraOrientation()).thenReturn(CameraOrientation.FRONT)
+        bindings.bind(session, call, owner, options.copy(local = true))
+        val otherOwner = mock(HuaweiRtcVideoViewOwner::class.java)
+        val otherRenderer = mock(VideoRenderer::class.java)
+        `when`(otherOwner.initializeRenderer(anyBoolean())).thenReturn(otherRenderer)
+        bindings.bind(session, call, otherOwner, options.copy(local = true))
+        doThrow(IllegalStateException()).`when`(renderer).setMirror(false)
+        bindings.updatePreview(session, call, true)
+        verify(owner).releaseRenderer()
+        verify(track).removeSink(renderer)
+        verify(otherRenderer).setMirror(false)
+        verify(otherRenderer).setScalingType(ScalingType.SCALE_ASPECT_FIT)
+        verify(call, never()).hangup()
     }
 
     @Test fun `late view binds snapshot and repeated refresh does not add duplicate sink`() {

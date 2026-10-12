@@ -59,6 +59,11 @@ internal class HuaweiRtcManager(
     internal fun configureScreenCapture(context: Context) {
         screenCapture = HuaweiRtcScreenCaptureController(context, owner = {
             session?.let { current -> current.call?.let { ScreenCaptureCall(current.identity, it, current.input.video) } }
+        }, previewChanged = { capture ->
+            val current = session
+            if (!disposed && current != null && current.identity == capture.identity && current.call === capture.call) {
+                videoBindings.updatePreview(current, capture.call, screenCapture?.substituting(current.identity) == true)
+            }
         })
     }
 
@@ -71,7 +76,8 @@ internal class HuaweiRtcManager(
             if (!disposed && !cleaning && canStartCall() && current != null &&
                 current.input.video && call != null && call.id() == options.callId &&
                 call.status() != CallStatus.FINISHED && call.status() != CallStatus.FINISHING) {
-                binding = videoBindings.bind(current, call, view, options)
+                binding = videoBindings.bind(current, call, view, options,
+                    screenOutput = screenCapture?.substituting(current.identity) == true)
             }
         }
         return binding
@@ -87,7 +93,10 @@ internal class HuaweiRtcManager(
             val call = current.call ?: return@rendering
             if (call.status() == CallStatus.FINISHED || call.status() == CallStatus.FINISHING) {
                 videoBindings.endSession(current)
-            } else videoBindings.refresh(current, call, localChanged)
+            } else {
+                videoBindings.updatePreview(current, call, screenCapture?.substituting(current.identity) == true)
+                videoBindings.refresh(current, call, localChanged)
+            }
         }
     }
 
