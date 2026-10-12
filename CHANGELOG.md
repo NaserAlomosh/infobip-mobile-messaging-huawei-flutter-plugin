@@ -44,4 +44,4 @@ not cover RTC printf or guarantee removal of all sensitive logs. The owner has
 decided not to submit a vendor report before publication; disclosure is not a
 publication gate. Physical Huawei/backend, signed-host and 16 KB runtime acceptance
 remain UNVERIFIED production checks. No security certification or publication is
-claimed. See [publication readiness](docs/publication-readiness.md).
+claimed. See [security guidance](SECURITY.md).

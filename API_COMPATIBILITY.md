@@ -13,7 +13,7 @@ WebRTCUI push configuration. This is a Huawei/plugin extension, not an official
 Mobile Messaging Flutter parity method. Audio/video/hangup are code/unit verified;
 device verification is pending. `enableCalls`, `enableChatCalls`, `disableCalls` and
 HMS incoming-call signaling remain unsupported/guarded. See the
-[implementation verification](docs/huawei-rtc-outgoing-verification.md).
+[implementation verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md).
 
 ## Default Message Storage
 
@@ -820,5 +820,5 @@ Chat initialization includes retryable activation (one-second cooldown); JWT
 provider requests have 25-second Dart and 30-second native deadlines, each with
 32-request limits. Cleanup preserves Dart Chat registrations on native rejection;
 success clears them. Vendor-internal cleanup is not guaranteed to roll back.
-See [reliability evidence](docs/huawei-chat-api-reliability.md) and
+See [reliability evidence](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-chat-api-reliability.md) and
 [security guidance](SECURITY.md) for the unresolved upstream logging issue.

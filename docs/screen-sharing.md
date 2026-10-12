@@ -143,7 +143,5 @@ Use the [example device checklist](../example/README.md) to check consent denial
 notifications, backgrounding, rotation, Stop, camera restoration, repeated sharing,
 OS revocation and local/remote hangup. Automated tests cover filters, ownership,
 cleanup failures, orientation and preview policy, not real projection/peer delivery.
-See [release validation](release-packaging.md) and [security guidance](../SECURITY.md).
-Historical implementation evidence remains in `huawei-rtc-screen-as-camera-poc.md`,
-`huawei-rtc-screen-performance.md`, `huawei-rtc-screen-orientation.md` and
-`huawei-rtc-screen-video-quality.md`.
+See [security guidance](../SECURITY.md). Historical implementation and validation
+reports remain in the Git repository and are excluded from the pub.dev package.

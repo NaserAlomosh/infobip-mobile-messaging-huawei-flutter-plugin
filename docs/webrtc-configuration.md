@@ -9,8 +9,8 @@ Code/unit verification does not establish Huawei device success.
 extension enables `enableCalls`, `enableChatCalls` or incoming HMS push.
 
 The direct RTC Core investigation is recorded in
-[WebRTC Core feasibility](webrtc-core-research.md), with an explicit
-[Huawei device plan](webrtc-core-device-validation.md). Core avoids the conflicting
+[WebRTC Core feasibility](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-research.md), with an explicit
+[Huawei device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md). Core avoids the conflicting
 Mobile Messaging core, but its inspected push transport and public session lifecycle
 cannot safely implement the current incoming-call APIs. The earlier research stop
 condition applied to that incoming contract; the safeguards below remain in effect
