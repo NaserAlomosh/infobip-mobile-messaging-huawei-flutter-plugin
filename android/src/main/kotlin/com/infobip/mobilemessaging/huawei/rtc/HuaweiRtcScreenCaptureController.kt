@@ -3,7 +3,6 @@ package com.infobip.mobilemessaging.huawei.rtc
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
@@ -59,6 +58,7 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
         var display: VirtualDisplay? = null
         var reader: ImageReader? = null
         var worker: HandlerThread? = null
+        var frames: HuaweiRtcScreenFrameProcessor? = null
         var stopRequested = false
         var terminated = false
         var released = false
@@ -199,18 +199,11 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
             val reader = readerProvider(w, h)
             c.reader = reader
             c.epoch = c.filter.begin()
+            val frames = HuaweiRtcScreenFrameProcessor(w, h)
+            c.frames = frames
             reader.setOnImageAvailableListener({ source ->
                 try {
-                    source.acquireLatestImage()?.use { image ->
-                        val plane = image.planes[0]
-                        val paddedWidth = plane.rowStride / plane.pixelStride
-                        val padded = Bitmap.createBitmap(paddedWidth, h, Bitmap.Config.ARGB_8888)
-                        try {
-                            plane.buffer.rewind(); padded.copyPixelsFromBuffer(plane.buffer)
-                            val frame = Bitmap.createBitmap(padded, 0, 0, w, h)
-                            c.filter.offer(if (frame === padded) frame.copy(Bitmap.Config.ARGB_8888, false) else frame, c.epoch)
-                        } finally { padded.recycle() }
-                    }
+                    frames.drain(source, c.filter, c.epoch)
                 } catch (_: Exception) { main.post { if (session === c && !c.stopRequested) stop(c, "frame_failed") } }
             }, handler)
             c.display = projection.createVirtualDisplay("Huawei screen-as-camera POC", w, h, metrics.densityDpi,
@@ -267,6 +260,7 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
         // Drain capture work before closing its reader. Never join on the main thread.
         val worker = c.worker
         fun finish() {
+            if (c.worker == null) attempt { c.frames?.release(); c.frames = null }
             if (c.worker == null) attempt {
                 c.reader?.setOnImageAvailableListener(null, null)
                 c.reader?.close(); c.reader = null
@@ -285,7 +279,7 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
                     }
                 }
             }
-            c.released = c.display == null && c.reader == null && c.worker == null &&
+            c.released = c.display == null && c.reader == null && c.worker == null && c.frames == null &&
                 c.callback == null && c.serviceStopped
             c.cleanupRunning = false
             if (c.terminated && c.released) {
