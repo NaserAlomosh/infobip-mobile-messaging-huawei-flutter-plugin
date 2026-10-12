@@ -462,13 +462,29 @@ provide Stop, and respect OS secure-content restrictions.
 
 **Unresolved upstream security issue:** Huawei Mobile Messaging SDK **8.14.0**
 contains authorization-header logging in its own `AuthorizationUtils` dependency.
-The example's Release R8 rules now remove the identified println from the compiled
-APK; consuming apps must opt in to their own Release configuration. Debug retains
-the upstream logging path. See [SEC-01 verification](docs/sec01-release-logging-mitigation.md).
-Plugin privacy hardening and RTC Core logging disablement alone do not fix it. No SDK
-binary patch, reflection bypass, stdout interception or dependency upgrade is
-applied. SEC-01 is **PARTIALLY MITIGATED**; this release is **not security-certified**. Owner/vendor resolution or an
-explicit security disposition is still required. See [security guidance](SECURITY.md).
+The upstream Infobip RTC SDK **2.5.28** also logs raw signaling messages through
+stdout; these may expose temporary TURN usernames and credentials. Both behaviors
+originate in upstream SDK components. Setting the RTC logger to OFF does not
+disable their direct stdout calls.
+
+An **optional R8 workaround** is retained in
+[`example/android/app/proguard-rules.pro`](example/android/app/proguard-rules.pro).
+It removes matching `PrintStream.print/println` calls **application-wide**, including
+stderr and functional stream/file output. Consuming applications can copy the rule
+to a dedicated Release rules file and enable R8 with optimization; follow the
+[consumer opt-in instructions](SECURITY.md#consumer-application-opt-in).
+R8 must be enabled and optimization effective for the workaround to take effect.
+The plugin does **not** impose it through `android/consumer-rules.pro`.
+
+The rule **does not guarantee removal of all sensitive logs**: RTC's direct
+`printf` call and other logging APIs are outside its scope. Existing disassembly
+proves removal only of the identified MM println in the example's unsigned
+optimized Release APK; signed-device verification is **UNVERIFIED**. Debug retains
+the upstream paths. See [SEC-01 evidence](docs/sec01-release-logging-mitigation.md)
+and the [sanitized Infobip disclosure draft](docs/sec01-infobip-responsible-disclosure.md).
+SEC-01 is **PARTIALLY MITIGATED**; this package is **not security-certified**.
+Vendor resolution or an evidence-backed owner security disposition remains required.
+See [security guidance](SECURITY.md).
 
 Other limits: no incoming HMS RTC, screen-track API, configurable screen encoding
 resolution or background Dart handler. Real backend token acceptance, Huawei

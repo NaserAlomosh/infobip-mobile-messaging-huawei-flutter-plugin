@@ -174,16 +174,38 @@ not authentication or runtime permissions.
 
 ## Remaining gates and publication assessment
 
+Publication documentation review, 2026-10-12: the results above remain the
+historical packaging record; no builds, tests or dry-run were rerun for this
+documentation update. Use the
+[current acceptance checklist](final-production-certification.md#20-final-acceptance-checklist)
+and [SEC-01 verification record](sec01-release-logging-mitigation.md).
+
 1. **BLOCKED:** owner-authorized LICENSE and redistribution rights.
-2. **BLOCKED:** unresolved upstream authorization-header logging; vendor resolution
-   or explicit owner security disposition. No security certification is claimed.
-3. **UNVERIFIED / NOT TESTED:** physical Huawei/backend acceptance for Push, Chat,
+2. **BLOCKED / PARTIALLY MITIGATED:** upstream authorization-header logging and RTC
+   signaling that may expose temporary TURN credentials. Optional host R8 rules
+   remove matching print/println calls application-wide, require R8/optimization,
+   and do not cover RTC printf or guarantee removal of all sensitive logs. Obtain
+   vendor resolution or an evidence-backed owner security disposition. The
+   [sanitized Infobip draft](sec01-infobip-responsible-disclosure.md) is prepared,
+   not sent; vendor acknowledgment/fix status **UNVERIFIED**.
+3. **UNVERIFIED:** physical Huawei/backend acceptance for Push, Chat,
    RTC/rendering/notifications/sharing and lifecycle restoration; use example and
    historical device checklists with sanitized evidence.
 4. **VERIFIED advisory:** top-level `docs/` pub layout warning and 21 pre-existing
    analyzer infos remain; neither was hidden or fixed with unrelated runtime edits.
-5. **NOT TESTED:** publication account/package-name availability and release signing.
+5. **BLOCKED / UNVERIFIED:** release verification. A later SEC-01 optimized example
+   APK built successfully but was unsigned; exact signed/minified installation,
+   startup, functional regression and sensitive-log verification remain UNVERIFIED.
+6. **BLOCKED / UNVERIFIED:** 16 KB compatibility. The later native audit records
+   passing LOAD/ZIP checks and nonzero RELRO-end remainders. Vendor/toolchain
+   disposition and runtime validation on a real 16 KB environment remain
+   UNVERIFIED; the observed Huawei device uses 4 KB pages.
+7. **BLOCKED:** pub.dev dry-run readiness. Last recorded dry-run exited 65 for
+   missing LICENSE. Final-candidate dry-run, archive inventory and publication
+   account/package-name availability remain UNVERIFIED. Rerun after license and
+   candidate documentation are finalized; do not publish as part of this task.
 
 **Final assessment: documentation and packaging preparation complete; stable
-publication is NO-GO until the license/security and device acceptance gates have
-owner-reviewed evidence.** Version/dependencies and runtime behavior are preserved.
+publication is NO-GO until the license/security, signed-release, device acceptance,
+16 KB compatibility and final dry-run gates have owner-reviewed evidence.**
+Version/dependencies and runtime behavior are preserved.

@@ -9,6 +9,29 @@ Infobip Huawei Mobile Messaging 8.14.0 authorization-header println. Consumer ap
 must opt in to Release optimization/rules and verify their own shipping artifact.
 The upstream SDK is unchanged, and Debug retains the logging defect.
 
+## Publication documentation review — 2026-10-12
+
+The build/test results below are the existing SEC-01 verification record, not
+new runs from this documentation review. The workaround remains unchanged in
+`example/android/app/proguard-rules.pro`; it is not exported through
+`android/consumer-rules.pro`. R8 and effective optimization are required.
+
+Read-only inspection of cached **Infobip RTC 2.5.28** bytecode additionally
+confirms `SocketHandler.handleMessage` calls `logMessage` with the raw received
+message before dispatch. For non-heartbeat events, `logMessage` invokes both the
+SDK logger and **`System.out.printf`**; `parseIceServers` reads `username` and
+`credential`. Thus signaling logs may expose temporary TURN credentials. Direct
+stdout is independent of `InfobipRTC.setLogLevel(Level.OFF)`.
+
+**The existing print/println rule does not cover this printf call.** It affects
+matching PrintStream calls application-wide and does not guarantee removal of
+all sensitive logs. The earlier statement that printf was not the identified
+logging call refers only to MM's authorization-header println. RTC printf removal
+and sensitive-log absence in a signed shipping artifact are **UNVERIFIED**.
+No rule expansion or runtime/dependency change was made in this review.
+See the [sanitized disclosure draft](sec01-infobip-responsible-disclosure.md) for
+artifact provenance, safe reproduction instructions and requested vendor action.
+
 ## Configuration and exact rule
 
 Installed Flutter 3.35.7's `FlutterPlugin.kt:270–280` already configures Release

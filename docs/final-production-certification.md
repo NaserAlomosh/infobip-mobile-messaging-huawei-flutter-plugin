@@ -3,6 +3,15 @@
 Audit date: 2026-10-12, Asia/Amman. Candidate: `fb359cb6f2c8609b03e2652b929a20020fcc8f21`.
 **Final decision: NO-GO for the first stable production release.**
 
+Publication documentation review, 2026-10-12: the original audit/build/test
+results below are historical evidence, not new verification runs. Subsequent
+[SEC-01 artifact evidence](sec01-release-logging-mitigation.md) establishes partial
+removal of the MM header println in an unsigned optimized example APK. It does
+not cover upstream RTC 2.5.28's signaling `printf`, which may expose temporary
+TURN credentials; see the [sanitized Infobip disclosure draft](sec01-infobip-responsible-disclosure.md).
+The current security matrix/checklist below reflects this limited mitigation;
+the original section 13 describes the pre-mitigation baseline. **NO-GO remains.**
+
 ## 1. Executive summary
 
 Automated regression validation passes: 229 plugin Flutter tests, 42 example
@@ -495,7 +504,7 @@ finding was confirmed. Release gates are not waived by upstream ownership.
 
 | ID | Severity / category | Evidence / exact location | Impact and reproduction conditions | Ownership | Mitigation / blocking |
 | --- | --- | --- | --- | --- | --- |
-| SEC-UP-01 | HIGH, upstream security | Installed MM AuthorizationUtils.java:113; caller bytecode PersonalizeSynchronizer/UserDataReporter; section 13 | Affected user operation with valid MM JWT or application-code fallback emits authorization header; runtime log exposure/exploitation not demonstrated | Infobip Huawei MM 8.14.0 | No verified fix/mitigation; BLOCKING |
+| SEC-UP-01 / SEC-01 | HIGH, upstream security | MM AuthorizationUtils.java:113; RTC 2.5.28 SocketHandler.logMessage printf; SEC-01 artifact record and disclosure draft | Authorization headers and signaling with temporary TURN credentials may reach stdout; exact signed-candidate exposure/exploitation UNVERIFIED | Infobip Huawei MM 8.14.0 / RTC 2.5.28 | PARTIALLY MITIGATED: known MM println removed in unsigned example Release; RTC printf outside optional rule; vendor fix/security disposition and signed verification missing; BLOCKING |
 | PKG-01 | HIGH, publication | Missing root LICENSE; publish.log exit 65 | Every pub.dev publication dry-run fails requirement | Package owner/legal authority | No license selected; BLOCKING |
 | DEVICE-01 | HIGH, validation gap | ChatManager.kt:35,119; plugin.kt:259,655; sections 8/16 | Actual SDK/backend JWT timeout, retry and cleanup behavior not accepted on candidate | Plugin/host validation owners | Unit coverage passes; device/backend acceptance missing; BLOCKING |
 | DEVICE-02 | HIGH, required feature gap | ScreenCaptureController.kt:103,182,219,254; quality/performance docs physical checklists | Signed device RTC/rendering/capture, orientation/resize, stop/revoke/background/end/engine teardown unverified after current changes | Plugin/host validation owners | Historical user evidence only; BLOCKING |
@@ -523,9 +532,13 @@ closed or accepted through an evidence-backed release disposition.
 
 1. Owner authorizes a license after provenance/redistribution review; add it in
    separately authorized work and rerun the publication dry-run.
-2. Obtain Infobip's fix or a verified mitigation for AuthorizationUtils logging.
-   Confirm installed artifact and signed runtime with synthetic credentials;
-   perform documented security review. Disclosure alone is not remediation.
+2. Send the sanitized SEC-01 disclosure draft through an owner-approved private
+   Infobip channel. Obtain a vendor fix or evidence-backed security disposition
+   for both authorization-header and credential-bearing RTC signaling logging.
+   Verify the exact signed artifact using isolated disposable test credentials
+   and sanitized evidence. The optional R8 rule removes only matching print/println
+   calls application-wide; it does not cover RTC printf. Disclosure alone is not
+   remediation.
 3. Investigate the exact native RELRO results with Flutter/Infobip; validate an
    authorized candidate artifact on a real 16 KB environment. Any SDK/toolchain
    change requires its own scoped implementation and regression validation.
@@ -539,8 +552,18 @@ No remediation was applied automatically.
 
 ## 20. Final acceptance checklist
 
-- [ ] LICENSE/provenance approved; final package dry-run passes.
-- [ ] Upstream header logging has verified resolution/disposition; sanitize evidence.
+- [ ] Owner-approved LICENSE/provenance and redistribution rights recorded; add
+      the root LICENSE, then rerun `flutter pub publish --dry-run` on the final
+      candidate and review its archive for secrets/private artifacts. Last recorded
+      run failed for missing LICENSE; current final dry-run readiness UNVERIFIED.
+- [ ] Upstream MM authorization-header and RTC temporary TURN-credential logging
+      have an evidence-backed fix/security disposition; sanitized Infobip draft
+      sent privately and response tracked. Draft prepared, not sent; vendor
+      acknowledgment/fix and signed-device sensitive-log absence UNVERIFIED.
+- [ ] If the host opts into R8 suppression, keep print/println rules in host Release
+      configuration with R8/optimization enabled, outside plugin consumer rules;
+      inspect the shipping artifact and accept application-wide stream-output
+      regressions/residual printf and other logging risk. Host verification UNVERIFIED.
 - [ ] Exact signed minified artifact SHA, signing provenance, device/OS and backend
       configuration recorded; clean install and upgrade/startup accepted.
 - [ ] HMS init/token registration, delivery, foreground/background and cold/warm
@@ -548,6 +571,7 @@ No remediation was applied automatically.
 - [ ] Chat JWT success/invalid/never-completing/late/out-of-order/capacity paths;
       provider replacement/engine detach; activation failure then same-code retry
       before/after cooldown; preserve pending provider/listener on rejected cleanup.
+      Physical Huawei/backend acceptance of the exact signed candidate UNVERIFIED.
 - [ ] Cleanup concurrency/init races and active RTC rejection accepted without
       resetting live call/auth state.
 - [ ] Audio/video calls, mute/camera/speaker/routes, local/remote preview, reconnect,
@@ -560,7 +584,9 @@ No remediation was applied automatically.
 - [ ] Android 12+ permissions, 13 notification denial and 14–16 projection/FGS/
       background enforcement accepted on representative devices.
 - [ ] 16 KB native gate cleared and exact signed artifact launch/call/share tested
-      without relying on standard 4 KB-device success.
+      without relying on standard 4 KB-device success. Historical LOAD/ZIP checks
+      passed but RELRO concern remains; vendor/toolchain disposition and 16 KB
+      runtime compatibility UNVERIFIED.
 - [ ] Inbox setSeen historical backend/context issue disposition recorded if Inbox
       persistence is part of the release acceptance scope.
 

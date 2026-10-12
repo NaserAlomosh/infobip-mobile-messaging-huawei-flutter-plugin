@@ -20,7 +20,7 @@ they do not certify backend authorization, device privacy or third-party SDKs.
   messages or captured content. Redact device evidence before sharing. Host provider
   and view callbacks are responsible for their own safe error/content handling.
 
-## SEC-01: Huawei Mobile Messaging SDK 8.14.0 logging mitigation
+## SEC-01: upstream Infobip SDK sensitive logging and optional R8 workaround
 
 Huawei Mobile Messaging SDK **8.14.0** contains authorization-header logging in
 its own dependency's `AuthorizationUtils` path (`System.out.println`). It is outside
@@ -29,15 +29,32 @@ was reported by the owner. Original evidence is recorded in
 [RTC investigation](docs/webrtc-core-research.md) and
 [outgoing verification](docs/huawei-rtc-outgoing-verification.md).
 
+Infobip RTC SDK **2.5.28** also contains a direct stdout logging path:
+`SocketHandler.handleMessage` passes the received signaling message to
+`logMessage`, which calls `System.out.printf` for non-heartbeat events. The same
+handler parses ICE server `username` and `credential` fields from connection
+messages. RTC logging may therefore expose **temporary TURN credentials** when
+these fields are present. This is upstream RTC code, not plugin-owned logging.
+Cached SDK bytecode corroborates the path; exposure on the exact signed candidate,
+credential lifetime, privileges and exploitation are **UNVERIFIED**.
+
 Disabling RTC Core logging through its public API does **not** fix this independent
-MM logging path. Plugin sanitization cannot guarantee that vendor logs are safe.
+MM logging path or RTC's direct stdout call. The plugin already configures the RTC
+logger to OFF; direct stdout bypasses that setting. Plugin sanitization cannot
+guarantee that vendor logs are safe.
 No SDK binary/AAR patch, reflection bypass, stdout interception or dependency
 upgrade is included. Do not distribute raw SDK/device logs with real credentials.
-The example now uses Release-only R8 rules to remove `PrintStream.print/println`
+The example uses an **optional Release-only R8 workaround** in
+[`example/android/app/proguard-rules.pro`](example/android/app/proguard-rules.pro)
+to remove matching `PrintStream.print/println`
 calls. APK disassembly proves the known `getAuthorizationHeader` println is absent
 from the optimized Release artifact and remains present in Debug. **SEC-01 is
 PARTIALLY MITIGATED:** consumer applications require their own opt-in configuration.
 See [artifact evidence and verification](docs/sec01-release-logging-mitigation.md).
+The workaround **does not guarantee removal of all sensitive logs** and does not
+cover the RTC `printf` path. A sanitized
+[responsible-disclosure report for Infobip](docs/sec01-infobip-responsible-disclosure.md)
+is prepared but has not been sent; vendor acknowledgment/fix status is **UNVERIFIED**.
 
 ### Consumer application opt-in
 
@@ -67,7 +84,8 @@ android {
 }
 ```
 
-Optimization must remain enabled; `-dontoptimize`, keep rules that block relevant
+**R8 must be enabled for the workaround to take effect.** Optimization must remain
+enabled; `-dontoptimize`, keep rules that block relevant
 optimization, or disabling shrinking can defeat removal. Resource shrinking is
 independent of this mitigation. Reinspect each actual shipping APK after changes.
 
@@ -80,7 +98,7 @@ The rule affects matching calls throughout the optimized host, including stderr
 and other `PrintStream` instances; it is not limited to Infobip or stdout. Hosts
 that rely on `PrintStream.print/println` for functional file/stream output must
 assess this before opting in and run their Release regressions. It does not remove
-`printf` (which returns `PrintStream`, unlike the candidate's `void` signature),
+`printf` (including the upstream RTC signaling log),
 `write`, Android logging, native logging, or Dart output, and does not certify other
 SDK logging paths. Debug still contains the upstream sensitive logging path.
 Obtain an upstream vendor fix; this mitigation does not permanently fix the SDK
