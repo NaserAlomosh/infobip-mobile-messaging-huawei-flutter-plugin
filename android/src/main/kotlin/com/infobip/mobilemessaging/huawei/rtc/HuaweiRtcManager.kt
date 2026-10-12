@@ -1,6 +1,7 @@
 package com.infobip.mobilemessaging.huawei.rtc
 
 import android.content.Context
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -9,6 +10,7 @@ import com.infobip.webrtc.sdk.api.model.CallStatus
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.FutureTask
@@ -23,14 +25,20 @@ internal class HuaweiRtcManager(
     private val executor: ExecutorService = Executors.newSingleThreadExecutor(),
     private val main: Handler = Handler(Looper.getMainLooper()),
     private val slot: RtcCallSlot = RtcCallSlot.process,
+    private val notification: RtcCallNotification? = null,
 ) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
     constructor(context: Context, initialized: () -> Boolean, canStartCall: () -> Boolean) : this(
         initialized, canStartCall,
         { video -> checkRtcPermissions(context.applicationContext, video) },
         HuaweiRtcTokenProvider(context.applicationContext), HuaweiRtcBackend(context.applicationContext),
+        notification = HuaweiRtcCallNotification(context),
     )
 
     private class Session(val input: RtcInput, var reply: MethodChannel.Result?) {
+        val identity = UUID.randomUUID().toString()
+        var ending = false
+        var endTimeout: Runnable? = null
+        var serviceTimeout: Runnable? = null
         var call: ApplicationCall? = null
         var listener: RtcListener? = null
         var tokenTask: FutureTask<Unit>? = null
@@ -43,6 +51,7 @@ internal class HuaweiRtcManager(
     private var sink: EventChannel.EventSink? = null
     private var lastEvent: Map<String, Any?>? = null
     private var sequence = 0L
+    private var notificationReturn: String? = null
     private val videoBindings = HuaweiRtcVideoBindings()
 
     fun bindVideo(view: HuaweiRtcVideoViewOwner, options: HuaweiRtcVideoOptions): HuaweiRtcVideoBindings.Binding? {
@@ -111,6 +120,13 @@ internal class HuaweiRtcManager(
                     }
                     result.success(HuaweiRtcControls.snapshot(active, current.input.video))
                 }
+                "takeNotificationCall" -> {
+                    val current = session
+                    val requested = notificationReturn
+                    notificationReturn = null
+                    result.success(current?.takeIf { it.identity == requested &&
+                        it.call?.status() != CallStatus.FINISHED }?.let(::snapshot))
+                }
                 "getActiveCall" -> {
                     val current = session
                     if (current?.call?.status() == CallStatus.FINISHED) finish(current)
@@ -173,6 +189,30 @@ internal class HuaweiRtcManager(
             failPending(current, failure)
             return
         }
+        try {
+            checkReady(current.input)
+            if (notification == null) { createCall(current, token.getOrThrow()); return }
+            val timeout = Runnable {
+                if (session === current && current.call == null) failPending(current,
+                    RtcFailure("rtc_foreground_service_failed", "RTC foreground service timed out"))
+            }
+            current.serviceTimeout = timeout
+            main.postDelayed(timeout, 5000)
+            notification.start(current.identity, current.input.video,
+                state = { notificationState(current) },
+                action = { action, id, muted -> notificationAction(current, action, id, muted) },
+                ready = { failure ->
+                    if (!disposed && session === current) {
+                        current.serviceTimeout?.let(main::removeCallbacks)
+                        current.serviceTimeout = null
+                        if (failure != null) failPending(current, failure)
+                        else createCall(current, token.getOrThrow())
+                    }
+                })
+        } catch (failure: Exception) { failPending(current, RtcFailure.native(failure)) }
+    }
+
+    private fun createCall(current: Session, token: String) {
         val listener = RtcListener { type, reason ->
             // Always enqueue: a synchronous SDK callback must not race callApplication's return.
             main.post { nativeEvent(current, type, reason) }
@@ -184,7 +224,7 @@ internal class HuaweiRtcManager(
         try {
             checkReady(current.input) // permissions / initialization can change during the HTTP request
             if (backend.hasActiveCall()) throw RtcFailure("rtc_call_already_active", "Another RTC call is active")
-            current.call = backend.call(token.getOrThrow(), current.input, listener)
+            current.call = backend.call(token, current.input, listener)
             val value = snapshot(current)
             val reply = current.reply
             current.reply = null
@@ -206,6 +246,56 @@ internal class HuaweiRtcManager(
                     Log.e(TAG, "RTC call failed and could not be terminated; ownership retained")
                 }
             }
+        }
+    }
+
+    fun handleNotificationIntent(intent: Intent) {
+        notification?.returnIdentity(intent)?.let {
+            notificationReturn = it
+            session?.let { current -> emit("returnToCall", snapshot(current)) }
+            // Consume Activity intent once, including across configuration recreation.
+            intent.removeExtra(HuaweiRtcCallService.IDENTITY)
+        }
+    }
+
+    private fun notificationState(current: Session): RtcNotificationState? {
+        if (disposed || session !== current) return null
+        val call = current.call ?: return RtcNotificationState(null, current.input.video, "calling")
+        if (call.status() == CallStatus.FINISHED) { finish(current); return null }
+        return RtcNotificationState(call.id(), current.input.video, call.status().name.lowercase(),
+            call.duration().coerceAtLeast(0),
+            if (call.status() == CallStatus.ESTABLISHED) try { call.muted() } catch (_: Exception) { null } else null)
+    }
+
+    private fun notificationAction(current: Session, action: String, id: String?, muted: Boolean?) {
+        if (disposed || session !== current) return
+        val call = current.call
+        if (call?.id() != id) return
+        if (action == HuaweiRtcCallService.MUTE) {
+            if (call == null || current.ending || call.status() != CallStatus.ESTABLISHED || muted == null) return
+            try {
+                permissions(false)
+                HuaweiRtcControls.apply(call, current.input.video, "setMicrophoneMuted", mapOf("enabled" to muted))
+            } catch (_: Exception) { Log.e(TAG, "RTC notification microphone control failed") }
+        } else if (action == HuaweiRtcCallService.END || action == HuaweiRtcCallService.FAILURE) {
+            if (call == null) { failPending(current, RtcFailure("rtc_invalid_state", "RTC request cancelled")); return }
+            if (call.status() == CallStatus.FINISHED) { finish(current); return }
+            if (current.ending) return
+            current.ending = true
+            try { call.hangup() } catch (_: Exception) { Log.e(TAG, "RTC notification hangup failed") }
+            val timeout = Runnable {
+                if (session === current) {
+                    if (call.status() == CallStatus.FINISHED) finish(current)
+                    else {
+                        try { call.hangup() } catch (_: Exception) { Log.e(TAG, "RTC hangup retry failed") }
+                        notification?.stop(current.identity)
+                        // Retain ownership; never invent finished or allow a replacement.
+                        Log.e(TAG, "RTC terminal callback timed out; notification stopped, ownership retained")
+                    }
+                }
+            }
+            current.endTimeout = timeout
+            main.postDelayed(timeout, 10_000)
         }
     }
 
@@ -246,6 +336,10 @@ internal class HuaweiRtcManager(
     }
 
     private fun release(current: Session) {
+        current.serviceTimeout?.let(main::removeCallbacks)
+        current.endTimeout?.let(main::removeCallbacks)
+        notification?.stop(current.identity)
+        if (notificationReturn == current.identity) notificationReturn = null
         current.listener?.detachRendering()
         HuaweiRtcVideoBindings.rendering("session rendering cleanup") { videoBindings.endSession(current) }
         current.timeout?.let(main::removeCallbacks)

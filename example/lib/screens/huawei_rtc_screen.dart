@@ -9,6 +9,7 @@ import '../setup/safe_display.dart';
 
 /// Device-validation surface for the existing outgoing call and camera views.
 class HuaweiRtcScreen extends StatefulWidget {
+  static const routeName = '/huawei-rtc';
   const HuaweiRtcScreen({
     required this.controller,
     required this.video,
@@ -400,7 +401,8 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
               'Device test only. Grant Microphone, Camera (video), and Nearby devices '
               '(Android 12+) in Android App info → Permissions, then return here. '
               'Use a test account with Web and In-app Calls enabled. '
-              'Keep the app in the foreground. Remote camera video appears when the agent publishes it.',
+              'Start in the foreground; an ongoing notification supports background calls. '
+              'Allow Notifications to see it in the drawer. Remote camera video appears when the agent publishes it.',
             ),
             Text(
               'Calls configuration: ${masked(c.config.rtcCallsConfigurationId)}',

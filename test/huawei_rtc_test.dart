@@ -53,6 +53,37 @@ void main() {
       return null;
     });
   });
+  test(
+    'notification tap consumes native current call and accepts stale null',
+    () async {
+      messenger.setMockMethodCallHandler(methods, (call) async {
+        expect(call.method, 'takeNotificationCall');
+        return nativeCall;
+      });
+      final call = await HuaweiRtc.takeNotificationCall();
+      expect(call!.id, 'call-1');
+      messenger.setMockMethodCallHandler(methods, (_) async => null);
+      expect(await HuaweiRtc.takeNotificationCall(), isNull);
+    },
+  );
+
+  test('foreground service failure keeps its sanitized error code', () async {
+    messenger.setMockMethodCallHandler(methods, (_) async {
+      throw PlatformException(
+        code: 'rtc_foreground_service_failed',
+        message: 'private',
+      );
+    });
+    await expectLater(
+      HuaweiRtc.takeNotificationCall(),
+      throwsA(
+        isA<HuaweiRtcException>()
+            .having((e) => e.code, 'code', 'rtc_foreground_service_failed')
+            .having((e) => e.message.contains('private'), 'sanitized', false),
+      ),
+    );
+  });
+
   tearDown(() {
     messenger.setMockMethodCallHandler(methods, null);
     messenger.setMockMethodCallHandler(eventMethods, null);

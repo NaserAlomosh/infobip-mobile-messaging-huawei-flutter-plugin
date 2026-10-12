@@ -30,6 +30,7 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
 import org.infobip.mobile.messaging.chat.view.styles.PluginChatCustomization
 
 class InfobipMobileMessagingHuaweiPlugin :
@@ -55,6 +56,23 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var huaweiRtcEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
+    private var rtcActivityBinding: ActivityPluginBinding? = null
+    private val rtcIntentListener = PluginRegistry.NewIntentListener { intent ->
+        huaweiRtcManager?.handleNotificationIntent(intent)
+        false
+    }
+    private fun attachRtcActivity(binding: ActivityPluginBinding) {
+        rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
+        rtcActivityBinding = binding
+        binding.addOnNewIntentListener(rtcIntentListener)
+        activity = binding.activity
+        binding.activity.intent?.let { huaweiRtcManager?.handleNotificationIntent(it) }
+    }
+    private fun detachRtcActivity() {
+        rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
+        rtcActivityBinding = null
+        activity = null
+    }
     private var drawableLoader: PluginChatCustomization.DrawableLoader? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -162,6 +180,7 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        detachRtcActivity()
         huaweiRtcManager?.dispose()
         huaweiRtcChannel?.setMethodCallHandler(null)
         huaweiRtcEvents?.setStreamHandler(null)
@@ -192,19 +211,19 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
+        attachRtcActivity(binding)
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
-        try { huaweiRtcManager?.detachVideoViews() } finally { activity = null }
+        try { huaweiRtcManager?.detachVideoViews() } finally { detachRtcActivity() }
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        activity = binding.activity
+        attachRtcActivity(binding)
     }
 
     override fun onDetachedFromActivity() {
-        try { huaweiRtcManager?.detachVideoViews() } finally { activity = null }
+        try { huaweiRtcManager?.detachVideoViews() } finally { detachRtcActivity() }
     }
 
     override fun onMethodCall(

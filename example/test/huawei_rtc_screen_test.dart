@@ -6,6 +6,7 @@ import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.da
 import 'package:infobip_mobilemessaging_huawei_example/screens/huawei_rtc_screen.dart';
 import 'package:infobip_mobilemessaging_huawei_example/setup/example_controller.dart';
 import 'support/fake_sdk.dart';
+import 'package:infobip_mobilemessaging_huawei_example/app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ void main() {
   late Map<String, Object?> call;
   late Map<String, Object?> controls;
   bool failMute = false;
+  Map<String, Object?>? notificationTap;
   Completer<Object?>? pending;
   final operations = <MethodCall>[];
   setUp(() {
@@ -39,6 +41,7 @@ void main() {
       'availableAudioOutputs': ['earpiece', 'speaker', 'bluetooth'],
     };
     failMute = false;
+    notificationTap = null;
     pending = null;
     operations.clear();
     messenger.setMockMethodCallHandler(
@@ -47,6 +50,11 @@ void main() {
     );
     messenger.setMockMethodCallHandler(channel, (operation) async {
       operations.add(operation);
+      if (operation.method == 'takeNotificationCall') {
+        final tap = notificationTap;
+        notificationTap = null;
+        return tap;
+      }
       if (operation.method == 'getActiveCall') return call;
       if (operation.method == 'getCallControls') return controls;
       if (operation.method == 'setMicrophoneMuted') {
@@ -111,6 +119,73 @@ void main() {
   }
 
   testWidgets(
+    'notification return opens active call once and reuses its existing route',
+    (tester) async {
+      await tester.pumpWidget(ExampleApp(controller: controller));
+      await tester.pumpAndSettle();
+      expect(find.byType(HuaweiRtcScreen), findsNothing);
+      notificationTap = call;
+      await event(tester, 'returnToCall', call);
+      expect(find.byType(HuaweiRtcScreen), findsOneWidget);
+      final existing = tester.state(find.byType(HuaweiRtcScreen));
+      final navigator = tester.state<NavigatorState>(
+        find.byType(Navigator).first,
+      );
+      unawaited(
+        navigator.push<void>(
+          MaterialPageRoute(
+            builder: (_) => const Scaffold(body: Text('Overlay')),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      notificationTap = call;
+      await event(tester, 'returnToCall', call);
+      expect(find.text('Overlay'), findsNothing);
+      expect(tester.state(find.byType(HuaweiRtcScreen)), same(existing));
+      expect(operations.where((o) => o.method == 'callApplication'), isEmpty);
+      notificationTap = null;
+      await event(tester, 'returnToCall', call);
+      expect(tester.state(find.byType(HuaweiRtcScreen)), same(existing));
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'notification return waits for resumed app before constructing video views',
+    (tester) async {
+      await tester.pumpWidget(ExampleApp(controller: controller));
+      await tester.pumpAndSettle();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      notificationTap = call;
+      await event(tester, 'returnToCall', call);
+      expect(find.byType(HuaweiRtcScreen), findsNothing);
+      expect(notificationTap, isNotNull);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.byType(HuaweiRtcScreen), findsOneWidget);
+      expect(notificationTap, isNull);
+      expect(operations.where((o) => o.method == 'callApplication'), isEmpty);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'initial notification return restores screen without starting another call',
+    (tester) async {
+      notificationTap = call;
+      await tester.pumpWidget(ExampleApp(controller: controller));
+      await tester.pumpAndSettle();
+      expect(find.byType(HuaweiRtcScreen), findsOneWidget);
+      expect(operations.where((o) => o.method == 'callApplication'), isEmpty);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
     'connected controls render duration and camera state; failed mute stays unmuted',
     (tester) async {
       await open(tester);
@@ -123,6 +198,7 @@ void main() {
       expect(find.text('Unmute microphone'), findsNothing);
       expect(button(tester, 'Mute microphone').onPressed, isNotNull);
       failMute = false;
+      notificationTap = null;
       await tester.tap(find.text('Mute microphone'));
       await tester.pumpAndSettle();
       expect(find.text('Unmute microphone'), findsOneWidget);

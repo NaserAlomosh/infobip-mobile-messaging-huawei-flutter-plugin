@@ -32,6 +32,8 @@ class HuaweiRtcPluginLifecycleTest {
         assertSame(manager, field("huaweiRtcManager").get(plugin))
         plugin.onDetachedFromActivity()
         assertNull(field("activity").get(plugin))
+        verify(binding, times(2)).addOnNewIntentListener(any())
+        verify(binding, times(2)).removeOnNewIntentListener(any())
         verify(manager, times(2)).detachVideoViews()
         verifyNoMoreInteractions(manager)
     }

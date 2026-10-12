@@ -90,6 +90,27 @@ class HuaweiRtcManagerTest {
         }
         override fun recoverCall(listener: RtcListener) = if (recoverPartial) call else null
     }
+    private val notice = Notice()
+    private class Notice : RtcCallNotification {
+        var autoReady = true
+        var failure: RtcFailure? = null
+        var starts = 0
+        var stops = 0
+        var identity: String? = null
+        var state: (() -> RtcNotificationState?)? = null
+        var action: ((String, String?, Boolean?) -> Unit)? = null
+        var ready: ((RtcFailure?) -> Unit)? = null
+        override fun start(identity: String, video: Boolean, state: () -> RtcNotificationState?,
+                           action: (String, String?, Boolean?) -> Unit, ready: (RtcFailure?) -> Unit) {
+            starts++
+            this.identity = identity; this.state = state; this.action = action; this.ready = ready
+            if (autoReady) ready(failure)
+        }
+        override fun stop(identity: String) { if (this.identity == identity) { stops++; this.identity = null } }
+        override fun returnIdentity(intent: android.content.Intent) = identity.takeIf {
+            intent.getStringExtra("identity") == it && it != null
+        }
+    }
     private val manager = manager()
     private fun manager() = HuaweiRtcManager(
         initialized = { initialized }, canStartCall = { foreground },
@@ -98,7 +119,7 @@ class HuaweiRtcManagerTest {
             if (!permitted) throw RtcFailure("rtc_permission_denied", "Call permissions missing")
         },
         tokens = RtcTokenProvider { subject = it; tokenCalls++; tokenFailure?.let { throw it }; "unit-test-token" },
-        backend = backend, executor = executor, slot = slot,
+        backend = backend, executor = executor, slot = slot, notification = notice,
     )
     private val events = mutableListOf<Map<*, *>>()
     private val sink = object : EventChannel.EventSink {
@@ -120,6 +141,119 @@ class HuaweiRtcManagerTest {
         idle()
         return reply
     }
+    @Test fun `SDK creation waits for foreground readiness and timeout cancels delayed start`() {
+        notice.autoReady = false
+        val reply = start()
+        assertEquals(0, callCount)
+        assertEquals(0, reply.completions)
+        assertEquals("calling", notice.state!!()!!.status)
+        assertNull(notice.state!!()!!.callId)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
+        assertEquals("rtc_foreground_service_failed", reply.code)
+        assertEquals(1, notice.stops)
+        notice.ready!!(null)
+        assertEquals(0, callCount)
+    }
+
+    @Test fun `foreground service failure prevents SDK call and releases pending request`() {
+        notice.failure = RtcFailure("rtc_foreground_service_failed", "Denied")
+        assertEquals("rtc_foreground_service_failed", start().code)
+        assertEquals(0, callCount)
+        assertEquals(1, notice.stops)
+        assertNull(invoke("getActiveCall").value)
+    }
+
+    @Test fun `background during promotion rejects media creation and removes service`() {
+        notice.autoReady = false
+        val reply = start()
+        foreground = false
+        notice.ready!!(null)
+        assertEquals("rtc_invalid_state", reply.code)
+        assertEquals(0, callCount)
+        assertEquals(1, notice.stops)
+    }
+
+    @Test fun `notification hangup works detached and duplicates are harmless until finish`() {
+        start()
+        foreground = false
+        notice.action!!(HuaweiRtcCallService.END, "native-call-id", null)
+        notice.action!!(HuaweiRtcCallService.END, "native-call-id", null)
+        assertEquals(1, hangups)
+        assertEquals(0, notice.stops)
+        status = CallStatus.FINISHED
+        notice.state!!()
+        assertEquals(1, notice.stops)
+        assertNull(invoke("getActiveCall").value)
+    }
+
+    @Test fun `notification mute uses native adapter and SDK readback while backgrounded`() {
+        start()
+        status = CallStatus.ESTABLISHED
+        foreground = false
+        var muted = false
+        `when`(call.muted()).thenAnswer { muted }
+        doAnswer { muted = it.getArgument(0); null }.`when`(call).mute(anyBoolean())
+        notice.action!!(HuaweiRtcCallService.MUTE, "native-call-id", true)
+        assertTrue(notice.state!!()!!.muted!!)
+        notice.action!!(HuaweiRtcCallService.MUTE, "native-call-id", true)
+        verify(call, times(1)).mute(true)
+        notice.action!!(HuaweiRtcCallService.MUTE, "native-call-id", false)
+        assertFalse(notice.state!!()!!.muted!!)
+        assertEquals(0, hangups)
+    }
+
+    @Test fun `denied permission and SDK mute failures leave authoritative state unchanged`() {
+        start()
+        status = CallStatus.ESTABLISHED
+        permitted = false
+        notice.action!!(HuaweiRtcCallService.MUTE, "native-call-id", true)
+        verify(call, never()).mute(anyBoolean())
+        permitted = true
+        doThrow(IllegalStateException("private")).`when`(call).mute(true)
+        notice.action!!(HuaweiRtcCallService.MUTE, "native-call-id", true)
+        assertFalse(notice.state!!()!!.muted!!)
+        assertEquals(0, hangups)
+    }
+
+    @Test fun `wrong IDs and old session callbacks cannot control replacement even with reused call ID`() {
+        start()
+        status = CallStatus.ESTABLISHED
+        val old = notice.action!!
+        old(HuaweiRtcCallService.END, "wrong-id", null)
+        assertEquals(0, hangups)
+        status = CallStatus.FINISHED
+        notice.state!!()
+        status = CallStatus.CALLING
+        start()
+        status = CallStatus.ESTABLISHED
+        old(HuaweiRtcCallService.END, "native-call-id", null)
+        old(HuaweiRtcCallService.MUTE, "native-call-id", true)
+        assertEquals(0, hangups)
+        verify(call, never()).mute(anyBoolean())
+        assertEquals(2, notice.starts)
+    }
+
+    @Test fun `missing terminal callback uses bounded stop without inventing finished or releasing live owner`() {
+        start()
+        notice.action!!(HuaweiRtcCallService.END, "native-call-id", null)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(10))
+        assertEquals(2, hangups)
+        assertEquals(1, notice.stops)
+        assertNotNull(invoke("getActiveCall").value)
+        assertEquals("rtc_call_already_active", invoke("callApplication", request()).code)
+        assertFalse(events.any { it["type"] == "finished" })
+    }
+
+    @Test fun `validated return tap consumes once and does not create call`() {
+        start()
+        manager.handleNotificationIntent(android.content.Intent().putExtra("identity", notice.identity))
+        assertNotNull(invoke("takeNotificationCall").value)
+        assertNull(invoke("takeNotificationCall").value)
+        manager.handleNotificationIntent(android.content.Intent().putExtra("identity", "old-session"))
+        assertNull(invoke("takeNotificationCall").value)
+        assertEquals(1, callCount)
+    }
+
     @After fun dispose() { manager.dispose(); idle() }
 
     @Test fun `requires initialization before token delegation`() {

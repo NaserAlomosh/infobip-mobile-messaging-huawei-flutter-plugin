@@ -134,9 +134,14 @@ class TestSectionScreen extends StatefulWidget {
 class _TestSectionScreenState extends State<TestSectionScreen> {
   ExampleController get c => widget.controller;
   bool _running = false;
-  Future<void> _open(Widget screen) => Navigator.of(
-    context,
-  ).push<void>(MaterialPageRoute(builder: (_) => screen));
+  Future<void> _open(Widget screen) => Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      settings: screen is HuaweiRtcScreen
+          ? const RouteSettings(name: HuaweiRtcScreen.routeName)
+          : null,
+      builder: (_) => screen,
+    ),
+  );
   Future<void> _controls() async {
     switch (widget.category) {
       case 'SDK':

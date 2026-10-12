@@ -17,6 +17,7 @@ enum HuaweiRtcCallStatus {
 
 /// [state] is a native snapshot on call creation or event listener attachment.
 /// [error] is an SDK error callback and is not necessarily terminal.
+/// [returnToCall] is a validated ongoing-notification tap, not an SDK transition.
 enum HuaweiRtcEventType {
   state,
   ringing,
@@ -26,6 +27,9 @@ enum HuaweiRtcEventType {
   error,
   reconnecting,
   reconnected,
+
+  /// A validated notification tap. Consume with HuaweiRtc.takeNotificationCall.
+  returnToCall,
 }
 
 /// Input for this plugin's outgoing extension, separate from WebRTCUI.
@@ -86,7 +90,7 @@ final class HuaweiRtcCall {
   }
 }
 
-/// A serialized Core callback or state snapshot.
+/// A serialized Core callback, state snapshot, or validated notification tap.
 ///
 /// [nativeErrorCode] contains only Core's numeric ErrorCode.id. Native names,
 /// descriptions, HTTP responses, identities and credentials are not forwarded.
@@ -226,6 +230,8 @@ final class HuaweiRtcException implements Exception {
     'rtc_no_active_call': 'There is no active RTC call.',
     'rtc_token_failed': 'RTC access token acquisition failed.',
     'rtc_call_failed': 'RTC could not perform the call operation.',
+    'rtc_foreground_service_failed':
+        'RTC foreground service could not start. Return to the app and check permissions.',
     'rtc_invalid_state':
         'RTC cannot perform this operation in its current state.',
   };
@@ -240,7 +246,10 @@ final class HuaweiRtcException implements Exception {
 /// Activity after the host has requested microphone, camera (video only), and
 /// Nearby devices (Android 12+) permissions. This API never requests permissions.
 /// Only one call/request is allowed in the process. No incoming HMS registration,
-/// official enableCalls/enableChatCalls parity, call UI, or video renderer is added.
+/// official enableCalls/enableChatCalls parity or call UI is added. An Android
+/// microphone/camera foreground service starts before SDK media; grant notification
+/// permission on Android 13+ to see its notice in the drawer. Observe returnToCall
+/// and consume takeNotificationCall to navigate to your current call screen.
 /// Activity recreation preserves calls. Engine disposal attempts hangup and
 /// detaches listeners. Hang up and wait for finished before MM cleanup/relogin.
 abstract final class HuaweiRtc {
@@ -275,6 +284,14 @@ abstract final class HuaweiRtc {
   /// Returns null when no call object exists, including during token acquisition.
   static Future<HuaweiRtcCall?> getActiveCall() async {
     final payload = await _invoke('getActiveCall');
+    return payload == null ? null : HuaweiRtcCall._decode(payload);
+  }
+
+  /// Consumes a notification tap for the current native session. Navigate to the
+  /// existing call screen without placing a new call. Returns null for stale taps.
+  /// Check after app resume and initial Activity attachment.
+  static Future<HuaweiRtcCall?> takeNotificationCall() async {
+    final payload = await _invoke('takeNotificationCall');
     return payload == null ? null : HuaweiRtcCall._decode(payload);
   }
 
