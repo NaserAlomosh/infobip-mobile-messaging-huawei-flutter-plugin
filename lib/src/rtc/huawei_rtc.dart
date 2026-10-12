@@ -62,11 +62,14 @@ final class HuaweiRtcCallRequest {
 /// Snapshot of a native application call. Success creating this object does not
 /// mean the remote endpoint has answered; observe [HuaweiRtc.events].
 final class HuaweiRtcCall {
-  const HuaweiRtcCall._(this.id, this.type, this.status);
+  const HuaweiRtcCall._(this.id, this.type, this.status, this.duration);
 
   final String id;
   final HuaweiRtcCallType type;
   final HuaweiRtcCallStatus status;
+
+  /// SDK duration since confirmed establishment; frozen by Core at termination.
+  final Duration duration;
 
   static HuaweiRtcCall _decode(Object? payload) {
     if (payload is! Map ||
@@ -78,6 +81,7 @@ final class HuaweiRtcCall {
       payload['id'] as String,
       _enumValue(HuaweiRtcCallType.values, payload['type']),
       _enumValue(HuaweiRtcCallStatus.values, payload['status']),
+      Duration(seconds: _seconds(payload['durationSeconds'])),
     );
   }
 }
@@ -126,6 +130,75 @@ final class HuaweiRtcEvent {
   }
 }
 
+int _seconds(Object? value) {
+  if (value == null) {
+    return 0; // Backward compatible with older native snapshots.
+  }
+  if (value is! int || value < 0) {
+    throw const FormatException('Invalid RTC duration');
+  }
+  return value;
+}
+
+/// SDK audio device categories. Bluetooth availability depends on the device,
+/// connected headset and existing Nearby devices permission.
+enum HuaweiRtcAudioOutput { bluetooth, wiredHeadset, earpiece, speaker }
+
+enum HuaweiRtcCameraOrientation { front, back }
+
+/// Authoritative SDK readback. Refresh after errors and while controls are pending.
+final class HuaweiRtcControls {
+  const HuaweiRtcControls._(
+    this.callId,
+    this.microphoneMuted,
+    this.speakerEnabled,
+    this.cameraEnabled,
+    this.cameraOrientation,
+    this.audioOutput,
+    this.availableAudioOutputs,
+  );
+
+  final String callId;
+  final bool microphoneMuted;
+  final bool speakerEnabled;
+  final bool cameraEnabled;
+  final HuaweiRtcCameraOrientation? cameraOrientation;
+  final HuaweiRtcAudioOutput? audioOutput;
+  final List<HuaweiRtcAudioOutput> availableAudioOutputs;
+
+  static HuaweiRtcControls _decode(Object? payload) {
+    if (payload is! Map ||
+        payload['callId'] is! String ||
+        (payload['callId'] as String).isEmpty ||
+        payload['microphoneMuted'] is! bool ||
+        payload['speakerEnabled'] is! bool ||
+        payload['cameraEnabled'] is! bool ||
+        payload['availableAudioOutputs'] is! List) {
+      throw const FormatException('Invalid RTC control snapshot');
+    }
+    return HuaweiRtcControls._(
+      payload['callId'] as String,
+      payload['microphoneMuted'] as bool,
+      payload['speakerEnabled'] as bool,
+      payload['cameraEnabled'] as bool,
+      payload['cameraOrientation'] == null
+          ? null
+          : _enumValue(
+              HuaweiRtcCameraOrientation.values,
+              payload['cameraOrientation'],
+            ),
+      payload['audioOutput'] == null
+          ? null
+          : _enumValue(HuaweiRtcAudioOutput.values, payload['audioOutput']),
+      List.unmodifiable(
+        (payload['availableAudioOutputs'] as List).map(
+          (value) => _enumValue(HuaweiRtcAudioOutput.values, value),
+        ),
+      ),
+    );
+  }
+}
+
 T _enumValue<T extends Enum>(List<T> values, Object? value) {
   for (final candidate in values) {
     if (candidate.name == value) return candidate;
@@ -146,6 +219,7 @@ final class HuaweiRtcException implements Exception {
     'rtc_not_initialized':
         'Initialize Huawei Mobile Messaging and wait for installation registration, or supply an identity.',
     'rtc_invalid_argument': 'Invalid RTC call arguments.',
+    'rtc_control_unavailable': 'The requested RTC control is unavailable.',
     'rtc_permission_denied':
         'Grant microphone, camera for video, and Nearby devices on Android 12+ before calling.',
     'rtc_call_already_active': 'Another RTC call or call request is active.',
@@ -202,6 +276,52 @@ abstract final class HuaweiRtc {
   static Future<HuaweiRtcCall?> getActiveCall() async {
     final payload = await _invoke('getActiveCall');
     return payload == null ? null : HuaweiRtcCall._decode(payload);
+  }
+
+  /// Call IDs are required so queued controls cannot affect a replacement call.
+  static Future<HuaweiRtcControls> getCallControls({required String callId}) =>
+      _control('getCallControls', callId);
+
+  static Future<HuaweiRtcControls> setMicrophoneMuted(
+    bool muted, {
+    required String callId,
+  }) => _control('setMicrophoneMuted', callId, {'enabled': muted});
+
+  /// Selects speaker when enabled, earpiece when disabled. An unavailable
+  /// earpiece (e.g. a tablet) produces rtc_control_unavailable.
+  static Future<HuaweiRtcControls> setSpeakerEnabled(
+    bool enabled, {
+    required String callId,
+  }) => _control('setSpeakerEnabled', callId, {'enabled': enabled});
+
+  static Future<HuaweiRtcControls> switchCamera({required String callId}) =>
+      _control('switchCamera', callId);
+
+  static Future<HuaweiRtcControls> setCameraEnabled(
+    bool enabled, {
+    required String callId,
+  }) => _control('setCameraEnabled', callId, {'enabled': enabled});
+
+  static Future<HuaweiRtcControls> selectAudioOutput(
+    HuaweiRtcAudioOutput output, {
+    required String callId,
+  }) => _control('selectAudioOutput', callId, {'output': output.name});
+
+  static Future<HuaweiRtcControls> _control(
+    String method,
+    String callId, [
+    Map<String, Object> values = const {},
+  ]) async {
+    if (callId.trim().isEmpty) throw ArgumentError('callId must not be blank');
+    final result = HuaweiRtcControls._decode(
+      await _invoke(method, {'callId': callId, ...values}),
+    );
+    if (result.callId != callId) {
+      throw const FormatException(
+        'RTC control snapshot belongs to another call',
+      );
+    }
+    return result;
   }
 
   static Future<Object?> _invoke(String method, [Object? arguments]) async {

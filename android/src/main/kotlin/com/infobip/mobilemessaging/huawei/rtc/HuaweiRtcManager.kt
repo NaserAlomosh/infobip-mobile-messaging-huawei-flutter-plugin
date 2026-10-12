@@ -89,6 +89,28 @@ internal class HuaweiRtcManager(
                     // A void native hangup is acceptance, not remote termination acknowledgement.
                     result.success(null)
                 }
+                "getCallControls", "setMicrophoneMuted", "setSpeakerEnabled", "switchCamera",
+                "setCameraEnabled", "selectAudioOutput" -> {
+                    val args = call.arguments as? Map<*, *>
+                        ?: throw RtcFailure("rtc_invalid_argument", "Provide the current call ID")
+                    val id = args["callId"] as? String
+                        ?: throw RtcFailure("rtc_invalid_argument", "Provide the current call ID")
+                    val current = session ?: throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
+                    val active = current.call ?: throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
+                    if (active.id() != id) throw RtcFailure("rtc_invalid_state", "The requested call is no longer current")
+                    if (active.status() == CallStatus.FINISHED) {
+                        finish(current)
+                        throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
+                    }
+                    if (call.method != "getCallControls") {
+                        if (active.status() != CallStatus.ESTABLISHED || !canStartCall() || cleaning)
+                            throw RtcFailure("rtc_invalid_state", "Controls require an established foreground call")
+                        permissions(current.input.video && (call.method == "switchCamera" ||
+                            (call.method == "setCameraEnabled" && args["enabled"] == true)))
+                        HuaweiRtcControls.apply(active, current.input.video, call.method, args)
+                    }
+                    result.success(HuaweiRtcControls.snapshot(active, current.input.video))
+                }
                 "getActiveCall" -> {
                     val current = session
                     if (current?.call?.status() == CallStatus.FINISHED) finish(current)
@@ -198,7 +220,7 @@ internal class HuaweiRtcManager(
     }
 
     private fun snapshot(current: Session, status: CallStatus? = null): Map<String, Any?>? = current.call?.let {
-        mapOf("id" to it.id(), "type" to current.input.type, "status" to (status ?: it.status()).name.lowercase())
+        mapOf("id" to it.id(), "type" to current.input.type, "status" to (status ?: it.status()).name.lowercase(), "durationSeconds" to it.duration().coerceAtLeast(0))
     }
 
     private fun finish(current: Session, reason: Int? = null) {

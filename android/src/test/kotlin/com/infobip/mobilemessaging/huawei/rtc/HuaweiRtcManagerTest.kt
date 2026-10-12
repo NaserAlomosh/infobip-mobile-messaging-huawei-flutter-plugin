@@ -73,6 +73,7 @@ class HuaweiRtcManagerTest {
     private lateinit var listener: RtcListener
     private val call = mock(ApplicationCall::class.java).also {
         `when`(it.id()).thenReturn("native-call-id")
+        `when`(it.audioDeviceManager()).thenReturn(mock(com.infobip.webrtc.sdk.api.device.AudioDeviceManager::class.java))
         `when`(it.status()).thenAnswer { status }
         doAnswer { hangups++; null }.`when`(it).hangup()
     }
@@ -494,6 +495,81 @@ class HuaweiRtcManagerTest {
         assertEquals(1, hangups)
         verify(call).setEventListener(RtcListener.detached)
         verify(view, times(1)).releaseRenderer()
+    }
+
+    @Test fun `controls reject missing pending unestablished finished and stale calls`() {
+        val args = mapOf("callId" to "native-call-id", "enabled" to true)
+        assertEquals("rtc_invalid_argument", invoke("setMicrophoneMuted").code)
+        assertEquals("rtc_no_active_call", invoke("setMicrophoneMuted", args).code)
+        invoke("callApplication", request())
+        assertEquals("rtc_no_active_call", invoke("setMicrophoneMuted", args).code)
+        executor.runNext(); idle()
+        assertEquals("rtc_invalid_state", invoke("setMicrophoneMuted", args).code)
+        status = CallStatus.ESTABLISHED
+        assertEquals("rtc_invalid_state", invoke("setMicrophoneMuted", args + ("callId" to "old-call")).code)
+        assertNull(invoke("setMicrophoneMuted", args).code)
+        verify(call).mute(true)
+        status = CallStatus.FINISHING
+        assertEquals("rtc_invalid_state", invoke("setMicrophoneMuted", args).code)
+        status = CallStatus.FINISHED
+        assertEquals("rtc_no_active_call", invoke("setMicrophoneMuted", args).code)
+        verify(call, times(1)).mute(true)
+    }
+
+    @Test fun `control failures are sanitized and revoked permission prevents forwarding`() {
+        start("video"); status = CallStatus.ESTABLISHED
+        val args = mapOf("callId" to "native-call-id", "enabled" to true)
+        permitted = false
+        assertEquals("rtc_permission_denied", invoke("setMicrophoneMuted", args).code)
+        verify(call, never()).mute(anyBoolean())
+        permitted = true
+        doThrow(IllegalStateException("private")).`when`(call).mute(true)
+        val reply = invoke("setMicrophoneMuted", args)
+        assertEquals("rtc_invalid_state", reply.code)
+        assertFalse(reply.message!!.contains("private"))
+        assertNotNull(invoke("getActiveCall").value)
+    }
+
+    @Test fun `old queued callbacks cannot change replacement control state or duration`() {
+        start(); status = CallStatus.ESTABLISHED
+        val old = listener
+        old.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        `when`(call.id()).thenReturn("replacement")
+        `when`(call.duration()).thenReturn(7)
+        start()
+        old.onEstablished(CallEstablishedEvent()); idle()
+        assertEquals("rtc_invalid_state", invoke("setMicrophoneMuted", mapOf("callId" to "native-call-id", "enabled" to true)).code)
+        verify(call, never()).mute(anyBoolean())
+        assertEquals(7, (invoke("getActiveCall").value as Map<*, *>)["durationSeconds"])
+    }
+
+    @Test fun `camera permission recheck applies to capture but not microphone or camera removal`() {
+        start("video"); status = CallStatus.ESTABLISHED
+        val args = mapOf("callId" to "native-call-id", "enabled" to true)
+        invoke("setMicrophoneMuted", args)
+        assertEquals(false, requestedVideo)
+        invoke("setCameraEnabled", args)
+        assertEquals(true, requestedVideo)
+        invoke("setCameraEnabled", args + ("enabled" to false))
+        assertEquals(false, requestedVideo)
+        invoke("switchCamera", args)
+        assertEquals(true, requestedVideo)
+    }
+
+    @Test fun `duration snapshots stay zero before connection and freeze in terminal event`() {
+        manager.onListen(null, sink); start()
+        assertEquals(0, (invoke("getActiveCall").value as Map<*, *>)["durationSeconds"])
+        status = CallStatus.ESTABLISHED
+        listener.onEstablished(CallEstablishedEvent()); idle()
+        assertEquals(0, (events.last()["call"] as Map<*, *>)["durationSeconds"])
+        `when`(call.duration()).thenReturn(65)
+        assertEquals(65, (invoke("getActiveCall").value as Map<*, *>)["durationSeconds"])
+        listener.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        val terminal = events.last()
+        assertEquals(65, (terminal["call"] as Map<*, *>)["durationSeconds"])
+        `when`(call.duration()).thenReturn(99)
+        manager.onCancel(null); manager.onListen(null, sink)
+        assertEquals(terminal, events.last())
     }
 
 }
