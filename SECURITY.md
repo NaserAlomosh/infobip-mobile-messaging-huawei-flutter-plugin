@@ -20,11 +20,12 @@ they do not certify backend authorization, device privacy or third-party SDKs.
   messages or captured content. Redact device evidence before sharing. Host provider
   and view callbacks are responsible for their own safe error/content handling.
 
-## Unresolved Huawei Mobile Messaging SDK 8.14.0 logging issue
+## SEC-01: Huawei Mobile Messaging SDK 8.14.0 logging mitigation
 
 Huawei Mobile Messaging SDK **8.14.0** contains authorization-header logging in
 its own dependency's `AuthorizationUtils` path (`System.out.println`). It is outside
-plugin-owned code and remains unresolved. Existing evidence is recorded in
+plugin-owned code; the upstream SDK remains unchanged. Release-device disclosure
+was reported by the owner. Original evidence is recorded in
 [RTC investigation](docs/webrtc-core-research.md) and
 [outgoing verification](docs/huawei-rtc-outgoing-verification.md).
 
@@ -32,8 +33,58 @@ Disabling RTC Core logging through its public API does **not** fix this independ
 MM logging path. Plugin sanitization cannot guarantee that vendor logs are safe.
 No SDK binary/AAR patch, reflection bypass, stdout interception or dependency
 upgrade is included. Do not distribute raw SDK/device logs with real credentials.
-The owner must obtain a vendor resolution or explicitly review/dispose of this risk
-before stable release; this documentation does not accept it on the owner's behalf.
+The example now uses Release-only R8 rules to remove `PrintStream.print/println`
+calls. APK disassembly proves the known `getAuthorizationHeader` println is absent
+from the optimized Release artifact and remains present in Debug. **SEC-01 is
+PARTIALLY MITIGATED:** consumer applications require their own opt-in configuration.
+See [artifact evidence and verification](docs/sec01-release-logging-mitigation.md).
+
+### Consumer application opt-in
+
+Copy the following into a dedicated host file, `release-logging-rules.pro`:
+
+```proguard
+-assumenosideeffects class java.io.PrintStream {
+    public void print(...);
+    public void println(...);
+}
+```
+
+Add that file only to the host's Release build type, preserving existing rules
+and signing configuration (Kotlin DSL):
+
+```kotlin
+android {
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "release-logging-rules.pro",
+            )
+        }
+    }
+}
+```
+
+Optimization must remain enabled; `-dontoptimize`, keep rules that block relevant
+optimization, or disabling shrinking can defeat removal. Resource shrinking is
+independent of this mitigation. Reinspect each actual shipping APK after changes.
+
+The plugin deliberately does **not** export this rule through `consumerProguardFiles`:
+consumer rules participate whenever the host enables R8, including minified Debug
+builds. This policy must remain a host Release opt-in. Do not add the dedicated
+file to `defaultConfig`, Debug, or a shared rules file used by Debug.
+
+The rule affects matching calls throughout the optimized host, including stderr
+and other `PrintStream` instances; it is not limited to Infobip or stdout. Hosts
+that rely on `PrintStream.print/println` for functional file/stream output must
+assess this before opting in and run their Release regressions. It does not remove
+`printf` (which returns `PrintStream`, unlike the candidate's `void` signature),
+`write`, Android logging, native logging, or Dart output, and does not certify other
+SDK logging paths. Debug still contains the upstream sensitive logging path.
+Obtain an upstream vendor fix; this mitigation does not permanently fix the SDK
+or establish general security certification.
 
 ## Android and MediaProjection privacy
 

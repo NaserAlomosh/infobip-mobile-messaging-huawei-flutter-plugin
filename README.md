@@ -462,9 +462,12 @@ provide Stop, and respect OS secure-content restrictions.
 
 **Unresolved upstream security issue:** Huawei Mobile Messaging SDK **8.14.0**
 contains authorization-header logging in its own `AuthorizationUtils` dependency.
-Plugin privacy hardening and RTC Core logging disablement do not fix it. No SDK
+The example's Release R8 rules now remove the identified println from the compiled
+APK; consuming apps must opt in to their own Release configuration. Debug retains
+the upstream logging path. See [SEC-01 verification](docs/sec01-release-logging-mitigation.md).
+Plugin privacy hardening and RTC Core logging disablement alone do not fix it. No SDK
 binary patch, reflection bypass, stdout interception or dependency upgrade is
-applied. This release is **not security-certified**. Owner/vendor resolution or an
+applied. SEC-01 is **PARTIALLY MITIGATED**; this release is **not security-certified**. Owner/vendor resolution or an
 explicit security disposition is still required. See [security guidance](SECURITY.md).
 
 Other limits: no incoming HMS RTC, screen-track API, configurable screen encoding
