@@ -1,7 +1,8 @@
 # Phase 3.5.3 — final production validation and release certification
 
 Audit date: 2026-10-12, Asia/Amman. Candidate: `fb359cb6f2c8609b03e2652b929a20020fcc8f21`.
-**Final decision: NO-GO for the first stable production release.**
+**Production certification: NO-GO. Package publication is assessed separately
+in [publication readiness](publication-readiness.md).**
 
 Publication documentation review, 2026-10-12: the original audit/build/test
 results below are historical evidence, not new verification runs. Subsequent
@@ -10,7 +11,9 @@ removal of the MM header println in an unsigned optimized example APK. It does
 not cover upstream RTC 2.5.28's signaling `printf`, which may expose temporary
 TURN credentials; see the [sanitized Infobip disclosure draft](sec01-infobip-responsible-disclosure.md).
 The current security matrix/checklist below reflects this limited mitigation;
-the original section 13 describes the pre-mitigation baseline. **NO-GO remains.**
+the original section 13 describes the pre-mitigation baseline. Production
+certification remains ungranted. The owner has decided not to submit a vendor
+report before publication; disclosure is not a package publication gate.
 
 ## 1. Executive summary
 
@@ -20,7 +23,8 @@ debug APK and unsigned release APK build successfully. The release build
 actually executes R8 and resource shrinking. These results do not certify
 on-device HMS, Chat authentication, RTC media or mandatory screen sharing.
 
-Mandatory gates remain unresolved: missing LICENSE, reachable upstream
+Package publication is blocked by missing LICENSE. Separate production
+acceptance gaps remain unresolved: reachable upstream
 authorization-header logging, signed/minified device acceptance, and 16 KB
 runtime/native compatibility disposition. The native audit finds nonzero RELRO
 end alignment remainders in several 64-bit libraries despite successful LOAD
@@ -500,16 +504,18 @@ plugin defect or proof of a vendor bug.
 ## 17. Findings and release blocker matrix
 
 Severity estimates impact; confidence and ownership are separate. No CRITICAL
-finding was confirmed. Release gates are not waived by upstream ownership.
+finding was confirmed. Security/device/build/native findings below concern
+production acceptance; PKG-01 is the package publication blocker. Vendor disclosure
+is optional under the owner decision and does not close SEC-01.
 
 | ID | Severity / category | Evidence / exact location | Impact and reproduction conditions | Ownership | Mitigation / blocking |
 | --- | --- | --- | --- | --- | --- |
-| SEC-UP-01 / SEC-01 | HIGH, upstream security | MM AuthorizationUtils.java:113; RTC 2.5.28 SocketHandler.logMessage printf; SEC-01 artifact record and disclosure draft | Authorization headers and signaling with temporary TURN credentials may reach stdout; exact signed-candidate exposure/exploitation UNVERIFIED | Infobip Huawei MM 8.14.0 / RTC 2.5.28 | PARTIALLY MITIGATED: known MM println removed in unsigned example Release; RTC printf outside optional rule; vendor fix/security disposition and signed verification missing; BLOCKING |
+| SEC-UP-01 / SEC-01 | HIGH, upstream security | MM AuthorizationUtils.java:113; RTC 2.5.28 SocketHandler.logMessage printf; SEC-01 artifact record and disclosure draft | Authorization headers and signaling with temporary TURN credentials may reach stdout; exact signed-candidate exposure/exploitation UNVERIFIED | Infobip Huawei MM 8.14.0 / RTC 2.5.28 | PARTIALLY MITIGATED: known MM println removed in unsigned example Release; RTC printf outside optional rule; upstream fix and signed verification missing; production security unresolved; vendor disclosure not a publication gate |
 | PKG-01 | HIGH, publication | Missing root LICENSE; publish.log exit 65 | Every pub.dev publication dry-run fails requirement | Package owner/legal authority | No license selected; BLOCKING |
-| DEVICE-01 | HIGH, validation gap | ChatManager.kt:35,119; plugin.kt:259,655; sections 8/16 | Actual SDK/backend JWT timeout, retry and cleanup behavior not accepted on candidate | Plugin/host validation owners | Unit coverage passes; device/backend acceptance missing; BLOCKING |
-| DEVICE-02 | HIGH, required feature gap | ScreenCaptureController.kt:103,182,219,254; quality/performance docs physical checklists | Signed device RTC/rendering/capture, orientation/resize, stop/revoke/background/end/engine teardown unverified after current changes | Plugin/host validation owners | Historical user evidence only; BLOCKING |
-| BUILD-01 | HIGH, release validation gap | example/android/app/build.gradle.kts; unsigned APK; apksigner verification | Production signing, signed minified installation and runtime cannot be certified from unsigned build | Host release owner | R8 build PASS; signed/runtime NOT TESTED; BLOCKING |
-| NATIVE-01 | HIGH, upstream binary/validation concern | Release APK lib/arm64-v8a/libflutter.so, lib/x86_64/libflutter.so, lib/arm64-v8a/libjingle_peerconnection_so.so; section 12 | Nonzero RELRO-end modulo 16 KB fails current documented static criterion; actual failure on 16 KB device unverified | Flutter engine / Infobip WebRTC artifact; consumer integration owner | LOAD/ZIP PASS; vendor disposition and 16 KB runtime missing; BLOCKING |
+| DEVICE-01 | HIGH, validation gap | ChatManager.kt:35,119; plugin.kt:259,655; sections 8/16 | Actual SDK/backend JWT timeout, retry and cleanup behavior not accepted on candidate | Plugin/host validation owners | Unit coverage passes; device/backend acceptance missing; BLOCKING production acceptance |
+| DEVICE-02 | HIGH, required feature gap | ScreenCaptureController.kt:103,182,219,254; quality/performance docs physical checklists | Signed device RTC/rendering/capture, orientation/resize, stop/revoke/background/end/engine teardown unverified after current changes | Plugin/host validation owners | Historical user evidence only; BLOCKING production acceptance |
+| BUILD-01 | HIGH, release validation gap | example/android/app/build.gradle.kts; unsigned APK; apksigner verification | Production signing, signed minified installation and runtime cannot be certified from unsigned build | Host release owner | R8 build PASS; signed/runtime NOT TESTED; BLOCKING production acceptance |
+| NATIVE-01 | HIGH, upstream binary/validation concern | Release APK lib/arm64-v8a/libflutter.so, lib/x86_64/libflutter.so, lib/arm64-v8a/libjingle_peerconnection_so.so; section 12 | Nonzero RELRO-end modulo 16 KB fails current documented static criterion; actual failure on 16 KB device unverified | Flutter engine / Infobip WebRTC artifact; consumer integration owner | LOAD/ZIP PASS; vendor disposition and 16 KB runtime missing; BLOCKING production acceptance |
 | API-LIMIT-01 | MEDIUM, supported feature limitation | RTC CameraVideoMediaHandler.startCameraCapture; filter.kt:49 | SD output/letterboxing reduces small-text readability during required sharing | SDK capability / product acceptance | Documented; needs explicit readability acceptance, no arbitrary-resolution claim |
 | PLUGIN-UI-01 | LOW, plugin-owned label inconsistency | ScreenCaptureService.kt:34,40 | Every capture notification labels required supported sharing “Experimental” | Plugin | Unchanged; nonblocking label correction in separately authorized work |
 | FORMAT-01 | LOW, local artifact | Ignored example/lib/config/example_test_config.dart; format.log | Broad formatter finds one would-change file | Private example configuration owner | Source not written; tracked format PASS; nonblocking |
@@ -520,46 +526,56 @@ finding was confirmed. Release gates are not waived by upstream ownership.
 No plugin-owned mandatory runtime defect beyond these verified observations was
 confirmed. Automated success does not close the validation-gap findings.
 
-## 18. Final release decision
+## 18. Current publication and production decisions
 
-**NO-GO.** Missing LICENSE alone prevents the required publication. The reachable
-upstream authorization logging also requires security resolution independently.
-Mandatory signed/device/backend/16 KB evidence remains incomplete.
-CONDITIONAL GO is inappropriate because unresolved mandatory gates have not been
-closed or accepted through an evidence-backed release disposition.
+**Package publication: NO-GO** because the root LICENSE and owner authorization
+of provenance/redistribution rights are missing. Final dry-run success and upload
+authorization must be confirmed; see [publication readiness](publication-readiness.md).
 
-## 19. Required remediation, in minimum order
+**Production security certification: not granted.** SEC-01 remains PARTIALLY
+MITIGATED, with RTC printf outside the optional workaround. Signed-device/backend
+and 16 KB runtime acceptance remain UNVERIFIED. Publishing the source package
+would not certify those outcomes. The owner has decided not to submit a report
+before publication; vendor disclosure, acknowledgment or a fix is not a package
+publication gate.
 
-1. Owner authorizes a license after provenance/redistribution review; add it in
-   separately authorized work and rerun the publication dry-run.
-2. Send the sanitized SEC-01 disclosure draft through an owner-approved private
-   Infobip channel. Obtain a vendor fix or evidence-backed security disposition
-   for both authorization-header and credential-bearing RTC signaling logging.
-   Verify the exact signed artifact using isolated disposable test credentials
-   and sanitized evidence. The optional R8 rule removes only matching print/println
-   calls application-wide; it does not cover RTC printf. Disclosure alone is not
-   remediation.
-3. Investigate the exact native RELRO results with Flutter/Infobip; validate an
-   authorized candidate artifact on a real 16 KB environment. Any SDK/toolchain
-   change requires its own scoped implementation and regression validation.
-4. Apply owner-controlled release signing outside this audit, then execute the
-   device/backend checklist below on the exact signed/minified candidate.
-5. Record explicit acceptance of current SD sharing readability and supported OS
-   scope; correct misleading notification labels in separately authorized work.
-   Deprecations/docs naming/private formatting need not delay the mandatory gates.
+## 19. Next steps by scope
 
-No remediation was applied automatically.
+For package publication, obtain explicit owner authorization for a specific
+license, copyright attribution and redistribution rights, add the approved root
+LICENSE, rerun the checks and review the archive. Confirm the publishing account
+and package/version availability. No license approval has been inferred.
+
+For production acceptance, retain the upstream security finding and assess both
+MM header and RTC signaling logging on the exact signed host using disposable
+credentials and sanitized evidence. A permanent upstream fix remains desirable;
+the disclosure draft is optional and unsent. The R8 workaround removes only
+matching print/println application-wide and does not cover RTC printf.
+
+Investigate the native RELRO concern and validate on a real 16 KB environment;
+complete signed Huawei/backend acceptance and SD sharing readability checks.
+SDK/toolchain or runtime changes require separate scoped work. These production
+checks are distinct from source-package publication.
+
+No vendor report, commit, push or publication is authorized by this document.
 
 ## 20. Final acceptance checklist
+
+The first item is a package publication requirement. The remaining items are
+production/host acceptance requirements and optional workaround validation; they
+do not require vendor disclosure before publication.
 
 - [ ] Owner-approved LICENSE/provenance and redistribution rights recorded; add
       the root LICENSE, then rerun `flutter pub publish --dry-run` on the final
       candidate and review its archive for secrets/private artifacts. Last recorded
-      run failed for missing LICENSE; current final dry-run readiness UNVERIFIED.
-- [ ] Upstream MM authorization-header and RTC temporary TURN-credential logging
-      have an evidence-backed fix/security disposition; sanitized Infobip draft
-      sent privately and response tracked. Draft prepared, not sent; vendor
-      acknowledgment/fix and signed-device sensitive-log absence UNVERIFIED.
+      run failed for missing LICENSE; the current publication review also failed
+      with exit 65. Successful post-LICENSE dry-run remains UNVERIFIED; see
+      [current results](publication-readiness.md#requested-validation).
+- [ ] For production security acceptance, assess upstream MM authorization-header
+      and RTC temporary TURN-credential logging and record residual risk / verified
+      remediation. SEC-01 remains PARTIALLY MITIGATED; vendor fix and signed-device
+      sensitive-log absence UNVERIFIED. Optional draft retained, not sent; owner
+      declines prepublication reporting. Vendor response is not a publication gate.
 - [ ] If the host opts into R8 suppression, keep print/println rules in host Release
       configuration with R8/optimization enabled, outside plugin consumer rules;
       inspect the shipping artifact and accept application-wide stream-output

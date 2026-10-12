@@ -4,6 +4,9 @@ Prepared: 2026-10-12 (Asia/Amman). **DRAFT — NOT SENT.** Intended recipient:
 Infobip SDK/security maintainers through an owner-approved private channel.
 No private recipient address or response SLA has been established. Vendor
 acknowledgment, fixed-version availability and CVE assignment are **UNVERIFIED**.
+Owner decision, 2026-10-12: do not submit a security report before publication.
+This optional draft is retained as evidence; sending it, obtaining acknowledgment
+or receiving a vendor fix is not a package publication gate. No report was sent.
 This report contains no actual credentials, tokens, API keys or device logs.
 
 ## Summary and affected components
@@ -108,8 +111,8 @@ not prevent direct stdout. This is partial mitigation, not a vendor fix.
 - Agree on private tracking, acknowledgment and a coordinated advisory timeline
   with the reporter. No vendor response or disclosure deadline is invented here.
 
-The owner should send this sanitized draft only after confirming the private
-channel. Sending is outside this documentation task. Keep raw logs and private
-artifacts out of public issues and the package archive. Publication requires an
-evidence-backed security resolution/disposition; documentation alone does not
-close SEC-01.
+If the owner later chooses to report, confirm a private channel before sending.
+No submission is authorized by this release preparation. Keep raw logs and private
+artifacts out of public issues and the package archive. The owner decision permits
+package publication without vendor disclosure; it does not close SEC-01, prove
+production safety or establish security certification.

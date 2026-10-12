@@ -54,7 +54,10 @@ See [artifact evidence and verification](docs/sec01-release-logging-mitigation.m
 The workaround **does not guarantee removal of all sensitive logs** and does not
 cover the RTC `printf` path. A sanitized
 [responsible-disclosure report for Infobip](docs/sec01-infobip-responsible-disclosure.md)
-is prepared but has not been sent; vendor acknowledgment/fix status is **UNVERIFIED**.
+is retained as an optional draft and has not been sent. The owner has decided
+not to submit it before publication; vendor disclosure, acknowledgment or a fix
+is not a package publication gate. Vendor acknowledgment/fix status is
+**UNVERIFIED**. This decision does not resolve SEC-01 or certify production safety.
 
 ### Consumer application opt-in
 
@@ -101,8 +104,10 @@ assess this before opting in and run their Release regressions. It does not remo
 `printf` (including the upstream RTC signaling log),
 `write`, Android logging, native logging, or Dart output, and does not certify other
 SDK logging paths. Debug still contains the upstream sensitive logging path.
-Obtain an upstream vendor fix; this mitigation does not permanently fix the SDK
-or establish general security certification.
+An upstream vendor fix remains the permanent remediation goal; this mitigation
+does not permanently fix the SDK or establish general security certification.
+A vendor report or fix is not required for pub.dev publication under the owner
+decision. Consumers must assess the unresolved risk for their own production use.
 
 ## Android and MediaProjection privacy
 

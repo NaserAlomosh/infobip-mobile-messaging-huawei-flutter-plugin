@@ -91,7 +91,8 @@ Huawei Mobile Messaging 8.14.0 authorization-header logging in its dependency's
 `AuthorizationUtils` remains unresolved, as supplied in the task and recorded in
 existing SDK investigation evidence. RTC Core logging disablement does not fix it.
 No binary patch, reflection bypass, stdout interception, dependency upgrade or
-claim of a fix was added. Owner/vendor disposition remains required.
+claim of a fix was added. The owner decision allows package publication without
+vendor disclosure; the upstream risk remains unresolved for production use.
 
 Current docs contain only placeholders and callable backend-provider examples.
 Tracked-file checks found no private AGC JSON, signing files, local Dart config,
@@ -172,40 +173,28 @@ No test exclusions or SDK/source repairs were used. Unit tests are not device
 acceptance evidence. Snippet analysis verifies compilation-level types/signatures,
 not authentication or runtime permissions.
 
-## Remaining gates and publication assessment
+## Current publication assessment — owner decision, 2026-10-12
 
-Publication documentation review, 2026-10-12: the results above remain the
-historical packaging record; no builds, tests or dry-run were rerun for this
-documentation update. Use the
-[current acceptance checklist](final-production-certification.md#20-final-acceptance-checklist)
-and [SEC-01 verification record](sec01-release-logging-mitigation.md).
+The results above are historical packaging evidence. The current checks and
+package inventory are recorded in [publication readiness](publication-readiness.md).
 
-1. **BLOCKED:** owner-authorized LICENSE and redistribution rights.
-2. **BLOCKED / PARTIALLY MITIGATED:** upstream authorization-header logging and RTC
-   signaling that may expose temporary TURN credentials. Optional host R8 rules
-   remove matching print/println calls application-wide, require R8/optimization,
-   and do not cover RTC printf or guarantee removal of all sensitive logs. Obtain
-   vendor resolution or an evidence-backed owner security disposition. The
-   [sanitized Infobip draft](sec01-infobip-responsible-disclosure.md) is prepared,
-   not sent; vendor acknowledgment/fix status **UNVERIFIED**.
-3. **UNVERIFIED:** physical Huawei/backend acceptance for Push, Chat,
-   RTC/rendering/notifications/sharing and lifecycle restoration; use example and
-   historical device checklists with sanitized evidence.
-4. **VERIFIED advisory:** top-level `docs/` pub layout warning and 21 pre-existing
-   analyzer infos remain; neither was hidden or fixed with unrelated runtime edits.
-5. **BLOCKED / UNVERIFIED:** release verification. A later SEC-01 optimized example
-   APK built successfully but was unsigned; exact signed/minified installation,
-   startup, functional regression and sensitive-log verification remain UNVERIFIED.
-6. **BLOCKED / UNVERIFIED:** 16 KB compatibility. The later native audit records
-   passing LOAD/ZIP checks and nonzero RELRO-end remainders. Vendor/toolchain
-   disposition and runtime validation on a real 16 KB environment remain
-   UNVERIFIED; the observed Huawei device uses 4 KB pages.
-7. **BLOCKED:** pub.dev dry-run readiness. Last recorded dry-run exited 65 for
-   missing LICENSE. Final-candidate dry-run, archive inventory and publication
-   account/package-name availability remain UNVERIFIED. Rerun after license and
-   candidate documentation are finalized; do not publish as part of this task.
+1. **BLOCKED:** missing owner-authorized root LICENSE and confirmed provenance /
+   redistribution rights. No license has been selected or approved on the owner's
+   behalf. Rerun the final package dry-run after this is resolved.
+2. **UNVERIFIED:** publishing account authorization and package/version availability;
+   confirm these when the owner is ready to publish.
+3. **Nonblocking advisories:** top-level `docs/` layout and baseline analyzer
+   deprecation infos. Review the actual command results; do not call analysis clean.
+4. **Unresolved production risk:** SEC-01 remains PARTIALLY MITIGATED. The optional
+   host Release R8 workaround removes matching print/println application-wide,
+   requires R8/optimization and does not cover RTC printf or all sensitive logging.
+   The owner has decided not to submit a vendor report before publication. Sending
+   the optional draft, receiving acknowledgment or obtaining a fix is not a
+   publication gate. This does not resolve the upstream risk or certify security.
+5. **UNVERIFIED production acceptance:** exact signed/minified host installation,
+   Huawei/backend behavior and 16 KB runtime compatibility. These are consumer
+   production acceptance checks, distinct from publishing the source package.
 
-**Final assessment: documentation and packaging preparation complete; stable
-publication is NO-GO until the license/security, signed-release, device acceptance,
-16 KB compatibility and final dry-run gates have owner-reviewed evidence.**
-Version/dependencies and runtime behavior are preserved.
+**Package publication: NO-GO while LICENSE / redistribution authorization and
+final dry-run readiness remain unresolved. Production security certification is
+not granted.** Runtime behavior, versions and dependencies remain unchanged.

@@ -35,6 +35,13 @@ First stable release preparation; publication is pending release gates.
   FilterOptions names with the official Flutter models; retained deprecated aliases.
 - Added release integration/security guides and explicit package exclusions.
 
-Known release gates: missing owner-authorized LICENSE, unresolved Huawei Mobile
-Messaging 8.14.0 dependency authorization-header logging, and outstanding physical
-Huawei/backend acceptance. No security certification or publication is claimed.
+Publication blocker: missing owner-authorized root LICENSE and confirmed
+redistribution rights; the final package dry-run must be rechecked after resolution.
+Known unresolved risks: Huawei Mobile Messaging 8.14.0 authorization-header logging
+and RTC 2.5.28 signaling logging that may expose temporary TURN credentials.
+SEC-01 remains PARTIALLY MITIGATED; the optional host Release R8 workaround does
+not cover RTC printf or guarantee removal of all sensitive logs. The owner has
+decided not to submit a vendor report before publication; disclosure is not a
+publication gate. Physical Huawei/backend, signed-host and 16 KB runtime acceptance
+remain UNVERIFIED production checks. No security certification or publication is
+claimed. See [publication readiness](docs/publication-readiness.md).

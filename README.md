@@ -483,8 +483,11 @@ optimized Release APK; signed-device verification is **UNVERIFIED**. Debug retai
 the upstream paths. See [SEC-01 evidence](docs/sec01-release-logging-mitigation.md)
 and the [sanitized Infobip disclosure draft](docs/sec01-infobip-responsible-disclosure.md).
 SEC-01 is **PARTIALLY MITIGATED**; this package is **not security-certified**.
-Vendor resolution or an evidence-backed owner security disposition remains required.
-See [security guidance](SECURITY.md).
+The owner has decided not to submit a vendor report before publication. Vendor
+disclosure, acknowledgment or remediation is not a package publication gate.
+This decision records the unresolved risk; it does not close SEC-01 or establish
+production security certification. See [security guidance](SECURITY.md) and the
+[current publication checklist](docs/publication-readiness.md).
 
 Other limits: no incoming HMS RTC, screen-track API, configurable screen encoding
 resolution or background Dart handler. Real backend token acceptance, Huawei
