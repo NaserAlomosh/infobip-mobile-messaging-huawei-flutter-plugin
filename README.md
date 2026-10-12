@@ -229,6 +229,7 @@ scope and provide Stop: it can capture private content outside your app.
 
 ## License
 
-A root LICENSE has not yet been authorized or added. Publication remains blocked
-until the owner supplies the license and confirms redistribution rights. No license
-or third-party permission is inferred from this repository.
+The [MIT License](LICENSE), copyright (c) 2026 Naser Alomosh, applies to code and
+content the repository owner has the right to license. Third-party SDKs, libraries,
+generated files and other third-party materials remain subject to their respective
+licenses and notices; MIT does not grant additional redistribution rights for them.
