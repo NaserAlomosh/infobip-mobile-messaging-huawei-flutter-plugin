@@ -55,13 +55,17 @@ internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: (Long) -> Uni
             val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(result)
             canvas.drawColor(Color.BLACK)
+            // RTC 2.5.28 rotates the bitmap texture 180 degrees for rotation=0;
+            // WebRTC YuvConverter then flips Y. Together they flip X. Compensate
+            // only substituted screen pixels, in the existing output allocation.
+            canvas.scale(-1f, 1f, width / 2f, height / 2f)
             latest?.let { frame ->
                 val scale = minOf(width.toFloat() / frame.width, height.toFloat() / frame.height)
                 val w = frame.width * scale
                 val h = frame.height * scale
                 canvas.drawBitmap(frame, null, RectF((width-w)/2, (height-h)/2, (width+w)/2, (height+h)/2), paint)
             }
-            // Screen pixels are display-oriented. SDK converter orientation needs device validation.
+            // Display-oriented screen output is independent of camera facing/rotation.
             output.notifyFrameProcessed(result, 0, timestampNs)
             if (latest != null && !screenReported) { screenReported = true; screenFrame(generation) }
         }
