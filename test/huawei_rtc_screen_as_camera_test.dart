@@ -78,6 +78,39 @@ void main() {
     pending.complete(payload);
     await start;
   });
+  testWidgets('each stop is bounded when native teardown does not reply', (
+    tester,
+  ) async {
+    final pending = Completer<Object?>();
+    messenger.setMockMethodCallHandler(channel, (_) => pending.future);
+    final first = HuaweiRtcScreenAsCamera.stopScreenAsCamera(callId: 'A');
+    final duplicate = HuaweiRtcScreenAsCamera.stopScreenAsCamera(callId: 'A');
+    final expectation = Future.wait(
+      [first, duplicate].map(
+        (future) => expectLater(
+          future,
+          throwsA(
+            isA<ScreenAsCameraException>().having(
+              (e) => e.code,
+              'code',
+              'screen_stop_uncertain',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 6));
+    await expectation;
+    final later = HuaweiRtcScreenAsCamera.stopScreenAsCamera(callId: 'A');
+    final laterExpectation = expectLater(
+      later,
+      throwsA(isA<ScreenAsCameraException>()),
+    );
+    await tester.pump(const Duration(seconds: 6));
+    await laterExpectation;
+    pending.complete(payload);
+    await tester.pump();
+  });
   test('rejects stale call snapshots and malformed state', () async {
     messenger.setMockMethodCallHandler(
       channel,

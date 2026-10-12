@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 
 /// Experimental camera-stream substitution, not Infobip native screen sharing.
@@ -102,7 +103,11 @@ abstract final class HuaweiRtcScreenAsCamera {
   /// May report cameraOutputRestored=false until camera frames resume.
   static Future<ScreenAsCameraState> stopScreenAsCamera({
     required String callId,
-  }) => _invoke('stopScreenAsCamera', callId);
+  }) => _invoke('stopScreenAsCamera', callId).timeout(
+    const Duration(seconds: 5),
+    onTimeout: () =>
+        throw const ScreenAsCameraException('screen_stop_uncertain'),
+  );
   static Future<ScreenAsCameraState> getScreenAsCameraState({
     required String callId,
   }) => _invoke('getScreenAsCameraState', callId);

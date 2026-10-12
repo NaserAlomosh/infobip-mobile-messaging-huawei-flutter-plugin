@@ -10,7 +10,7 @@ import com.infobip.webrtc.sdk.videofilter.VideoFilter
 import com.infobip.webrtc.sdk.videofilter.VideoFilterManager
 
 /** Experimental camera substitution. No SDK implementation classes or native screen track. */
-internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: () -> Unit,
+internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: (Long) -> Unit,
     private val screenFrame: (Long) -> Unit, private val filterStopped: () -> Unit) : VideoFilter {
     private val lock = Any()
     private var manager: VideoFilterManager? = null
@@ -30,6 +30,7 @@ internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: () -> Unit,
         generation++
         latest?.recycle()
         latest = null
+        generation
     }
     /** Ownership transfers even when rejected. At most one capture bitmap is retained. */
     fun offer(frame: Bitmap, epoch: Long) = synchronized(lock) {
@@ -45,7 +46,7 @@ internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: () -> Unit,
             val output = manager ?: return
             if (!sharing) {
                 output.notifyFrameProcessed(bitmap, rotation, timestampNs)
-                if (!cameraReported) { cameraReported = true; cameraFrame() }
+                if (!cameraReported) { cameraReported = true; cameraFrame(generation) }
                 return
             }
             // Runs on SDK filter worker, not RTC capture thread. Camera cadence supplies

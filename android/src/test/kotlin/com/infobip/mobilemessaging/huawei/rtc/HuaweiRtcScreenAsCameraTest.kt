@@ -25,6 +25,7 @@ import org.robolectric.annotation.Config
 import io.flutter.plugin.common.MethodChannel
 
 @RunWith(RobolectricTestRunner::class)
+@org.robolectric.annotation.LooperMode(org.robolectric.annotation.LooperMode.Mode.PAUSED)
 @Config(sdk = [28])
 class HuaweiRtcScreenAsCameraTest {
     private val app: Context = RuntimeEnvironment.getApplication()
@@ -154,6 +155,9 @@ class HuaweiRtcScreenAsCameraTest {
         if (ending) { `when`(call.status()).thenReturn(CallStatus.FINISHING); capture.endCall() }
         val reply = Reply()
         capture.stop("A", reply)
+        val lease = HuaweiRtcScreenCaptureService.lease
+        HuaweiRtcScreenCaptureService.lease = null
+        lease?.ended?.invoke()
         val limit = System.nanoTime() + 2_000_000_000
         while (reply.completions == 0 && System.nanoTime() < limit) {
             Thread.yield(); shadowOf(Looper.getMainLooper()).idle()
@@ -168,6 +172,127 @@ class HuaweiRtcScreenAsCameraTest {
         verify(call, never()).stopScreenShare()
         verify(call, never()).hangup()
         assertFalse(capture.busy())
+    }
+    @Test fun `reader callback and service failures retain resources until independent retries succeed`() {
+        val projection = mock(MediaProjection::class.java)
+        val reader = mock(android.media.ImageReader::class.java)
+        var callback: MediaProjection.Callback? = null
+        var serviceAttempts = 0
+        var workerAttempts = 0
+        doAnswer { callback = it.arguments[0] as MediaProjection.Callback; null }.`when`(projection).registerCallback(any(), any())
+        doAnswer { callback!!.onStop(); null }.`when`(projection).stop()
+        doThrow(IllegalStateException()).doNothing().`when`(projection).unregisterCallback(any())
+        doThrow(IllegalStateException()).doNothing().`when`(reader).close()
+        val capture = HuaweiRtcScreenCaptureController(app, owner = { owner }, sdkInt = { 29 },
+            projectionProvider = { _, _ -> projection }, readerProvider = { _, _ -> reader },
+            shutdownWorker = { worker ->
+                if (++workerAttempts == 1) throw IllegalStateException()
+                worker.quitSafely(); worker.join(500)
+            },
+            stopService = { if (++serviceAttempts == 1) throw IllegalStateException() else false })
+        capture.attach(host); capture.start("A", Reply()); capture.permission(request, Activity.RESULT_OK, Intent())
+        requireNotNull(HuaweiRtcScreenCaptureService.lease).complete(true)
+        val reply = Reply(); capture.stop("A", reply)
+        val limit = System.nanoTime() + 2_000_000_000
+        while (capture.busy() && System.nanoTime() < limit) {
+            Thread.yield(); shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(250))
+        }
+        assertFalse(capture.busy())
+        assertEquals(1, reply.completions)
+        assertEquals(true, capture.snapshot("A")["resourcesReleased"])
+        verify(reader, times(2)).close()
+        verify(projection, times(2)).unregisterCallback(any())
+        assertEquals(2, serviceAttempts)
+        assertEquals(2, workerAttempts)
+    }
+    @Test fun `uncertain stops are bounded and late termination releases retained owner`() {
+        val projection = mock(MediaProjection::class.java)
+        val display = mock(VirtualDisplay::class.java)
+        var callback: MediaProjection.Callback? = null
+        doAnswer { callback = it.arguments[0] as MediaProjection.Callback; null }.`when`(projection).registerCallback(any(), any())
+        `when`(projection.createVirtualDisplay(anyString(), anyInt(), anyInt(), anyInt(), anyInt(),
+            any(Surface::class.java), isNull(), any(Handler::class.java))).thenReturn(display)
+        doThrow(IllegalStateException()).doNothing().`when`(display).release()
+        val capture = HuaweiRtcScreenCaptureController(app, owner = { owner }, sdkInt = { 29 },
+            projectionProvider = { _, _ -> projection })
+        capture.attach(host); capture.start("A", Reply()); capture.permission(request, Activity.RESULT_OK, Intent())
+        requireNotNull(HuaweiRtcScreenCaptureService.lease).complete(true)
+        val first = Reply(); val duplicate = Reply()
+        capture.stop("A", first); capture.stop("A", duplicate)
+        capture.endCall()
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(4))
+        assertEquals("screen_stop_uncertain", first.code)
+        assertEquals("screen_stop_uncertain", duplicate.code)
+        val later = Reply(); capture.stop("A", later)
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(4))
+        assertEquals("screen_stop_uncertain", later.code)
+        assertTrue(capture.busy())
+        try { capture.start("A", Reply()); fail() } catch (e: RtcFailure) { assertEquals("screen_busy", e.code) }
+        val lease = HuaweiRtcScreenCaptureService.lease
+        HuaweiRtcScreenCaptureService.lease = null
+        lease?.ended?.invoke()
+        callback!!.onStop()
+        val limit = System.nanoTime() + 2_000_000_000
+        while (capture.busy() && System.nanoTime() < limit) {
+            Thread.yield(); shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(250))
+        }
+        assertFalse(capture.busy())
+        verify(display, atLeast(2)).release()
+        assertEquals(1, first.completions); assertEquals(1, duplicate.completions); assertEquals(1, later.completions)
+        val completed = Reply(); capture.stop("A", completed); assertEquals(1, completed.completions)
+    }
+    @Config(sdk = [34])
+    @Test fun `initial and duplicate resize preserve capture but genuine resize stops`() {
+        val projection = mock(MediaProjection::class.java)
+        var callback: MediaProjection.Callback? = null
+        doAnswer { callback = it.arguments[0] as MediaProjection.Callback; null }.`when`(projection).registerCallback(any(), any())
+        val capture = HuaweiRtcScreenCaptureController(app, owner = { owner }, sdkInt = { 29 },
+            projectionProvider = { _, _ -> projection })
+        capture.attach(host); capture.start("A", Reply()); capture.permission(request, Activity.RESULT_OK, Intent())
+        requireNotNull(HuaweiRtcScreenCaptureService.lease).complete(true)
+        val videoFilter = installed as HuaweiRtcScreenVideoFilter
+        videoFilter.start(640, 480, 30, app, mock(VideoFilterManager::class.java))
+        videoFilter.offer(Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888), 1)
+        val camera = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+        videoFilter.applyFilter(camera, 0, 1)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("sharing", capture.snapshot("A")["state"])
+        camera.recycle()
+        val metrics = app.resources.displayMetrics
+        callback!!.onCapturedContentResize(metrics.widthPixels, metrics.heightPixels)
+        callback!!.onCapturedContentResize(metrics.widthPixels, metrics.heightPixels)
+        verify(projection, never()).stop()
+        callback!!.onCapturedContentResize(metrics.heightPixels + 1, metrics.widthPixels + 1)
+        verify(projection).stop()
+        callback!!.onStop()
+        HuaweiRtcScreenCaptureService.lease = null
+    }
+    @Test fun `camera restoration from replaced RTC session is ignored`() {
+        controller.start("A", Reply())
+        val videoFilter = installed as HuaweiRtcScreenVideoFilter
+        videoFilter.start(640, 480, 30, app, mock(VideoFilterManager::class.java))
+        controller.stop("A", Reply())
+        val camera = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+        videoFilter.applyFilter(camera, 0, 1)
+        owner = ScreenCaptureCall("session-B", call, true)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(false, controller.snapshot("A")["cameraOutputRestored"])
+        camera.recycle()
+    }
+    @Test fun `queued camera callback from earlier generation cannot report restoration`() {
+        controller.start("A", Reply())
+        val filter = installed as HuaweiRtcScreenVideoFilter
+        val output = mock(VideoFilterManager::class.java)
+        filter.start(640, 480, 30, app, output)
+        val bitmap = Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888)
+        filter.applyFilter(bitmap, 0, 1)
+        controller.stop("A", Reply())
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(false, controller.snapshot("A")["cameraOutputRestored"])
+        filter.applyFilter(bitmap, 0, 2)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(true, controller.snapshot("A")["cameraOutputRestored"])
+        bitmap.recycle()
     }
     @Test fun `missing termination callback reports uncertain instead of stopped`() {
         val projection = mock(MediaProjection::class.java)

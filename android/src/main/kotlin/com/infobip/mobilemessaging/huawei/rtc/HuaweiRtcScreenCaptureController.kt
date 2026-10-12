@@ -28,6 +28,16 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
     private val sdkInt: () -> Int = { Build.VERSION.SDK_INT },
     private val projectionProvider: (Int, Intent) -> MediaProjection? = { code, data ->
         context.applicationContext.getSystemService(MediaProjectionManager::class.java).getMediaProjection(code, data)
+    },
+    private val readerProvider: (Int, Int) -> ImageReader = { w, h ->
+        ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
+    },
+    private val shutdownWorker: (HandlerThread) -> Unit = { worker ->
+        worker.quitSafely()
+        worker.join(500)
+    },
+    private val stopService: () -> Boolean = {
+        context.applicationContext.stopService(Intent(context, HuaweiRtcScreenCaptureService::class.java))
     }) : EventChannel.StreamHandler {
     private val app = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
@@ -37,6 +47,7 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
     private var filterCall: ApplicationCall? = null
     private var filter: HuaweiRtcScreenVideoFilter? = null
     private var last = idle()
+    private var lastCapture: Capture? = null
     private class Capture(val owner: ScreenCaptureCall, val request: Int, val filter: HuaweiRtcScreenVideoFilter,
                           var startReply: MethodChannel.Result?) {
         val identity = UUID.randomUUID().toString()
@@ -53,6 +64,13 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
         var released = false
         var restored = false
         var completed = false
+        var cleanupRunning = false
+        var cleanupAttempts = 0
+        var restoreEpoch = -1L
+        var captureWidth = 0
+        var captureHeight = 0
+        var resizeReported = false
+        var serviceStopped = false
         var error: String? = null
         val stops = mutableListOf<MethodChannel.Result>()
     }
@@ -88,10 +106,11 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
         if (filterCall !== current.call) {
             if (current.call.videoFilter != null) throw RtcFailure("screen_filter_conflict", "Another camera filter is installed")
             filter = HuaweiRtcScreenVideoFilter(
-                cameraFrame = { main.post {
-                    session?.let { c -> if (c.stopRequested) { c.restored = true; publish(c) } }
-                    if (session == null && last["callId"] == owner()?.call?.id() && last["projectionTerminated"] == true) {
-                        last = last.plus("cameraOutputRestored" to true); deliver(last)
+                cameraFrame = { epoch -> main.post {
+                    val c = session ?: lastCapture
+                    if (c != null && valid(c) && filterCall === current.call &&
+                        c.owner.identity == current.identity && c.restoreEpoch == epoch && c.stopRequested) {
+                        c.restored = true; publish(c)
                     }
                 } },
                 screenFrame = { epoch -> main.post { session?.let { c -> if (c.owner.call === current.call && c.epoch == epoch && !c.stopRequested && c.state == "starting" && valid(c)) {
@@ -107,6 +126,7 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
         if (requestId >= 65000) throw RtcFailure("screen_busy", "Capture request limit reached; restart after ending the call")
         val c = Capture(current, ++requestId, requireNotNull(filter), result)
         session = c
+        lastCapture = c
         publish(c)
         try { host.startActivityForResult(app.getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent(), c.request) }
         catch (_: Exception) { stop(c, "permission_launch_failed") }
@@ -129,7 +149,15 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
                     if (!valid(c)) stop(c, "call_ended")
                     else if (ready) acquire(c, resultCode, data) else stop(c, "service_failed")
                 }
-            }, ended = { if (session === c) stop(c, "service_ended") })
+            }, ended = {
+                if (session === c) {
+                    if (HuaweiRtcScreenCaptureService.lease == null) {
+                        c.serviceStopped = true
+                        c.cleanupAttempts = minOf(c.cleanupAttempts, 2)
+                    }
+                    stop(c, "service_ended")
+                }
+            })
         HuaweiRtcScreenCaptureService.lease = lease
         try { ContextCompat.startForegroundService(app, Intent(app, HuaweiRtcScreenCaptureService::class.java).putExtra("identity", c.identity)) }
         catch (_: Exception) { stop(c, "service_failed") }
@@ -144,23 +172,31 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
             val callback = object : MediaProjection.Callback() {
                 override fun onStop() {
                     c.terminated = true
-                    if (!c.stopRequested) stop(c, "projection_revoked") else completeStop(c)
+                    if (!c.stopRequested) stop(c, "projection_revoked") else { c.cleanupAttempts = minOf(c.cleanupAttempts, 2); cleanup(c) }
                 }
                 override fun onCapturedContentResize(width: Int, height: Int) {
-                    // Initial size callback is normal. Subsequent size changes stop conservatively.
-                    if (c.state == "sharing") stop(c, "capture_size_changed")
+                    if (width <= 0 || height <= 0 || c.stopRequested) return
+                    if (!c.resizeReported) {
+                        c.resizeReported = true
+                        c.captureWidth = width; c.captureHeight = height
+                        return
+                    }
+                    if (width == c.captureWidth && height == c.captureHeight) return
+                    stop(c, "capture_size_changed")
                 }
             }
             c.callback = callback
             projection.registerCallback(callback, main)
             val metrics = app.resources.displayMetrics
+            c.captureWidth = metrics.widthPixels
+            c.captureHeight = metrics.heightPixels
             val scale = minOf(1f, 640f / maxOf(metrics.widthPixels, metrics.heightPixels))
             val w = (metrics.widthPixels * scale).toInt().coerceAtLeast(1)
             val h = (metrics.heightPixels * scale).toInt().coerceAtLeast(1)
             val worker = HandlerThread("HuaweiScreenPoc").apply { start() }
             c.worker = worker
             val handler = Handler(worker.looper)
-            val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2)
+            val reader = readerProvider(w, h)
             c.reader = reader
             c.epoch = c.filter.begin()
             reader.setOnImageAvailableListener({ source ->
@@ -185,57 +221,97 @@ internal class HuaweiRtcScreenCaptureController(context: Context, private val ow
         snapshot(callId) // reject stale call operations, even duplicate stops
         val c = session?.takeIf { it.owner.identity == owner()?.identity }
         if (c == null) { result.success(snapshot(callId)); return }
+        if (!c.cleanupRunning) c.cleanupAttempts = 0
         c.stops += result
+        main.postDelayed({
+            if (c.stops.remove(result)) {
+                c.state = "error"; c.error = "stop_uncertain"; publish(c)
+                safely { result.error("screen_stop_uncertain", "Capture termination was not confirmed", null) }
+            }
+        }, 3000)
         stop(c)
     }
     fun endCall() {
         session?.let { stop(it, "call_ended") }
         filter?.block()
-        filter = null; filterCall = null
+        filter = null; filterCall = null; lastCapture = null
     }
     private fun stop(c: Capture, reason: String? = null) {
-        if (c.stopRequested) return
-        c.stopRequested = true; c.error = reason; c.state = "stopping"
-        c.filter.block() // lock closes publication gate before projection stop or SDK work
-        val reply = c.startReply; c.startReply = null
-        safely { reply?.error("screen_cancelled", "Capture start did not complete", null) }
-        publish(c)
-        try {
+        if (!c.stopRequested) {
+            c.stopRequested = true; c.error = reason; c.state = "stopping"
+            c.restoreEpoch = c.filter.block()
+            val reply = c.startReply; c.startReply = null
+            safely { reply?.error("screen_cancelled", "Capture start did not complete", null) }
+            publish(c)
+            main.postDelayed({
+                if (!c.completed) {
+                    c.state = "error"; c.error = "stop_uncertain"; publish(c)
+                }
+            }, 3000)
+        }
+        cleanup(c)
+    }
+    /** Each successful step clears only its own reference. Failed steps retain ownership. */
+    private fun cleanup(c: Capture) {
+        if (c.completed || c.cleanupRunning || c.cleanupAttempts >= 3) return
+        c.cleanupRunning = true
+        c.cleanupAttempts++
+        fun attempt(action: () -> Unit) {
+            try { action() } catch (_: Exception) { c.error = "cleanup_failed" }
+        }
+        attempt {
             if (c.projection == null) c.terminated = true
             else if (!c.terminated) c.projection?.stop()
-        } catch (_: Exception) { c.error = "stop_uncertain" }
-        try { c.display?.release(); c.display = null } catch (_: Exception) { c.error = "cleanup_failed" }
+        }
+        attempt { c.display?.release(); c.display = null }
+        // Drain capture work before closing its reader. Never join on the main thread.
         val worker = c.worker
-        if (worker == null) { c.released = c.display == null; completeStop(c) }
-        else {
-            Handler(worker.looper).post {
-                var released = true
-                try { c.reader?.setOnImageAvailableListener(null, null); c.reader?.close(); c.reader = null }
-                catch (_: Exception) { released = false }
-                worker.quitSafely()
-                main.post { c.released = released && c.display == null; c.worker = null; if (!c.released) c.error = "cleanup_failed"; completeStop(c) }
+        fun finish() {
+            if (c.worker == null) attempt {
+                c.reader?.setOnImageAvailableListener(null, null)
+                c.reader?.close(); c.reader = null
+            }
+            if (c.terminated) attempt {
+                c.callback?.let { c.projection?.unregisterCallback(it) }
+                c.callback = null; c.projection = null
+            }
+            attempt {
+                if (!c.serviceStopped) {
+                    val lease = HuaweiRtcScreenCaptureService.lease
+                    if (lease == null || lease.identity != c.identity) c.serviceStopped = true
+                    else if (!stopService()) {
+                        HuaweiRtcScreenCaptureService.lease = null
+                        c.serviceStopped = true
+                    }
+                }
+            }
+            c.released = c.display == null && c.reader == null && c.worker == null &&
+                c.callback == null && c.serviceStopped
+            c.cleanupRunning = false
+            if (c.terminated && c.released) {
+                c.completed = true
+                c.state = if (c.error == null || c.error in listOf("projection_revoked", "activity_detached", "call_ended", "capture_size_changed")) "stopped" else "error"
+                publish(c)
+                val replies = c.stops.toList(); c.stops.clear()
+                replies.forEach { safely { it.success(value(c)) } }
+                if (session === c) session = null
+            } else {
+                publish(c)
+                if (c.cleanupAttempts < 3) main.postDelayed({ cleanup(c) }, 250)
             }
         }
-        main.postDelayed({ if (session === c && (!c.terminated || !c.released)) {
-            c.state = "error"; c.error = "stop_uncertain"; publish(c)
-            c.stops.forEach { safely { it.error("screen_stop_uncertain", "Capture termination was not confirmed", null) } }; c.stops.clear()
-        } }, 3000)
-    }
-    private fun completeStop(c: Capture) {
-        if (c.completed || !c.stopRequested || !c.terminated || !c.released) return
-        try { c.callback?.let { c.projection?.unregisterCallback(it) } }
-        catch (_: Exception) { c.released = false; c.error = "callback_cleanup_failed"; return }
-        c.callback = null; c.projection = null
-        if (HuaweiRtcScreenCaptureService.lease?.identity == c.identity) {
-            HuaweiRtcScreenCaptureService.lease = null
-            try { app.stopService(Intent(app, HuaweiRtcScreenCaptureService::class.java)) }
-            catch (_: Exception) { c.released = false; c.error = "service_cleanup_failed"; return }
+        if (worker == null) finish()
+        else {
+            // quitSafely drains already queued image callbacks; offer() remains blocked.
+            Thread {
+                try { shutdownWorker(worker) } catch (_: Exception) { }
+                main.post {
+                    if (!worker.isAlive) c.worker = null
+                    if (c.worker != null) c.error = "cleanup_failed"
+                    finish()
+                }
+            }.start()
         }
-        c.completed = true
-        c.state = if (c.error == null || c.error in listOf("projection_revoked", "activity_detached", "call_ended", "capture_size_changed")) "stopped" else "error"
-        publish(c)
-        c.stops.forEach { safely { it.success(value(c)) } }; c.stops.clear()
-        if (session === c) session = null
     }
     private fun value(c: Capture) = mapOf<String, Any?>("callId" to c.callId, "state" to c.state,
         "framesBlocked" to (c.stopRequested || c.epoch == 0L), "projectionTerminated" to c.terminated,
