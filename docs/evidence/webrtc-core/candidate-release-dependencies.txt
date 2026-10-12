@@ -1,8 +1,6 @@
 > Task :app:dependencies
 
-------------------------------------------------------------
 Project ':app'
-------------------------------------------------------------
 
 rtcCoreResearchRelease
 +--- org.jetbrains.kotlin:kotlin-stdlib:2.1.0

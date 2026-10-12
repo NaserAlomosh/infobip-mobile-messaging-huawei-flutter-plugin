@@ -22,6 +22,11 @@ internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: (Long) -> Uni
     private var width = 640
     private var height = 480
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    private val destination = RectF()
+    private var geometryWidth = 0
+    private var geometryHeight = 0
+
+    fun accepts(epoch: Long): Boolean = synchronized(lock) { sharing && epoch == generation }
 
     fun begin(): Long = synchronized(lock) { sharing = true; screenReported = false; ++generation }
     fun block() = synchronized(lock) {
@@ -38,7 +43,7 @@ internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: (Long) -> Uni
         else { latest?.recycle(); latest = frame }
     }
     override fun start(w: Int, h: Int, fps: Int, context: Context, output: VideoFilterManager) {
-        synchronized(lock) { width = w; height = h; manager = output }
+        synchronized(lock) { width = w; height = h; geometryWidth = 0; geometryHeight = 0; manager = output }
     }
     override fun stop() = synchronized(lock) { manager = null; block(); filterStopped() }
     override fun applyFilter(bitmap: Bitmap, rotation: Int, timestampNs: Long) {
@@ -60,10 +65,14 @@ internal class HuaweiRtcScreenVideoFilter(private val cameraFrame: (Long) -> Uni
             // only substituted screen pixels, in the existing output allocation.
             canvas.scale(-1f, 1f, width / 2f, height / 2f)
             latest?.let { frame ->
-                val scale = minOf(width.toFloat() / frame.width, height.toFloat() / frame.height)
-                val w = frame.width * scale
-                val h = frame.height * scale
-                canvas.drawBitmap(frame, null, RectF((width-w)/2, (height-h)/2, (width+w)/2, (height+h)/2), paint)
+                if (geometryWidth != frame.width || geometryHeight != frame.height) {
+                    val scale = minOf(width.toFloat() / frame.width, height.toFloat() / frame.height)
+                    val w = frame.width * scale
+                    val h = frame.height * scale
+                    destination.set((width-w)/2, (height-h)/2, (width+w)/2, (height+h)/2)
+                    geometryWidth = frame.width; geometryHeight = frame.height
+                }
+                canvas.drawBitmap(frame, null, destination, paint)
             }
             // Display-oriented screen output is independent of camera facing/rotation.
             output.notifyFrameProcessed(result, 0, timestampNs)
