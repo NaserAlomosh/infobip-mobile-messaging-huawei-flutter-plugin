@@ -54,6 +54,7 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var huaweiRtcManager: HuaweiRtcManager? = null
     private var huaweiRtcChannel: MethodChannel? = null
     private var huaweiRtcEvents: EventChannel? = null
+    private var screenCaptureEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var activity: Activity? = null
     private var rtcActivityBinding: ActivityPluginBinding? = null
@@ -61,14 +62,21 @@ class InfobipMobileMessagingHuaweiPlugin :
         huaweiRtcManager?.handleNotificationIntent(intent)
         false
     }
+    private val captureResultListener = PluginRegistry.ActivityResultListener { request, result, data ->
+        huaweiRtcManager?.screenCapture?.permission(request, result, data) ?: false
+    }
     private fun attachRtcActivity(binding: ActivityPluginBinding) {
         rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
         rtcActivityBinding = binding
         binding.addOnNewIntentListener(rtcIntentListener)
+        binding.addActivityResultListener(captureResultListener)
         activity = binding.activity
+        huaweiRtcManager?.screenCapture?.attach(binding.activity)
         binding.activity.intent?.let { huaweiRtcManager?.handleNotificationIntent(it) }
     }
     private fun detachRtcActivity() {
+        huaweiRtcManager?.screenCapture?.detach()
+        rtcActivityBinding?.removeActivityResultListener(captureResultListener)
         rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
         rtcActivityBinding = null
         activity = null
@@ -100,6 +108,11 @@ class InfobipMobileMessagingHuaweiPlugin :
         )
         huaweiRtcChannel = MethodChannel(binding.binaryMessenger, HuaweiRtcManager.METHOD_CHANNEL).also {
             it.setMethodCallHandler(huaweiRtcManager)
+        }
+        huaweiRtcManager?.configureScreenCapture(binding.applicationContext)
+        screenCaptureEvents = EventChannel(binding.binaryMessenger,
+            com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcScreenCaptureController.EVENTS).also {
+            it.setStreamHandler(huaweiRtcManager?.screenCapture)
         }
         huaweiRtcEvents = EventChannel(binding.binaryMessenger, HuaweiRtcManager.EVENT_CHANNEL).also {
             it.setStreamHandler(huaweiRtcManager)
@@ -184,6 +197,8 @@ class InfobipMobileMessagingHuaweiPlugin :
         huaweiRtcManager?.dispose()
         huaweiRtcChannel?.setMethodCallHandler(null)
         huaweiRtcEvents?.setStreamHandler(null)
+        screenCaptureEvents?.setStreamHandler(null)
+        screenCaptureEvents = null
         huaweiRtcManager = null
         huaweiRtcChannel = null
         huaweiRtcEvents = null

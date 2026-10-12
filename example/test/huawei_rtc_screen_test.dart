@@ -48,6 +48,12 @@ void main() {
       const MethodChannel(eventName),
       (_) async => null,
     );
+    messenger.setMockMethodCallHandler(
+      const MethodChannel(
+        'infobip_mobilemessaging_huawei/screen_as_camera/events',
+      ),
+      (_) async => null,
+    );
     messenger.setMockMethodCallHandler(channel, (operation) async {
       operations.add(operation);
       if (operation.method == 'takeNotificationCall') {
@@ -56,6 +62,17 @@ void main() {
         return tap;
       }
       if (operation.method == 'getActiveCall') return call;
+      if (operation.method == 'getScreenAsCameraState') {
+        return {
+          'callId': 'call-1',
+          'state': 'idle',
+          'framesBlocked': true,
+          'projectionTerminated': true,
+          'resourcesReleased': true,
+          'cameraOutputRestored': false,
+          'error': null,
+        };
+      }
       if (operation.method == 'getCallControls') return controls;
       if (operation.method == 'setMicrophoneMuted') {
         if (pending != null) return pending!.future;
@@ -83,6 +100,12 @@ void main() {
     controller.dispose();
     await sdk.close();
     messenger.setMockMethodCallHandler(const MethodChannel(eventName), null);
+    messenger.setMockMethodCallHandler(
+      const MethodChannel(
+        'infobip_mobilemessaging_huawei/screen_as_camera/events',
+      ),
+      null,
+    );
   });
   Future<void> open(WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
@@ -95,6 +118,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Mute microphone'), 200);
   }
+
+  testWidgets(
+    'experimental section preserves call UI and truthful idle state',
+    (tester) async {
+      await open(tester);
+      expect(
+        find.text('Experimental: Screen as Camera (Android 10+)'),
+        findsOneWidget,
+      );
+      expect(find.text('Start Screen as Camera'), findsOneWidget);
+      expect(find.text('Stop Screen as Camera'), findsOneWidget);
+      expect(find.text('Hang up'), findsOneWidget);
+      expect(find.textContaining('projection ended: true'), findsOneWidget);
+    },
+  );
 
   OutlinedButton button(WidgetTester tester, String text) =>
       tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, text));

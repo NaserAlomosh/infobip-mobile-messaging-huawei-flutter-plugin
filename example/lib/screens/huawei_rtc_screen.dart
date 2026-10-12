@@ -26,6 +26,12 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
   ExampleController get c => widget.controller;
   final _events = <String>[];
   StreamSubscription<HuaweiRtcEvent>? _subscription;
+  ScreenAsCameraState? _capture;
+  StreamSubscription<ScreenAsCameraState>? _captureSubscription;
+  bool _captureStarting = false;
+  String? _captureError;
+  bool get _cameraLocked => _captureStarting || _capture?.busy == true;
+  bool _captureActionBusy = false;
   bool _starting = false;
   bool _controlBusy = false;
   bool _polling = false;
@@ -39,6 +45,18 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
   @override
   void initState() {
     super.initState();
+    _captureSubscription = HuaweiRtcScreenAsCamera.states.listen(
+      (state) {
+        if (mounted && state.callId == _activeCall?.id) {
+          setState(() => _capture = state);
+        }
+      },
+      onError: (Object _) {
+        if (mounted) {
+          setState(() => _captureError = 'Capture state stream unavailable.');
+        }
+      },
+    );
     unawaited(_refreshActive());
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_active && !_controlBusy && !_polling) unawaited(_refreshControls());
@@ -192,8 +210,12 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
     try {
       final controls = await HuaweiRtc.getCallControls(callId: id);
       final call = await HuaweiRtc.getActiveCall();
+      final capture = call?.id == id
+          ? await HuaweiRtcScreenAsCamera.getScreenAsCameraState(callId: id)
+          : null;
       if (mounted && revision == _revision && _activeCall?.id == id) {
         setState(() {
+          _capture = capture;
           _controls = call?.id == id ? controls : null;
           _activeCall = call;
           _active = call != null && call.status != HuaweiRtcCallStatus.finished;
@@ -307,6 +329,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
               onPressed:
                   enabled &&
                       video &&
+                      !_cameraLocked &&
                       controls.cameraEnabled &&
                       controls.cameraOrientation != null
                   ? () => _control((id) => HuaweiRtc.switchCamera(callId: id))
@@ -314,7 +337,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
               child: const Text('Switch camera'),
             ),
             OutlinedButton(
-              onPressed: enabled && video
+              onPressed: enabled && video && !_cameraLocked
                   ? () => _control(
                       (id) => HuaweiRtc.setCameraEnabled(
                         !controls.cameraEnabled,
@@ -362,6 +385,86 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
     );
   }
 
+  Future<void> _captureAction(bool start) async {
+    final id = _activeCall?.id;
+    if (id == null || _captureActionBusy && start) return;
+    setState(() {
+      _captureActionBusy = true;
+      _captureStarting = start;
+      _captureError = null;
+    });
+    try {
+      final state = start
+          ? await HuaweiRtcScreenAsCamera.startScreenAsCamera(callId: id)
+          : await HuaweiRtcScreenAsCamera.stopScreenAsCamera(callId: id);
+      if (mounted && _activeCall?.id == id) setState(() => _capture = state);
+    } on ScreenAsCameraException catch (error) {
+      if (mounted) {
+        setState(
+          () => _captureError = switch (error.code) {
+            'screen_permission_cancelled' =>
+              'Screen capture permission was cancelled or denied.',
+            'screen_unsupported' =>
+              'Screen as Camera requires Android 10 or newer.',
+            'screen_stop_uncertain' =>
+              'Capture shutdown is unconfirmed. Check Android capture controls.',
+            'screen_cancelled' => 'Capture start was cancelled.',
+            _ => error.code,
+          },
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _captureError = 'Capture operation unavailable.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _captureStarting = false;
+          _captureActionBusy = false;
+        });
+      }
+    }
+  }
+
+  Widget _captureControls() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text('Experimental: Screen as Camera (Android 10+)'),
+      const Text(
+        'The agent sees screen content in the camera stream, not a separate '
+        'screen-share track. Camera remains enabled underneath; flip and on/off are '
+        'locked during capture. Rotation/recreation may stop capture; start again with fresh consent.',
+      ),
+      Text(
+        'Capture: ${_capture?.phase.name ?? "idle"} '
+        '· projection ended: ${_capture?.projectionTerminated ?? true} '
+        '· camera frame restored: ${_capture?.cameraOutputRestored ?? false}',
+      ),
+      if (_captureError != null || _capture?.error != null)
+        Text('Capture detail: ${_captureError ?? _capture?.error}'),
+      Wrap(
+        spacing: 8,
+        children: [
+          OutlinedButton(
+            onPressed:
+                !_cameraLocked &&
+                    !_captureActionBusy &&
+                    _activeCall?.status == HuaweiRtcCallStatus.established &&
+                    _controls?.cameraEnabled == true
+                ? () => _captureAction(true)
+                : null,
+            child: const Text('Start Screen as Camera'),
+          ),
+          OutlinedButton(
+            onPressed: _cameraLocked ? () => _captureAction(false) : null,
+            child: const Text('Stop Screen as Camera'),
+          ),
+        ],
+      ),
+    ],
+  );
+
   Future<void> _hangup() async {
     try {
       await HuaweiRtc.hangup();
@@ -381,6 +484,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
   void dispose() {
     _timer?.cancel();
     unawaited(_subscription?.cancel());
+    unawaited(_captureSubscription?.cancel());
     super.dispose();
   }
 
@@ -488,6 +592,8 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
                 ),
               ),
             _callControls(),
+            if (_active && _activeCall?.type == HuaweiRtcCallType.video)
+              _captureControls(),
             Text(_result),
             const Text(
               'Leaving this screen does not hang up. Return here to end the call.',

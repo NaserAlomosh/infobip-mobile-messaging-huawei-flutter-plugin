@@ -53,6 +53,14 @@ internal class HuaweiRtcManager(
     private var sequence = 0L
     private var notificationReturn: String? = null
     private val videoBindings = HuaweiRtcVideoBindings()
+    internal var screenCapture: HuaweiRtcScreenCaptureController? = null
+        private set
+
+    internal fun configureScreenCapture(context: Context) {
+        screenCapture = HuaweiRtcScreenCaptureController(context, owner = {
+            session?.let { current -> current.call?.let { ScreenCaptureCall(current.identity, it, current.input.video) } }
+        })
+    }
 
     fun bindVideo(view: HuaweiRtcVideoViewOwner, options: HuaweiRtcVideoOptions): HuaweiRtcVideoBindings.Binding? {
         var binding: HuaweiRtcVideoBindings.Binding? = null
@@ -87,6 +95,16 @@ internal class HuaweiRtcManager(
         try {
             if (disposed) throw RtcFailure("rtc_invalid_state", "RTC plugin has been disposed")
             when (call.method) {
+                "startScreenAsCamera", "stopScreenAsCamera", "getScreenAsCameraState" -> {
+                    val id = (call.arguments as? Map<*, *>)?.get("callId") as? String
+                        ?: throw RtcFailure("rtc_invalid_argument", "Provide the current call ID")
+                    val capture = screenCapture ?: throw RtcFailure("screen_unsupported", "Capture adapter unavailable")
+                    when (call.method) {
+                        "startScreenAsCamera" -> capture.start(id, result)
+                        "stopScreenAsCamera" -> capture.stop(id, result)
+                        else -> result.success(capture.snapshot(id))
+                    }
+                }
                 "callApplication" -> start(RtcInput.decode(call.arguments), result)
                 "hangup" -> {
                     val active = session?.call ?: throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
@@ -94,6 +112,7 @@ internal class HuaweiRtcManager(
                         finish(requireNotNull(session))
                         throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
                     }
+                    screenCapture?.endCall()
                     active.hangup()
                     // A void native hangup is acceptance, not remote termination acknowledgement.
                     result.success(null)
@@ -112,6 +131,8 @@ internal class HuaweiRtcManager(
                         throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
                     }
                     if (call.method != "getCallControls") {
+                        if (screenCapture?.busy() == true && call.method in listOf("switchCamera", "setCameraEnabled"))
+                            throw RtcFailure("screen_camera_locked", "Stop capture before changing camera publication")
                         if (active.status() != CallStatus.ESTABLISHED || !canStartCall() || cleaning)
                             throw RtcFailure("rtc_invalid_state", "Controls require an established foreground call")
                         permissions(current.input.video && (call.method == "switchCamera" ||
@@ -282,6 +303,7 @@ internal class HuaweiRtcManager(
             if (call.status() == CallStatus.FINISHED) { finish(current); return }
             if (current.ending) return
             current.ending = true
+            screenCapture?.endCall()
             try { call.hangup() } catch (_: Exception) { Log.e(TAG, "RTC notification hangup failed") }
             val timeout = Runnable {
                 if (session === current) {
@@ -336,6 +358,7 @@ internal class HuaweiRtcManager(
     }
 
     private fun release(current: Session) {
+        screenCapture?.endCall()
         current.serviceTimeout?.let(main::removeCallbacks)
         current.endTimeout?.let(main::removeCallbacks)
         notification?.stop(current.identity)

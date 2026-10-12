@@ -35,6 +35,9 @@ class HuaweiRtcPluginLifecycleTest {
         verify(binding, times(2)).addOnNewIntentListener(any())
         verify(binding, times(2)).removeOnNewIntentListener(any())
         verify(manager, times(2)).detachVideoViews()
+        verify(manager, times(4)).screenCapture
+        verify(binding, times(2)).addActivityResultListener(any())
+        verify(binding, times(2)).removeActivityResultListener(any())
         verifyNoMoreInteractions(manager)
     }
 
