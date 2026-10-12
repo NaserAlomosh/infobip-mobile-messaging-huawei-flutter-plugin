@@ -56,6 +56,9 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var huaweiRtcEvents: EventChannel? = null
     private var screenCaptureEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val pendingInitializations = mutableSetOf<MethodChannel.Result>()
+    private var lifecycleGeneration = 0L
+    private var cleanupInProgress = false
     private var activity: Activity? = null
     private var rtcActivityBinding: ActivityPluginBinding? = null
     private val rtcIntentListener = PluginRegistry.NewIntentListener { intent ->
@@ -92,10 +95,7 @@ class InfobipMobileMessagingHuaweiPlugin :
                 initialized = { initializer?.isInitialized == true },
                 requestDartJwt = { id, generation -> eventBridge?.emitChatJwtRequested(id, generation) == true },
             )
-        initializer =
-            MobileMessagingInitializer(binding.applicationContext) {
-                chatManager?.activate()
-            }
+        initializer = MobileMessagingInitializer(binding.applicationContext)
         huaweiRtcManager = HuaweiRtcManager(
             binding.applicationContext,
             initialized = { initializer?.isInitialized == true },
@@ -193,6 +193,11 @@ class InfobipMobileMessagingHuaweiPlugin :
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        lifecycleGeneration++
+        pendingInitializations.toList().forEach { detached(it) }
+        pendingInitializations.clear()
+        cleanupInProgress = false
+        initializer?.reset()
         detachRtcActivity()
         huaweiRtcManager?.dispose()
         huaweiRtcChannel?.setMethodCallHandler(null)
@@ -206,7 +211,7 @@ class InfobipMobileMessagingHuaweiPlugin :
         methodChannel?.setMethodCallHandler(null)
         eventChannel?.setStreamHandler(null)
         eventBridge?.detach()
-        chatManager?.detach()
+        chatManager?.dispose()
         methodChannel = null
         eventChannel = null
         initializer = null
@@ -251,6 +256,10 @@ class InfobipMobileMessagingHuaweiPlugin :
             }
 
             ChannelContract.CLEANUP -> {
+                if (cleanupInProgress || pendingInitializations.isNotEmpty()) {
+                    result.error("operation_in_progress", "Initialization or cleanup is in progress", null)
+                    return
+                }
                 val manager = cleanupManager ?: return detached(result)
                 val rtc = webRtcOperations ?: return detached(result)
                 val outgoingRtc = huaweiRtcManager ?: return detached(result)
@@ -259,16 +268,24 @@ class InfobipMobileMessagingHuaweiPlugin :
                     result.error(outgoingFailure.code, outgoingFailure.message, null)
                     return
                 }
+                cleanupInProgress = true
+                val generation = lifecycleGeneration
                 rtc.cleanup { failure ->
                     mainHandler.post {
-                        outgoingRtc.completeCleanup()
-                        if (webRtcOperations !== rtc || cleanupManager !== manager) {
-                            detached(result)
-                        } else if (failure != null) result.error(failure.code, failure.message, null)
-                        else {
-                            val error = manager.cleanup()
-                            if (error == null) result.success(null)
-                            else result.error(error.code, error.message, error.details)
+                        try {
+                            if (generation != lifecycleGeneration || webRtcOperations !== rtc || cleanupManager !== manager) {
+                                detached(result)
+                            } else if (failure != null) result.error(failure.code, failure.message, null)
+                            else {
+                                val error = manager.cleanup()
+                                if (error == null) {
+                                    lifecycleGeneration++
+                                    result.success(null)
+                                } else result.error(error.code, error.message, error.details)
+                            }
+                        } finally {
+                            outgoingRtc.completeCleanup()
+                            if (cleanupManager === manager) cleanupInProgress = false
                         }
                     }
                 }
@@ -639,6 +656,10 @@ class InfobipMobileMessagingHuaweiPlugin :
         call: MethodCall,
         result: MethodChannel.Result,
     ) {
+        if (cleanupInProgress) {
+            result.error("operation_in_progress", "Cleanup is in progress", null)
+            return
+        }
         val applicationCode = call.argument<String>(ChannelContract.APPLICATION_CODE)
         if (applicationCode.isNullOrBlank()) {
             result.error("invalid_argument", "applicationCode must not be empty", null)
@@ -655,15 +676,26 @@ class InfobipMobileMessagingHuaweiPlugin :
             return
         }
 
-        initializer?.initialize(applicationCode, defaultMessageStorage, webRtcConfiguration) { error ->
+        val currentInitializer = initializer ?: return detached(result)
+        val currentChat = chatManager ?: return detached(result)
+        val generation = lifecycleGeneration
+        pendingInitializations.add(result)
+        currentInitializer.initialize(applicationCode, defaultMessageStorage, webRtcConfiguration) { error ->
             mainHandler.post {
+                if (!pendingInitializations.remove(result)) return@post
+                if (generation != lifecycleGeneration || initializer !== currentInitializer || chatManager !== currentChat) {
+                    detached(result)
+                    return@post
+                }
                 if (error == null) {
-                    result.success(null)
+                    val chatFailure = currentChat.activate()
+                    if (chatFailure == null) result.success(null)
+                    else result.error(chatFailure.code, chatFailure.message, null)
                 } else {
                     result.error(error.code, error.message, error.details)
                 }
             }
-        } ?: result.error("native_error", "Plugin is not attached to an engine", null)
+        }
     }
 
     override fun onListen(

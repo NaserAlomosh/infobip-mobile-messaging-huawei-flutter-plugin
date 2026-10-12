@@ -31,9 +31,11 @@ internal class CleanupManager private constructor(
             return InitializationError("not_initialized", "Initialize the Infobip SDK first")
         }
         return try {
+            // Do not destroy plugin callbacks if the SDK rejects/throws. The SDK's
+            // internal cleanup itself is not rollback-capable.
+            cleanupSdk()
             clearPluginJwtState()
             clearSdkJwtSupplier()
-            cleanupSdk()
             resetPluginState()
             null
         } catch (_: Exception) {

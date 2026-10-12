@@ -3,6 +3,7 @@ package com.infobip.mobilemessaging.huawei.chat
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import org.infobip.mobile.messaging.chat.InAppChat
 
@@ -16,33 +17,50 @@ internal class ChatManager(
     private val initialized: () -> Boolean,
     requestDartJwt: (String, Long) -> Boolean = { _, _ -> false },
     private val mainHandler: Handler = Handler(Looper.getMainLooper()),
+    private val now: () -> Long = SystemClock::uptimeMillis,
+    private val chatFactory: (Context) -> InAppChat = InAppChat::getInstance,
 ) {
     private val applicationContext = context.applicationContext
-    private val inAppChat by lazy { InAppChat.getInstance(applicationContext) }
+    private val inAppChat by lazy { chatFactory(applicationContext) }
     private val operations by lazy { ChatOperations.from(inAppChat) }
-    private val jwtBridge = ChatJwtBridge(requestDartJwt)
+    private val jwtBridge = ChatJwtBridge(requestDartJwt = requestDartJwt)
     internal val exceptionBridge = ChatExceptionBridge()
     @Volatile
     private var activated = false
+    private var activating = false
+    private var disposed = false
+    private var activationGeneration = 0L
+    private var retryAfter = 0L
 
     @Synchronized
     fun activate(): ChatFailure? {
+        if (disposed) return ChatFailure("chat_unavailable", "Chat engine has been disposed")
+        if (!initialized()) return ChatFailure("not_initialized", "Initialize the Infobip SDK first")
         if (activated) return null
+        if (activating || now() < retryAfter) return ChatFailure("chat_activation_busy", "Retry Chat activation after one second")
+        val generation = activationGeneration
+        activating = true
         Log.d(TAG, "InAppChat activation started")
         return try {
             inAppChat.activate()
+            if (disposed || generation != activationGeneration) return ChatFailure("chat_unavailable", "Chat activation was invalidated")
             inAppChat.inAppChatScreen().errorHandler = exceptionBridge
+            if (disposed || generation != activationGeneration) return ChatFailure("chat_unavailable", "Chat activation was invalidated")
             activated = true
             Log.d(TAG, "InAppChat activation succeeded")
             null
         } catch (error: Exception) {
+            if (generation == activationGeneration) retryAfter = now() + 1000
             Log.e(TAG, "InAppChat activation failed")
             ChatFailure("chat_unavailable", "Chat activation failed")
+        } finally {
+            activating = false
         }
     }
 
     @Synchronized
     fun attach(): ChatFailure? {
+        if (disposed) return ChatFailure("chat_unavailable", "Chat engine has been disposed")
         if (!initialized()) return ChatFailure("not_initialized", "Initialize the Infobip SDK first")
         if (!activated) return ChatFailure("chat_unavailable", "Chat is not activated")
         return null
@@ -99,30 +117,33 @@ internal class ChatManager(
     ) { operations.setChatPushBody(body) }
 
     @Synchronized
-    fun setJwtProvider(): ChatFailure? = try {
-        val generation = jwtBridge.enable()
-        inAppChat.setWidgetJwtProvider { callback ->
-            jwtBridge.request(
-                object : ChatJwtCallback {
-                    override fun onJwtReady(jwt: String) {
-                        mainHandler.post {
-                            if (jwtBridge.isCurrent(generation)) callback.onJwtReady(jwt)
-                            else callback.onJwtError(IllegalStateException("Chat JWT provider is unavailable"))
+    fun setJwtProvider(): ChatFailure? {
+        if (disposed) return ChatFailure("chat_unavailable", "Chat engine has been disposed")
+        return try {
+            val generation = jwtBridge.enable()
+            inAppChat.setWidgetJwtProvider { callback ->
+                jwtBridge.request(
+                    object : ChatJwtCallback {
+                        override fun onJwtReady(jwt: String) {
+                            mainHandler.post {
+                                if (jwtBridge.isCurrent(generation)) callback.onJwtReady(jwt)
+                                else callback.onJwtError(IllegalStateException("Chat JWT provider is unavailable"))
+                            }
                         }
-                    }
 
-                    override fun onJwtError(error: Throwable) {
-                        mainHandler.post { callback.onJwtError(error) }
-                    }
-                },
-                generation,
-            )
+                        override fun onJwtError(error: Throwable) {
+                            mainHandler.post { callback.onJwtError(error) }
+                        }
+                    },
+                    generation,
+                )
+            }
+            checkNotNull(inAppChat.getWidgetJwtProvider())
+            null
+        } catch (_: Exception) {
+            jwtBridge.clear()
+            ChatFailure("native_error", "Unable to register Chat JWT provider")
         }
-        checkNotNull(inAppChat.getWidgetJwtProvider())
-        null
-    } catch (_: Exception) {
-        jwtBridge.clear()
-        ChatFailure("native_error", "Unable to register Chat JWT provider")
     }
 
     @Synchronized
@@ -185,8 +206,18 @@ internal class ChatManager(
     }
 
     @Synchronized
-    fun resetAfterCleanup() {
+    fun dispose() {
+        disposed = true
+        activationGeneration++
         activated = false
+        detach()
+    }
+
+    @Synchronized
+    fun resetAfterCleanup() {
+        activationGeneration++
+        activated = false
+        retryAfter = 0L
     }
 
     fun clearJwtProvider() {
