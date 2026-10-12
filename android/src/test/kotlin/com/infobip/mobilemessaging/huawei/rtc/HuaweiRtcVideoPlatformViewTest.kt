@@ -3,6 +3,7 @@ package com.infobip.mobilemessaging.huawei.rtc
 import com.infobip.webrtc.sdk.api.model.video.VideoRenderer
 import android.view.View
 import android.widget.FrameLayout
+import org.webrtc.RendererCommon.ScalingType
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,5 +56,35 @@ class HuaweiRtcVideoPlatformViewTest {
         assertNull(HuaweiRtcVideoOptions.decode(mapOf("callId" to "", "source" to "local")))
         assertNull(HuaweiRtcVideoOptions.decode(mapOf("callId" to "call", "source" to "screen")))
         assertEquals(HuaweiRtcVideoOptions("call", false), HuaweiRtcVideoOptions.decode(mapOf("callId" to "call", "source" to "remote")))
+    }
+
+    @Test fun `screen preview fit measures full video inside wide and tall containers then restores camera layout`() {
+        val renderer = spy(VideoRenderer(context))
+        doNothing().`when`(renderer).init()
+        doNothing().`when`(renderer).release()
+        val view = HuaweiRtcVideoPlatformView(context, manager, null) { renderer }
+        view.initializeRenderer(false); view.showVideo()
+        renderer.onFrameResolutionChanged(640, 480, 0)
+        val container = view.view as FrameLayout
+        fun measure(w: Int, h: Int) {
+            container.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+            container.layout(0, 0, w, h)
+        }
+        measure(300, 160)
+        assertEquals(300, renderer.measuredWidth); assertEquals(160, renderer.measuredHeight)
+        renderer.setScalingType(ScalingType.SCALE_ASPECT_FIT)
+        view.layoutScreenPreview(true)
+        measure(300, 160)
+        assertEquals(213, renderer.measuredWidth); assertEquals(160, renderer.measuredHeight)
+        assertEquals(43, renderer.left); assertEquals(0, renderer.top)
+        measure(160, 300)
+        assertEquals(160, renderer.measuredWidth); assertEquals(120, renderer.measuredHeight)
+        assertEquals(0, renderer.left); assertEquals(90, renderer.top)
+        renderer.setScalingType(ScalingType.SCALE_ASPECT_BALANCED)
+        view.layoutScreenPreview(false)
+        measure(160, 300)
+        assertEquals(160, renderer.measuredWidth); assertEquals(300, renderer.measuredHeight)
+        view.dispose()
     }
 }

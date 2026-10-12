@@ -4,6 +4,8 @@ import android.util.Log
 import com.infobip.webrtc.sdk.api.call.ApplicationCall
 import com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack
 import com.infobip.webrtc.sdk.api.model.video.VideoRenderer
+import com.infobip.webrtc.sdk.api.options.VideoOptions.CameraOrientation
+import org.webrtc.RendererCommon.ScalingType
 
 internal data class HuaweiRtcVideoOptions(val callId: String, val local: Boolean) {
     companion object {
@@ -20,6 +22,7 @@ internal interface HuaweiRtcVideoViewOwner {
     fun initializeRenderer(mirror: Boolean): VideoRenderer
     fun showVideo()
     fun clearImage()
+    fun layoutScreenPreview(enabled: Boolean)
     fun releaseRenderer()
 }
 
@@ -35,10 +38,27 @@ internal class HuaweiRtcVideoBindings {
         internal var owner: HuaweiRtcVideoViewOwner?,
         internal val local: Boolean,
         internal var renderer: VideoRenderer?,
+        private var mirrored: Boolean,
     ) {
         private var active = true
         private var attemptedTrack: RTCVideoTrack? = null
         private var endpoint: String? = null
+        private var screenPreview = false
+
+        internal fun preview(mirror: Boolean, screenOutput: Boolean) {
+            if (!active || !local) return
+            if (!rendering("preview policy") {
+                if (mirrored != mirror) {
+                    renderer?.setMirror(mirror)
+                    mirrored = mirror
+                }
+                if (screenPreview != screenOutput) {
+                    renderer?.setScalingType(if (screenOutput) ScalingType.SCALE_ASPECT_FIT else ScalingType.SCALE_ASPECT_BALANCED)
+                    owner?.layoutScreenPreview(screenOutput)
+                    screenPreview = screenOutput
+                }
+            }) close()
+        }
 
         internal fun reconcile(track: RTCVideoTrack?, replaceLocal: Boolean = false) {
             if (!active) return
@@ -89,21 +109,35 @@ internal class HuaweiRtcVideoBindings {
         }
     }
 
-    fun bind(session: Any, call: ApplicationCall, owner: HuaweiRtcVideoViewOwner, options: HuaweiRtcVideoOptions): Binding? {
+    fun bind(session: Any, call: ApplicationCall, owner: HuaweiRtcVideoViewOwner, options: HuaweiRtcVideoOptions,
+        screenOutput: Boolean = false): Binding? {
         if (sessionKey !== session) {
             disposeViews()
             sessionKey = session
         }
         var binding: Binding? = null
         if (!rendering("renderer initialization") {
-                binding = Binding(session, owner, options.local, owner.initializeRenderer(options.local && call.cameraOrientation() == com.infobip.webrtc.sdk.api.options.VideoOptions.CameraOrientation.FRONT))
+                val mirror = options.local && !screenOutput && call.cameraOrientation() == CameraOrientation.FRONT
+                binding = Binding(session, owner, options.local, owner.initializeRenderer(mirror), mirror)
                 bindings.add(requireNotNull(binding))
             }) {
             rendering("initialization cleanup") { owner.releaseRenderer() }
             return null
         }
+        updatePreview(session, call, screenOutput)
         refresh(session, call)
         return binding?.takeIf { it.owner != null }
+    }
+
+    /** Display controls affect this renderer only, never the SDK publication or track. */
+    fun updatePreview(session: Any, call: ApplicationCall, screenOutput: Boolean) {
+        if (sessionKey !== session || bindings.none { it.local }) return
+        rendering("preview snapshot") {
+            val mirror = !screenOutput && call.cameraOrientation() == CameraOrientation.FRONT
+            bindings.toList().filter { it.session === session && it.local }.forEach {
+                it.preview(mirror, screenOutput)
+            }
+        }
     }
 
     fun refresh(session: Any, call: ApplicationCall, localChanged: Boolean = false) {
