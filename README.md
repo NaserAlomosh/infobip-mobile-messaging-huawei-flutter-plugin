@@ -233,3 +233,5 @@ The [MIT License](LICENSE), copyright (c) 2026 Naser Alomosh, applies to code an
 content the repository owner has the right to license. Third-party SDKs, libraries,
 generated files and other third-party materials remain subject to their respective
 licenses and notices; MIT does not grant additional redistribution rights for them.
+See [third-party notices](THIRD_PARTY_NOTICES.md) for the bundled Gradle wrapper
+and Flutter-generated registration code.
