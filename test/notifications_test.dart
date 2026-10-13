@@ -14,7 +14,11 @@ final class NotificationsPlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => eventsController.stream;
 
   @override
-  Future<void> initialize({required String applicationCode}) async {}
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
+  }) async {}
 }
 
 Map<String, Object?> envelope(String type, Map<String, Object?> payload) => {
@@ -35,8 +39,8 @@ void main() {
   tearDown(() => platform.eventsController.close());
 
   test('decodes message received events', () async {
-    final future = InfobipMobileMessagingHuawei.notifications.onMessageReceived
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onMessageReceived.first;
     platform.eventsController.add(
       envelope(ChannelContract.messageReceived, {
         'message': {
@@ -44,28 +48,26 @@ void main() {
           'title': 'Title',
           'body': 'Body',
           'customPayload': {'orderId': 42},
-          'deepLink': 'app://orders/42',
-          'isSilent': true,
+          'deeplink': 'app://orders/42',
+          'silent': true,
         },
       }),
     );
     final message = await future;
     expect(message.messageId, 'message-1');
     expect(message.customPayload, {'orderId': 42});
-    expect(message.isSilent, isTrue);
+    expect(message.silent, isTrue);
   });
 
   test('decodes notification tapped events', () async {
-    final future = InfobipMobileMessagingHuawei
-        .notifications
-        .onNotificationTapped
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onNotificationTapped.first;
     platform.eventsController.add(
       envelope(ChannelContract.notificationTapped, {
         'message': {
           'messageId': 'message-tapped',
           'title': 'Opened',
-          'isSilent': false,
+          'silent': false,
         },
       }),
     );
@@ -80,15 +82,13 @@ void main() {
         .notifications
         .onNotificationActionTapped
         .first;
-    final registrationFuture = InfobipMobileMessagingHuawei
-        .notifications
-        .onRegistrationUpdated
-        .first;
+    final registrationFuture =
+        InfobipMobileMessagingHuawei.notifications.onRegistrationUpdated.first;
     platform.eventsController
       ..add(
         envelope(ChannelContract.notificationActionTapped, {
           'actionId': 'accept',
-          'message': {'messageId': 'message-2', 'isSilent': false},
+          'message': {'messageId': 'message-2', 'silent': false},
         }),
       )
       ..add(
@@ -103,10 +103,8 @@ void main() {
   });
 
   test('decodes installation updated events', () async {
-    final future = InfobipMobileMessagingHuawei
-        .notifications
-        .onInstallationUpdated
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onInstallationUpdated.first;
     platform.eventsController.add(
       envelope(ChannelContract.installationUpdated, {
         ChannelContract.installation: {
@@ -121,34 +119,37 @@ void main() {
     expect(installation.isPrimaryDevice, isTrue);
   });
 
-  test('ignores malformed and unknown events without closing the stream', () async {
-    final future = InfobipMobileMessagingHuawei.notifications.onMessageReceived
-        .first;
-    platform.eventsController
-      ..add({'version': 1, 'type': 'future_event', 'payload': {}})
-      ..add(envelope(ChannelContract.messageReceived, {'message': 'bad'}))
-      ..add(
-        envelope(ChannelContract.messageReceived, {
-          'message': {'messageId': 'valid', 'isSilent': false},
-        }),
-      );
-    expect((await future).messageId, 'valid');
-  });
+  test(
+    'ignores malformed and unknown events without closing the stream',
+    () async {
+      final future =
+          InfobipMobileMessagingHuawei.notifications.onMessageReceived.first;
+      platform.eventsController
+        ..add({'version': 1, 'type': 'future_event', 'payload': {}})
+        ..add(envelope(ChannelContract.messageReceived, {'message': 'bad'}))
+        ..add(
+          envelope(ChannelContract.messageReceived, {
+            'message': {'messageId': 'valid', 'silent': false},
+          }),
+        );
+      expect((await future).messageId, 'valid');
+    },
+  );
 
   test('ignores malformed booleans and nested payloads', () async {
-    final future = InfobipMobileMessagingHuawei.notifications.onMessageReceived
-        .first;
+    final future =
+        InfobipMobileMessagingHuawei.notifications.onMessageReceived.first;
     platform.eventsController
       ..add(
         envelope(ChannelContract.messageReceived, {
-          'message': {'messageId': 'bad-bool', 'isSilent': null},
+          'message': {'messageId': 'bad-bool', 'silent': 'no'},
         }),
       )
       ..add(
         envelope(ChannelContract.messageReceived, {
           'message': {
             'messageId': 'bad-payload',
-            'isSilent': false,
+            'silent': false,
             'customPayload': {
               'nested': {1: 'invalid'},
             },
@@ -157,10 +158,70 @@ void main() {
       )
       ..add(
         envelope(ChannelContract.messageReceived, {
-          'message': {'messageId': 'valid', 'isSilent': false},
+          'message': {'messageId': 'valid', 'silent': false},
         }),
       );
 
     expect((await future).messageId, 'valid');
+  });
+
+  test('decodes user updated and personalized events', () async {
+    final updated =
+        InfobipMobileMessagingHuawei.notifications.onUserUpdated.first;
+    final personalized =
+        InfobipMobileMessagingHuawei.notifications.onPersonalized.first;
+    platform.eventsController
+      ..add(
+        envelope(ChannelContract.userUpdated, {
+          ChannelContract.user: {
+            ChannelContract.externalUserId: 'updated-user',
+          },
+        }),
+      )
+      ..add(
+        envelope(ChannelContract.personalized, {
+          ChannelContract.user: {
+            ChannelContract.externalUserId: 'personalized-user',
+            ChannelContract.firstName: 'Ada',
+          },
+        }),
+      );
+
+    expect((await updated).externalUserId, 'updated-user');
+    expect((await personalized).firstName, 'Ada');
+  });
+
+  test('malformed user lifecycle payloads do not close streams', () async {
+    final updated =
+        InfobipMobileMessagingHuawei.notifications.onUserUpdated.first;
+    final personalized =
+        InfobipMobileMessagingHuawei.notifications.onPersonalized.first;
+    platform.eventsController
+      ..add(
+        envelope(ChannelContract.userUpdated, {ChannelContract.user: 'bad'}),
+      )
+      ..add(
+        envelope(ChannelContract.personalized, {ChannelContract.user: null}),
+      )
+      ..add(
+        envelope(ChannelContract.userUpdated, {
+          ChannelContract.user: {ChannelContract.externalUserId: 'valid'},
+        }),
+      )
+      ..add(
+        envelope(ChannelContract.personalized, {
+          ChannelContract.user: {ChannelContract.externalUserId: 'valid'},
+        }),
+      );
+
+    expect((await updated).externalUserId, 'valid');
+    expect((await personalized).externalUserId, 'valid');
+  });
+
+  test('depersonalized emits without a user payload', () async {
+    final emitted =
+        InfobipMobileMessagingHuawei.notifications.onDepersonalized.first;
+    platform.eventsController.add(envelope(ChannelContract.depersonalized, {}));
+    await emitted;
   });
 }

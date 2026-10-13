@@ -1,271 +1,238 @@
 # Infobip Mobile Messaging Huawei for Flutter
 
-An Android-only Flutter plugin that integrates Flutter applications with the official Infobip Huawei Mobile Messaging SDK.
-
-This community package wraps the official native Infobip Huawei SDK. It is not the official Infobip Flutter plugin and is not presented as an Infobip-maintained package.
+A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
+8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
+package. Version **1.0.0** is being prepared as the first public release.
+The development API is the initial public API; earlier branch APIs were unpublished.
 
 ## Features
 
-- Asynchronous Mobile Messaging SDK initialization
-- Infobip remote-notification registration through Huawei Push Kit
-- Typed message, notification-tap, action-tap, registration, and installation events
-- Cached and server-backed user and installation operations
-- User personalization and depersonalization
-- Global, memory-only JWT configuration for supported SDK requests
-- Inbox retrieval, filtering, counters, and mark-as-seen operations
-- Embedded native In-App Chat with its native composer and attachments
-- Chat unread count and update stream
-- View-scoped Chat text send, contextual data, language, widget theme, and back navigation
-
-See [API compatibility](API_COMPATIBILITY.md) for the supported surface and explicit omissions.
+- HMS Push registration, messages, notification taps and action taps.
+- User and installation management, personalization, custom events and Mobile Inbox.
+- Native and embedded Chat, native attachments, unread counters and backend JWT providers.
+- Outgoing RTC audio/video calls, local/remote rendering, call controls and notifications.
+- Android Screen-as-Camera sharing with consent, capture notification and camera restoration.
 
 ## Requirements
 
-| Component | Version |
+| Component | Requirement |
 | --- | --- |
-| Flutter | 3.35.7 or later |
-| Dart | 3.9.0 or later, before Dart 4 |
-| Android compile SDK | 36 |
-| Android minimum SDK | 26 |
-| Android target SDK | 36 in the example host |
-| Java | 17 |
-| Kotlin Gradle Plugin | 2.1.0 |
-| Android Gradle Plugin | 8.13.0 |
-| Gradle | 8.13 |
-| Infobip Huawei Mobile Messaging SDK | 8.14.0 |
+| Dart / Flutter | `^3.9.0` / `>=3.35.7` |
+| Android | minSdk 26; compileSdk 36; example targetSdk 36 |
+| Screen sharing | Android 10 / API 29+ |
+| Java compilation | 17 |
+| Example tooling | AGP 8.13.0, Kotlin 2.1.0, Gradle 8.13 |
+| Infobip Huawei MM / Inbox / Chat | 8.14.0 |
+| Infobip RTC Core | 2.5.28 |
 
-Only Android is registered by this package. A Huawei device or an environment with compatible Huawei Mobile Services is required for production push behavior.
+HMS Push requires a compatible Huawei Mobile Services environment. Validate your
+integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
 
 ## Installation
 
-After the package is published, add:
-
-```yaml
-dependencies:
-  infobip_mobilemessaging_huawei: ^1.0.0
-```
-
-Until publication, applications can reference this repository explicitly:
+Before publication, use a local checkout:
 
 ```yaml
 dependencies:
   infobip_mobilemessaging_huawei:
-    git:
-      url: https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin.git
-      ref: v1.0.0
+    path: /path/to/mobile-messaging-huawei-flutter-plugin
 ```
 
-Then run `flutter pub get`.
+Run `flutter pub get`. After 1.0.0 is published, replace the path dependency with
+`infobip_mobilemessaging_huawei: ^1.0.0`.
 
-## Huawei / AppGallery Connect setup
+## Android / Huawei Configuration
 
-The plugin declares the Huawei Maven repository for its Android library dependencies. A real host application remains responsible for its own AppGallery Connect configuration:
+1. Register the host's exact Android application ID and signing certificate in
+   AppGallery Connect, enable Push Kit, and configure the matching Huawei app
+   credentials in the Infobip Mobile Messaging App Profile.
+2. Place that app's private `agconnect-services.json` in `android/app/`.
+   Follow [Huawei's Android integration guide](https://developer.huawei.com/consumer/en/doc/HMS-Plugin-Guides-V1/integrating-sdk-0000001052151811-V1)
+   for host AGConnect configuration. The library declares the Huawei Maven
+   repository; the host must also make it available in its repository settings.
+3. Define a host-owned **numeric, nonzero `app_id` string resource** in
+   `android/app/src/main/res/values/strings.xml`. It is the Huawei AppGallery App
+   ID, distinct from the Infobip Application Code and Infobip Application ID.
+   `HmsConfiguration` validates this resource; the JSON/manifest value alone
+   does not replace it. Invalid/missing values produce `hms_configuration_missing`.
+4. Use the Infobip Application Code for this App Profile in `initialize`.
+   Configure the Chat widget and its installation/JWT security mode in Infobip.
+   For RTC, configure a Calls routing configuration and a reachable receiving
+   application/agent. Calls configuration ID is distinct from RTC push configuration ID.
 
-1. Register the host Android application in AppGallery Connect with the exact application ID and signing certificate used for distribution.
-2. Download that application's `agconnect-services.json` and place it in the host's `android/app/` directory.
-3. Add Huawei's Maven repository to the host Android settings/plugin repositories as required by the current Huawei setup guide.
-4. Declare the Huawei AGConnect Gradle plugin at the project level and apply `com.huawei.agconnect` to the host application module, using the plugin version approved by the host project.
-5. Enable and configure Push Kit, then configure the matching application in Infobip.
+Define `app_name` if you want it used for the SDK default notification title.
+The plugin has no Application Code string-resource requirement.
 
-The repository example deliberately does not apply the AGConnect plugin or include `agconnect-services.json`; this keeps source validation independent of private host credentials. Do not commit AppGallery credentials, signing material, or secrets. The host application owns its package identity, signing configuration, permission UX, notification resources, and release configuration.
-
-A typical Kotlin DSL application module adds the AGConnect plugin alongside its existing plugins after the plugin has been declared in the host project:
-
-```kotlin
-plugins {
-    id("com.android.application")
-    id("com.huawei.agconnect")
-    id("dev.flutter.flutter-gradle-plugin")
-}
-```
-
-Follow Huawei's current Push Kit integration documentation for the appropriate AGConnect plugin declaration and version.
-
-## Android activity requirement
-
-Embedded Chat hosts an Android fragment. The activity that displays it must extend `FlutterFragmentActivity`:
+Embedded Chat requires a host Activity derived from `FlutterFragmentActivity`:
 
 ```kotlin
 package com.example.app
-
 import io.flutter.embedding.android.FlutterFragmentActivity
-
 class MainActivity : FlutterFragmentActivity()
 ```
 
-Ensure the package declaration matches the host application's namespace.
+Keep the package declaration consistent with your own host. Declare/request
+`POST_NOTIFICATIONS` on Android 13+, `RECORD_AUDIO` for RTC audio,
+`CAMERA` for RTC video, and `BLUETOOTH_CONNECT` on Android 12+ for RTC routing.
+The RTC APIs validate grants and do not request these runtime permissions.
+The plugin manifest contributes microphone/camera/mediaProjection foreground
+service permissions and private call/capture services. Review the merged manifest
+and permission UX of your release host.
 
 ## Initialization
 
-Initialize once before using any feature:
-
 ```dart
-await InfobipMobileMessagingHuawei.initialize(
-  applicationCode: 'YOUR_APPLICATION_CODE',
-);
-```
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
-Equivalent calls are idempotent. A conflicting application code is rejected after initialization begins; a failed call can be retried with the same code.
-
-For deployments that require JWT authorization, set or clear the SDK's memory-only JWT without logging it:
-
-```dart
-await InfobipMobileMessagingHuawei.setJwt(jwt);
-await InfobipMobileMessagingHuawei.setJwt(null);
-```
-
-## Push and notifications
-
-The host must declare and request Android notification permission where required. After permission is granted, request Infobip registration:
-
-```dart
-await InfobipMobileMessagingHuawei.registerForRemoteNotifications();
-```
-
-Observe typed native events while the Flutter engine is running:
-
-```dart
-final notifications = InfobipMobileMessagingHuawei.notifications;
-
-notifications.onMessageReceived.listen((message) {});
-notifications.onNotificationTapped.listen((message) {});
-notifications.onNotificationActionTapped.listen((event) {});
-notifications.onRegistrationUpdated.listen((installation) {});
-notifications.onInstallationUpdated.listen((installation) {});
-```
-
-The latest notification tap can be buffered natively and replayed once when Dart subscribes. Other events are not replayed. The SDK owns HMS token acquisition and refresh; this plugin does not expose raw token injection or a Dart background handler.
-
-## User
-
-```dart
-final cached = await InfobipMobileMessagingHuawei.getUser();
-final current = await InfobipMobileMessagingHuawei.fetchUser();
-
-final saved = await InfobipMobileMessagingHuawei.saveUser(
-  User(firstName: 'Sam', lastName: 'Taylor'),
-);
-
-final personalized = await InfobipMobileMessagingHuawei.personalize(
-  const UserIdentity(externalUserId: 'YOUR_EXTERNAL_USER_ID'),
-  const UserAttributes(firstName: 'Sam'),
-);
-
-await InfobipMobileMessagingHuawei.depersonalize();
-```
-
-`UserIdentity` supports an external user ID, phones, and emails. User attributes support names, gender, a date-only birthday, tags, and SDK-compatible custom attributes.
-
-## Installation
-
-```dart
-final cached = await InfobipMobileMessagingHuawei.getInstallation();
-final current = await InfobipMobileMessagingHuawei.fetchInstallation();
-
-final saved = await InfobipMobileMessagingHuawei.saveInstallation(
-  Installation(
-    isPrimaryDevice: true,
-    customAttributes: current.customAttributes,
-  ),
-);
-```
-
-Only `isPrimaryDevice` and `customAttributes` are writable. Identifiers, registration state, device data, application data, and SDK data are native-managed snapshots.
-
-## Inbox
-
-```dart
-final inbox = await InfobipMobileMessagingHuawei.fetchInbox(
-  externalUserId: 'YOUR_EXTERNAL_USER_ID',
-  options: InboxFilterOptions(
-    topics: const ['support'],
-    limit: 20,
-  ),
-);
-
-await InfobipMobileMessagingHuawei.setInboxMessagesSeen(
-  externalUserId: 'YOUR_EXTERNAL_USER_ID',
-  messageIds: inbox.messages.map((message) => message.messageId).toList(),
-);
-```
-
-`fetchInbox` also accepts a request-scoped `jwt`. Topic and topics filters are mutually exclusive. Counts come from the server response; the plugin does not provide an authoritative offline Inbox or Inbox event stream.
-
-## Chat
-
-Initialize the SDK before creating the view, use a bounded layout, and keep the controller scoped to that view:
-
-```dart
-final controller = InfobipHuaweiChatController();
-
-InfobipHuaweiChatView(
-  controller: controller,
-  withInput: true,
-  withToolbar: false,
-  onError: (error) {},
-)
-```
-
-The view uses the native Infobip composer and attachment workflow. Forward Flutter back navigation before popping the route:
-
-```dart
-final handled = await controller.navigateBackOrCloseChat();
-if (!handled && context.mounted) {
-  Navigator.of(context).pop();
+Future<void> initializeMessaging(String applicationCode) async {
+  await InfobipMobileMessagingHuawei.initialize(applicationCode: applicationCode);
 }
 ```
 
-Supported view commands are:
+Initialize before using SDK features. Initialization also activates Chat. If it
+fails with `chat_unavailable`, Mobile Messaging remains initialized: wait at least
+one second and retry with the **same** application code. A concurrent/cooldown
+retry returns `chat_activation_busy`. Bound retries in your application.
+
+The default message store is enabled. MM `setJwt` authorization is separate from
+Chat JWT authentication. See [messaging and Chat integration](doc/messaging-chat.md)
+for storage settings, user/installation examples, Inbox, JWTs and cleanup.
+
+## Push Notifications
+
+After requesting notification permission in your host:
 
 ```dart
-await controller.send(
-  const InfobipHuaweiChatMessagePayload.text('Hello'),
+Future<StreamSubscription<Message>> registerPush() async {
+  final subscription = InfobipMobileMessagingHuawei.notifications
+      .onNotificationTapped.listen((message) { /* Resolve allowed navigation. */ });
+  await InfobipMobileMessagingHuawei.registerForRemoteNotifications();
+  return subscription;
+}
+```
+
+Cancel subscriptions when their owner is disposed. HMS token acquisition/refresh
+belongs to the native SDK. A pending notification tap can replay once on subscription;
+other MM events do not replay. Treat payloads and deep links as untrusted input.
+See [notification event examples](doc/messaging-chat.md#hms-push-and-notification-events).
+
+## Chat Integration
+
+After successful initialization, open native Chat:
+
+```dart
+Future<void> openChat() => InfobipMobileMessagingHuawei.showChat();
+```
+
+For embedded Chat, use `InfobipHuaweiChatView` with one
+`InfobipHuaweiChatController` per attached view, bounded layout and a
+`FlutterFragmentActivity` host. Native composer attachments are supported;
+programmatic sending is text-only. Unread updates do not replay: query the current count.
+
+Use `setChatJwtProvider` to retrieve fresh backend-issued widget/identity tokens.
+MM/Inbox JWTs use separate contracts. Provider requests expire after 25 seconds in
+Dart and 30 seconds natively, with 32 pending requests per side. Bound your backend
+network work too. See [Chat examples and authentication](doc/messaging-chat.md#native-and-embedded-chat)
+and the [API compatibility reference](API_COMPATIBILITY.md).
+
+## RTC Audio / Video Calls
+
+Initialize MM, register if using the default installation identity, grant call
+permissions and start from a resumed Activity. The native provider acquires RTC
+tokens through initialized MM; your backend must authorize the identity and routing.
+Calls configuration ID is distinct from RTC push configuration ID. Routing selects
+the peer; there is no callee argument.
+
+```dart
+StreamSubscription<HuaweiRtcEvent> observeCalls(
+  void Function(HuaweiRtcEvent) updateCall,
+) => HuaweiRtc.events.listen(
+  updateCall,
+  onError: (Object error) { /* Handle a safe call error. */ },
 );
-await controller.sendContextualData('{"source":"support"}');
-await controller.setLanguage('en-US');
-final language = await controller.getLanguage();
-await controller.setWidgetTheme('YOUR_WIDGET_THEME');
-final theme = await controller.getWidgetTheme();
+
+Future<HuaweiRtcCall> startVideo(String callsConfigurationId) =>
+    HuaweiRtc.callApplication(HuaweiRtcCallRequest(
+      callsConfigurationId: callsConfigurationId,
+      type: HuaweiRtcCallType.video, // Use .audio for an audio-only call.
+    ));
 ```
 
-Global unread state is independent of a view:
+Subscribe before starting. Method completion means a native call object exists;
+await `established` for connection and `finished` for termination. Only one active
+call or pending request is allowed. `getActiveCall()` can be null during token fetch.
+
+Use `HuaweiRtcVideoView` for bounded local/remote views and `HuaweiRtc` controls
+for mute, speaker/audio routes and camera enable/switch. Mutations require the
+current ID and an established foreground call. Handle `returnToCall` and consume
+`takeNotificationCall()` on attachment/resume to restore your existing call screen.
+Navigation away does not hang up. Hang up and await `finished` before MM cleanup
+or account changes. See the [RTC integration guide](doc/huawei-rtc-outgoing.md)
+for rendering, controls, notifications, events and errors.
+
+## Screen Sharing
+
+Screen-as-Camera replaces the outgoing camera stream on Android 10+; it does not
+create a separate screen track. Start with an established video call, enabled
+camera and focused Activity:
 
 ```dart
-final count =
-    await InfobipMobileMessagingHuawei.chat.getUnreadMessageCount();
-final subscription = InfobipMobileMessagingHuawei
-    .chat
-    .onUnreadMessageCounterUpdated
-    .listen((count) {});
+Future<ScreenAsCameraState> startScreen(String callId) =>
+    HuaweiRtcScreenAsCamera.startScreenAsCamera(callId: callId);
+
+Future<ScreenAsCameraState> stopScreen(String callId) =>
+    HuaweiRtcScreenAsCamera.stopScreenAsCamera(callId: callId);
 ```
 
-Chat does not expose thread commands, programmatic attachments, raw received-message models, or additional component lifecycle events. Programmatic sending is text-only; attachments remain available through the native composer. Language and theme settings are view-scoped and require an attached view.
+Every start requires fresh Android consent. Capture has a foreground notification
+and Stop action. Backgrounding may leave capture active; Activity detach, call end,
+revocation or a changed resize report triggers Stop. Restart requires new consent.
 
-## Example
+Output is **640×480**, fitted with black bars; portrait text has limited detail.
+Camera switching/toggling is locked during capture/shutdown. Confirm
+`projectionTerminated` and `resourcesReleased` after Stop. On
+`screen_stop_uncertain`, query state and retry Stop or use Android capture controls.
+`cameraOutputRestored` confirms local submission, not remote display.
+See the [screen-sharing guide](doc/screen-sharing.md) for states, privacy and device checks.
 
-The example covers initialization, notifications, user, installation, Inbox, and Chat. Supply a non-production application code at runtime:
+## Known Limitations
 
-```sh
-cd example
-flutter run \
-  --dart-define=INFOBIP_APPLICATION_CODE=YOUR_APPLICATION_CODE
-```
+- Android only; no iOS, web, desktop, FCM push transport or Dart background isolate.
+- Incoming HMS RTC and official `enableCalls`/`enableChatCalls` parity are unsupported.
+  `infobipWebRtcEnabled=true` is rejected; see [WebRTC safeguards](doc/webrtc-configuration.md).
+- RTC Core retains Firebase/GMS transitive dependencies; Google-free operation is not certified.
+- No multiparty gallery, separate screen track, screen-resolution setting or seamless resize.
+- Chat thread management and composer draft setters are unavailable.
+- Real backend acceptance, HMS delivery, signed/minified hosts, OEM lifecycle,
+  GL/JNI behavior, 16 KB runtime compatibility and performance require device validation.
 
-It intentionally contains neither a real Infobip Application Code nor Huawei credentials. Add your own ignored `android/app/agconnect-services.json` and host Gradle configuration before testing HMS push on a device.
-
-## Limitations
-
-- Android/Huawei only; there is no iOS implementation or FCM transport.
-- There is no background Dart isolate. Native SDK processing may continue while Dart is not running.
-- A compatible HMS environment, correctly configured Huawei and Infobip applications, network access, and applicable notification permission are required.
-- Embedded Chat requires `FlutterFragmentActivity`, an attached activity, successful initialization, and backend Chat configuration.
-- Chat thread APIs, raw-message events, headless history, and programmatic attachments are intentionally omitted.
-- PlatformView behavior such as keyboard resizing, accessibility, attachment permissions, activity recreation, and route re-entry should be verified on supported physical devices.
+Follow the [example guide](example/README.md) for private configuration and manual checks.
+Historical audit reports remain in Git and are excluded from the pub.dev package.
 
 ## Security
 
-- Never log application codes, JWTs, push tokens, Chat content, contextual data, identity data, or attachment paths.
-- Do not commit Application Codes when they are sensitive in your deployment model.
-- Do not commit `agconnect-services.json` when project policy treats it as sensitive.
-- Never commit keystores, private keys, signing passwords, API keys, or other credentials.
-- Validate and allow-list deep links before navigation.
+**SEC-01 remains PARTIALLY MITIGATED; this package is not security-certified.**
+Huawei MM 8.14.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
+messages that may expose temporary TURN credentials; setting its logger to OFF
+does not disable direct stdout calls.
+
+The optional host Release R8 workaround removes matching `print/println` calls
+**application-wide**, including functional stream/file output. It requires R8
+optimization, does not cover RTC `printf`, and does not guarantee removal of all
+sensitive logs. Read [SECURITY.md](SECURITY.md) before production integration.
+Vendor reporting is not a publication requirement and does not resolve this issue.
+
+Use backend-issued tokens; never embed production signing secrets or log tokens,
+headers, messages, raw SDK errors or captured content. Explain MediaProjection's
+scope and provide Stop: it can capture private content outside your app.
+
+## License
+
+The [MIT License](LICENSE), copyright (c) 2026 Naser Alomosh, applies to code and
+content the repository owner has the right to license. Third-party SDKs, libraries,
+generated files and other third-party materials remain subject to their respective
+licenses and notices; MIT does not grant additional redistribution rights for them.
+See [third-party notices](THIRD_PARTY_NOTICES.md) for the bundled Gradle wrapper
+and Flutter-generated registration code.

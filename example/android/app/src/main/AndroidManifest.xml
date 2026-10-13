@@ -1,6 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
     <application
-        android:label="Infobip Huawei Plugin"
+        android:label="Huawei SDK Test Center"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
@@ -23,6 +28,9 @@
             </intent-filter>
         </activity>
 
+        <meta-data
+            android:name="com.huawei.hms.client.appid"
+            android:value="${huaweiAppId}" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

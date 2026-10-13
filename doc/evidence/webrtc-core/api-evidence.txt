@@ -1,0 +1,604 @@
+Published RTC Core API and transport evidence
+Inspected 2026-09-07/08; no code below was executed on a device.
+AAR hashes are in dependency-evidence.txt.
+
+=== Core 2.5.20: javap -public InfobipRTC (complete interface) ===
+Compiled from "InfobipRTC.java"
+public interface com.infobip.webrtc.sdk.api.InfobipRTC {
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+  public abstract void disablePushNotification(java.lang.String, android.content.Context);
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest, com.infobip.webrtc.sdk.api.options.ApplicationCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest, com.infobip.webrtc.sdk.api.options.WebrtcCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest, com.infobip.webrtc.sdk.api.options.PhoneCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest, com.infobip.webrtc.sdk.api.options.ViberCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest, com.infobip.webrtc.sdk.api.options.RoomCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract boolean isIncomingCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract boolean isIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract void handleIncomingCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void handleIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract com.infobip.webrtc.sdk.api.call.Call getActiveCall();
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall getActiveApplicationCall();
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall getActiveRoomCall();
+  public static com.infobip.webrtc.sdk.api.InfobipRTC getInstance();
+  public static void setLogLevel(java.util.logging.Level);
+}
+
+Core 2.5.20, javap -c -p method excerpt:
+  public synchronized void disconnect();
+    Code:
+       0: aload_0
+       1: getfield      #30                 // Field infobipGateway:Lcom/infobip/webrtc/sdk/impl/gateway/Gateway;
+       4: invokeinterface #55,  1           // InterfaceMethod com/infobip/webrtc/sdk/impl/gateway/Gateway.disconnect:()V
+       9: return
+
+
+Core 2.5.20, javap -c -p method excerpt:
+  public synchronized void disablePushNotification(java.lang.String, android.content.Context);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: aload_1
+      15: aload_2
+      16: invokestatic  #98                 // Method com/infobip/webrtc/sdk/impl/push/PushRegistrationService.unregisterFromPush:(Ljava/lang/String;Landroid/content/Context;)V
+      19: return
+
+
+Core 2.5.20, javap -c -p method excerpt:
+  public synchronized void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: getstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      17: instanceof    #42                 // class com/infobip/webrtc/sdk/impl/PushInfobipRTC
+      20: ifeq          36
+      23: new           #102                // class com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC
+      26: dup
+      27: aload_1
+      28: aload_2
+      29: aload_3
+      30: invokespecial #104                // Method com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC."<init>":(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/IncomingCallEventListener;)V
+      33: putstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      36: return
+
+
+Core 2.5.20, javap -c -p method excerpt:
+  public synchronized void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: getstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      17: instanceof    #42                 // class com/infobip/webrtc/sdk/impl/PushInfobipRTC
+      20: ifeq          36
+      23: new           #102                // class com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC
+      26: dup
+      27: aload_1
+      28: aload_2
+      29: aload_3
+      30: invokespecial #107                // Method com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC."<init>":(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/IncomingApplicationCallEventListener;)V
+      33: putstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      36: return
+
+
+Core 2.5.20, javap -c -p method excerpt:
+  public synchronized void setContext(android.content.Context);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: putfield      #335                // Field context:Landroid/content/Context;
+       5: return
+
+
+Core 2.5.20, javap -c -p method excerpt:
+  public static void registerForPush(java.lang.String, java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+    Code:
+       0: getstatic     #14                 // Field LOGGER:Lcom/infobip/webrtc/sdk/logging/Logger;
+       3: ldc           #20                 // String [FCM] Registering user for push.
+       5: invokevirtual #22                 // Method com/infobip/webrtc/sdk/logging/Logger.info:(Ljava/lang/String;)V
+       8: invokestatic  #27                 // Method com/google/firebase/messaging/FirebaseMessaging.getInstance:()Lcom/google/firebase/messaging/FirebaseMessaging;
+      11: invokevirtual #33                 // Method com/google/firebase/messaging/FirebaseMessaging.getToken:()Lcom/google/android/gms/tasks/Task;
+      14: aload_3
+      15: aload_0
+      16: aload_2
+      17: aload_1
+      18: invokedynamic #37,  0             // InvokeDynamic #0:onComplete:(Lcom/infobip/webrtc/sdk/api/event/listener/EventListener;Ljava/lang/String;Landroid/content/Context;Ljava/lang/String;)Lcom/google/android/gms/tasks/OnCompleteListener;
+      23: invokevirtual #41                 // Method com/google/android/gms/tasks/Task.addOnCompleteListener:(Lcom/google/android/gms/tasks/OnCompleteListener;)Lcom/google/android/gms/tasks/Task;
+      26: pop
+      27: return
+
+Core 2.5.20: no org/infobip/mobile/messaging/ references found in class bytes.
+
+=== Core 2.5.28: javap -public InfobipRTC (complete interface) ===
+Compiled from "InfobipRTC.java"
+public interface com.infobip.webrtc.sdk.api.InfobipRTC {
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+  public abstract void disablePushNotification(java.lang.String, android.content.Context);
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest, com.infobip.webrtc.sdk.api.options.ApplicationCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest, com.infobip.webrtc.sdk.api.options.WebrtcCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest, com.infobip.webrtc.sdk.api.options.PhoneCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest, com.infobip.webrtc.sdk.api.options.ViberCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest, com.infobip.webrtc.sdk.api.options.RoomCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract boolean isIncomingCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract boolean isIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract void handleIncomingCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void handleIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract com.infobip.webrtc.sdk.api.call.Call getActiveCall();
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall getActiveApplicationCall();
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall getActiveRoomCall();
+  public static com.infobip.webrtc.sdk.api.InfobipRTC getInstance();
+  public static void setLogLevel(java.util.logging.Level);
+}
+
+Core 2.5.28, javap -c -p method excerpt:
+  public synchronized void disconnect();
+    Code:
+       0: aload_0
+       1: getfield      #30                 // Field infobipGateway:Lcom/infobip/webrtc/sdk/impl/gateway/Gateway;
+       4: invokeinterface #55,  1           // InterfaceMethod com/infobip/webrtc/sdk/impl/gateway/Gateway.disconnect:()V
+       9: return
+
+
+Core 2.5.28, javap -c -p method excerpt:
+  public synchronized void disablePushNotification(java.lang.String, android.content.Context);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: aload_1
+      15: aload_2
+      16: invokestatic  #98                 // Method com/infobip/webrtc/sdk/impl/push/PushRegistrationService.unregisterFromPush:(Ljava/lang/String;Landroid/content/Context;)V
+      19: return
+
+
+Core 2.5.28, javap -c -p method excerpt:
+  public synchronized void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: getstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      17: instanceof    #42                 // class com/infobip/webrtc/sdk/impl/PushInfobipRTC
+      20: ifeq          36
+      23: new           #102                // class com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC
+      26: dup
+      27: aload_1
+      28: aload_2
+      29: aload_3
+      30: invokespecial #104                // Method com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC."<init>":(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/IncomingCallEventListener;)V
+      33: putstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      36: return
+
+
+Core 2.5.28, javap -c -p method excerpt:
+  public synchronized void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: getstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      17: instanceof    #42                 // class com/infobip/webrtc/sdk/impl/PushInfobipRTC
+      20: ifeq          36
+      23: new           #102                // class com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC
+      26: dup
+      27: aload_1
+      28: aload_2
+      29: aload_3
+      30: invokespecial #107                // Method com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC."<init>":(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/IncomingApplicationCallEventListener;)V
+      33: putstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      36: return
+
+
+Core 2.5.28, javap -c -p method excerpt:
+  public synchronized void setContext(android.content.Context);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: putfield      #335                // Field context:Landroid/content/Context;
+       5: return
+
+
+Core 2.5.28, javap -c -p method excerpt:
+  public static void registerForPush(java.lang.String, java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+    Code:
+       0: getstatic     #14                 // Field LOGGER:Lcom/infobip/webrtc/sdk/logging/Logger;
+       3: ldc           #20                 // String [FCM] Registering user for push.
+       5: invokevirtual #22                 // Method com/infobip/webrtc/sdk/logging/Logger.info:(Ljava/lang/String;)V
+       8: invokestatic  #27                 // Method com/google/firebase/messaging/FirebaseMessaging.getInstance:()Lcom/google/firebase/messaging/FirebaseMessaging;
+      11: invokevirtual #33                 // Method com/google/firebase/messaging/FirebaseMessaging.getToken:()Lcom/google/android/gms/tasks/Task;
+      14: aload_3
+      15: aload_0
+      16: aload_2
+      17: aload_1
+      18: invokedynamic #37,  0             // InvokeDynamic #0:onComplete:(Lcom/infobip/webrtc/sdk/api/event/listener/EventListener;Ljava/lang/String;Landroid/content/Context;Ljava/lang/String;)Lcom/google/android/gms/tasks/OnCompleteListener;
+      23: invokevirtual #41                 // Method com/google/android/gms/tasks/Task.addOnCompleteListener:(Lcom/google/android/gms/tasks/OnCompleteListener;)Lcom/google/android/gms/tasks/Task;
+      26: pop
+      27: return
+
+Core 2.5.28: no org/infobip/mobile/messaging/ references found in class bytes.
+
+=== Core 2.5.41: javap -public InfobipRTC (complete interface) ===
+Compiled from "InfobipRTC.java"
+public interface com.infobip.webrtc.sdk.api.InfobipRTC {
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String);
+  public abstract void enablePushNotification(java.lang.String, android.content.Context, java.lang.String, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+  public abstract void disablePushNotification(java.lang.String, android.content.Context);
+  public abstract void disablePushNotification(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.DisablePushNotificationResult>);
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall callApplication(com.infobip.webrtc.sdk.api.request.CallApplicationRequest, com.infobip.webrtc.sdk.api.options.ApplicationCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.WebrtcCall callWebrtc(com.infobip.webrtc.sdk.api.request.CallWebrtcRequest, com.infobip.webrtc.sdk.api.options.WebrtcCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.PhoneCall callPhone(com.infobip.webrtc.sdk.api.request.CallPhoneRequest, com.infobip.webrtc.sdk.api.options.PhoneCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.ViberCall callViber(com.infobip.webrtc.sdk.api.request.CallViberRequest, com.infobip.webrtc.sdk.api.options.ViberCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall joinRoom(com.infobip.webrtc.sdk.api.request.RoomRequest, com.infobip.webrtc.sdk.api.options.RoomCallOptions) throws com.infobip.webrtc.sdk.api.exception.IllegalStatusException, com.infobip.webrtc.sdk.api.exception.MissingPermissionsException;
+  public abstract boolean isIncomingCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract boolean isIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>);
+  public abstract void handleIncomingCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+  public abstract void handleIncomingApplicationCall(java.util.Map<java.lang.String, java.lang.String>, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+  public abstract com.infobip.webrtc.sdk.api.call.Call getActiveCall();
+  public abstract com.infobip.webrtc.sdk.api.call.ApplicationCall getActiveApplicationCall();
+  public abstract com.infobip.webrtc.sdk.api.call.RoomCall getActiveRoomCall();
+  public static com.infobip.webrtc.sdk.api.InfobipRTC getInstance();
+  public static void setLogLevel(java.util.logging.Level);
+}
+
+Core 2.5.41, javap -c -p method excerpt:
+  public synchronized void disconnect();
+    Code:
+       0: aload_0
+       1: getfield      #30                 // Field infobipGateway:Lcom/infobip/webrtc/sdk/impl/gateway/Gateway;
+       4: invokeinterface #55,  1           // InterfaceMethod com/infobip/webrtc/sdk/impl/gateway/Gateway.disconnect:()V
+       9: return
+
+
+Core 2.5.41, javap -c -p method excerpt:
+  public synchronized void disablePushNotification(java.lang.String, android.content.Context);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: aload_2
+       3: aconst_null
+       4: invokevirtual #98                 // Method disablePushNotification:(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/EventListener;)V
+       7: return
+
+
+Core 2.5.41, javap -c -p method excerpt:
+  public synchronized void disablePushNotification(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.DisablePushNotificationResult>);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: aload_1
+      15: aload_2
+      16: aload_3
+      17: invokestatic  #102                // Method com/infobip/webrtc/sdk/impl/push/PushRegistrationService.unregisterFromPush:(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/EventListener;)V
+      20: return
+
+
+Core 2.5.41, javap -c -p method excerpt:
+  public synchronized void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: getstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      17: instanceof    #42                 // class com/infobip/webrtc/sdk/impl/PushInfobipRTC
+      20: ifeq          36
+      23: new           #105                // class com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC
+      26: dup
+      27: aload_1
+      28: aload_2
+      29: aload_3
+      30: invokespecial #107                // Method com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC."<init>":(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/IncomingCallEventListener;)V
+      33: putstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      36: return
+
+
+Core 2.5.41, javap -c -p method excerpt:
+  public synchronized void registerForActiveConnection(java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener);
+    Code:
+       0: aload_1
+       1: ldc           #78                 // String Parameter \'token\' cannot be null
+       3: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+       6: pop
+       7: aload_2
+       8: ldc           #86                 // String Parameter \'context\' cannot be null
+      10: invokestatic  #80                 // Method java/util/Objects.requireNonNull:(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+      13: pop
+      14: getstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      17: instanceof    #42                 // class com/infobip/webrtc/sdk/impl/PushInfobipRTC
+      20: ifeq          36
+      23: new           #105                // class com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC
+      26: dup
+      27: aload_1
+      28: aload_2
+      29: aload_3
+      30: invokespecial #110                // Method com/infobip/webrtc/sdk/impl/ActiveConnectionInfobipRTC."<init>":(Ljava/lang/String;Landroid/content/Context;Lcom/infobip/webrtc/sdk/api/event/listener/IncomingApplicationCallEventListener;)V
+      33: putstatic     #38                 // Field instance:Lcom/infobip/webrtc/sdk/api/InfobipRTC;
+      36: return
+
+
+Core 2.5.41, javap -c -p method excerpt:
+  public synchronized void setContext(android.content.Context);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: putfield      #338                // Field context:Landroid/content/Context;
+       5: return
+
+
+Core 2.5.41, javap -c -p method excerpt:
+  public static void registerForPush(java.lang.String, java.lang.String, android.content.Context, com.infobip.webrtc.sdk.api.event.listener.EventListener<com.infobip.webrtc.sdk.api.model.push.EnablePushNotificationResult>);
+    Code:
+       0: getstatic     #14                 // Field LOGGER:Lcom/infobip/webrtc/sdk/logging/Logger;
+       3: ldc           #20                 // String [FCM] Registering user for push.
+       5: invokevirtual #22                 // Method com/infobip/webrtc/sdk/logging/Logger.info:(Ljava/lang/String;)V
+       8: invokestatic  #27                 // Method com/google/firebase/messaging/FirebaseMessaging.getInstance:()Lcom/google/firebase/messaging/FirebaseMessaging;
+      11: invokevirtual #33                 // Method com/google/firebase/messaging/FirebaseMessaging.getToken:()Lcom/google/android/gms/tasks/Task;
+      14: aload_3
+      15: aload_0
+      16: aload_2
+      17: aload_1
+      18: invokedynamic #37,  0             // InvokeDynamic #0:onComplete:(Lcom/infobip/webrtc/sdk/api/event/listener/EventListener;Ljava/lang/String;Landroid/content/Context;Ljava/lang/String;)Lcom/google/android/gms/tasks/OnCompleteListener;
+      23: invokevirtual #41                 // Method com/google/android/gms/tasks/Task.addOnCompleteListener:(Lcom/google/android/gms/tasks/OnCompleteListener;)Lcom/google/android/gms/tasks/Task;
+      26: pop
+      27: return
+
+Core 2.5.41: no org/infobip/mobile/messaging/ references found in class bytes.
+
+=== Core 2.5.28 call/options/request APIs ===
+Compiled from "Call.java"
+public interface com.infobip.webrtc.sdk.api.call.Call {
+  public abstract java.lang.String id();
+  public abstract com.infobip.webrtc.sdk.api.options.CallOptions options();
+  public abstract java.util.Map<java.lang.String, java.lang.String> customData();
+  public abstract com.infobip.webrtc.sdk.api.model.CallStatus status();
+  public abstract int duration();
+  public abstract java.util.Date startTime();
+  public abstract java.util.Date establishTime();
+  public abstract java.util.Date endTime();
+  public abstract com.infobip.webrtc.sdk.api.model.endpoint.Endpoint source();
+  public abstract com.infobip.webrtc.sdk.api.model.endpoint.Endpoint destination();
+  public abstract com.infobip.webrtc.sdk.api.model.endpoint.Endpoint counterpart();
+  public abstract void mute(boolean) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract boolean muted();
+  public abstract void speakerphone(boolean);
+  public abstract boolean speakerphone();
+  public abstract void sendDTMF(java.lang.String) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void setNetworkQualityEventListener(com.infobip.webrtc.sdk.api.event.listener.NetworkQualityEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.NetworkQualityEventListener getNetworkQualityEventListener();
+  public abstract void hangup();
+  public abstract com.infobip.webrtc.sdk.api.device.AudioDeviceManager audioDeviceManager();
+  public abstract void audioQualityMode(com.infobip.webrtc.sdk.api.options.AudioOptions$AudioQualityMode);
+  public abstract com.infobip.webrtc.sdk.api.options.AudioOptions$AudioQualityMode audioQualityMode();
+}
+Compiled from "ApplicationCall.java"
+public interface com.infobip.webrtc.sdk.api.call.ApplicationCall {
+  public abstract java.lang.String id();
+  public abstract com.infobip.webrtc.sdk.api.options.ApplicationCallOptions options();
+  public abstract java.util.Map<java.lang.String, java.lang.String> customData();
+  public abstract com.infobip.webrtc.sdk.api.model.CallStatus status();
+  public abstract int duration();
+  public abstract java.util.Date startTime();
+  public abstract java.util.Date establishTime();
+  public abstract java.util.Date endTime();
+  public abstract java.lang.String callsConfigurationId();
+  public abstract java.util.List<com.infobip.webrtc.sdk.api.model.participant.Participant> participants();
+  public abstract java.util.Map<java.lang.String, com.infobip.webrtc.sdk.api.model.RemoteVideo> remoteVideos();
+  public abstract void mute(boolean) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract boolean muted();
+  public abstract void speakerphone(boolean);
+  public abstract boolean speakerphone();
+  public abstract void sendDTMF(java.lang.String) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void cameraVideo(boolean) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void startScreenShare(com.infobip.webrtc.sdk.api.model.video.ScreenCapturer) throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void resetScreenShare();
+  public abstract void stopScreenShare() throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract boolean hasCameraVideo();
+  public abstract boolean hasScreenShare();
+  public abstract com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack localCameraTrack();
+  public abstract com.infobip.webrtc.sdk.api.model.video.RTCVideoTrack localScreenShareTrack();
+  public abstract com.infobip.webrtc.sdk.api.device.AudioDeviceManager audioDeviceManager();
+  public abstract void setEventListener(com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener getEventListener();
+  public abstract void setNetworkQualityEventListener(com.infobip.webrtc.sdk.api.event.listener.NetworkQualityEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.NetworkQualityEventListener getNetworkQualityEventListener();
+  public abstract void setParticipantNetworkQualityEventListener(com.infobip.webrtc.sdk.api.event.listener.ParticipantNetworkQualityEventListener);
+  public abstract com.infobip.webrtc.sdk.api.event.listener.ParticipantNetworkQualityEventListener getParticipantNetworkQualityEventListener();
+  public abstract void cameraOrientation(com.infobip.webrtc.sdk.api.options.VideoOptions$CameraOrientation);
+  public abstract com.infobip.webrtc.sdk.api.options.VideoOptions$CameraOrientation cameraOrientation();
+  public abstract void pauseIncomingVideo() throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract void resumeIncomingVideo() throws com.infobip.webrtc.sdk.api.exception.ActionFailedException;
+  public abstract com.infobip.webrtc.sdk.api.call.DataChannel dataChannel();
+  public abstract void hangup();
+  public abstract void audioQualityMode(com.infobip.webrtc.sdk.api.options.AudioOptions$AudioQualityMode);
+  public abstract com.infobip.webrtc.sdk.api.options.AudioOptions$AudioQualityMode audioQualityMode();
+  public abstract com.infobip.webrtc.sdk.videofilter.VideoFilter getVideoFilter();
+  public abstract void setVideoFilter(com.infobip.webrtc.sdk.videofilter.VideoFilter);
+  public abstract void clearVideoFilter();
+  public abstract com.infobip.webrtc.sdk.api.model.RecordingState getRecordingState();
+}
+Compiled from "IncomingWebrtcCall.java"
+public interface com.infobip.webrtc.sdk.api.call.IncomingWebrtcCall extends com.infobip.webrtc.sdk.api.call.IncomingCall,com.infobip.webrtc.sdk.api.call.WebrtcCall {
+  public abstract void accept(com.infobip.webrtc.sdk.api.options.WebrtcCallOptions);
+}
+Compiled from "IncomingApplicationCall.java"
+public interface com.infobip.webrtc.sdk.api.call.IncomingApplicationCall extends com.infobip.webrtc.sdk.api.call.ApplicationCall {
+  public abstract java.lang.String from();
+  public abstract java.lang.String fromDisplayName();
+  public abstract void accept();
+  public abstract void accept(com.infobip.webrtc.sdk.api.options.ApplicationCallOptions);
+  public abstract void decline();
+  public abstract void decline(com.infobip.webrtc.sdk.api.options.DeclineOptions);
+}
+Compiled from "ApplicationCallEventListener.java"
+public interface com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener {
+  public abstract void onRinging(com.infobip.webrtc.sdk.api.event.call.CallRingingEvent);
+  public abstract void onEarlyMedia(com.infobip.webrtc.sdk.api.event.call.CallEarlyMediaEvent);
+  public abstract void onEstablished(com.infobip.webrtc.sdk.api.event.call.CallEstablishedEvent);
+  public abstract void onHangup(com.infobip.webrtc.sdk.api.event.call.CallHangupEvent);
+  public abstract void onError(com.infobip.webrtc.sdk.api.event.call.ErrorEvent);
+  public abstract void onCameraVideoAdded(com.infobip.webrtc.sdk.api.event.call.CameraVideoAddedEvent);
+  public abstract void onCameraVideoUpdated(com.infobip.webrtc.sdk.api.event.call.CameraVideoUpdatedEvent);
+  public abstract void onCameraVideoRemoved(com.infobip.webrtc.sdk.api.event.call.CameraVideoRemovedEvent);
+  public abstract void onScreenShareAdded(com.infobip.webrtc.sdk.api.event.call.ScreenShareAddedEvent);
+  public abstract void onScreenShareRemoved(com.infobip.webrtc.sdk.api.event.call.ScreenShareRemovedEvent);
+  public abstract void onConferenceJoined(com.infobip.webrtc.sdk.api.event.call.ConferenceJoinedEvent);
+  public abstract void onConferenceLeft(com.infobip.webrtc.sdk.api.event.call.ConferenceLeftEvent);
+  public abstract void onParticipantJoining(com.infobip.webrtc.sdk.api.event.call.ParticipantJoiningEvent);
+  public abstract void onParticipantJoined(com.infobip.webrtc.sdk.api.event.call.ParticipantJoinedEvent);
+  public abstract void onParticipantLeft(com.infobip.webrtc.sdk.api.event.call.ParticipantLeftEvent);
+  public abstract void onParticipantCameraVideoAdded(com.infobip.webrtc.sdk.api.event.call.ParticipantCameraVideoAddedEvent);
+  public abstract void onParticipantCameraVideoRemoved(com.infobip.webrtc.sdk.api.event.call.ParticipantCameraVideoRemovedEvent);
+  public abstract void onParticipantScreenShareAdded(com.infobip.webrtc.sdk.api.event.call.ParticipantScreenShareAddedEvent);
+  public abstract void onParticipantScreenShareRemoved(com.infobip.webrtc.sdk.api.event.call.ParticipantScreenShareRemovedEvent);
+  public abstract void onParticipantMuted(com.infobip.webrtc.sdk.api.event.call.ParticipantMutedEvent);
+  public abstract void onParticipantUnmuted(com.infobip.webrtc.sdk.api.event.call.ParticipantUnmutedEvent);
+  public abstract void onParticipantDeaf(com.infobip.webrtc.sdk.api.event.call.ParticipantDeafEvent);
+  public abstract void onParticipantUndeaf(com.infobip.webrtc.sdk.api.event.call.ParticipantUndeafEvent);
+  public abstract void onParticipantBlinded(com.infobip.webrtc.sdk.api.event.call.ParticipantBlindedEvent);
+  public abstract void onParticipantUnblinded(com.infobip.webrtc.sdk.api.event.call.ParticipantUnblindedEvent);
+  public abstract void onStartedTalking(com.infobip.webrtc.sdk.api.event.call.StartedTalkingEvent);
+  public abstract void onStoppedTalking(com.infobip.webrtc.sdk.api.event.call.StoppedTalkingEvent);
+  public abstract void onParticipantStartedTalking(com.infobip.webrtc.sdk.api.event.call.ParticipantStartedTalkingEvent);
+  public abstract void onParticipantStoppedTalking(com.infobip.webrtc.sdk.api.event.call.ParticipantStoppedTalkingEvent);
+  public abstract void onDialogJoined(com.infobip.webrtc.sdk.api.event.call.DialogJoinedEvent);
+  public abstract void onDialogLeft(com.infobip.webrtc.sdk.api.event.call.DialogLeftEvent);
+  public abstract void onReconnecting(com.infobip.webrtc.sdk.api.event.call.ReconnectingEvent);
+  public abstract void onReconnected(com.infobip.webrtc.sdk.api.event.call.ReconnectedEvent);
+  public abstract void onParticipantDisconnected(com.infobip.webrtc.sdk.api.event.call.ParticipantDisconnectedEvent);
+  public abstract void onParticipantReconnected(com.infobip.webrtc.sdk.api.event.call.ParticipantReconnectedEvent);
+  public abstract void onCallRecordingStarted(com.infobip.webrtc.sdk.api.event.call.CallRecordingStartedEvent);
+  public abstract void onCallRecordingStopped(com.infobip.webrtc.sdk.api.event.call.CallRecordingStoppedEvent);
+  public abstract void onDialogRecordingStarted(com.infobip.webrtc.sdk.api.event.call.DialogRecordingStartedEvent);
+  public abstract void onDialogRecordingStopped(com.infobip.webrtc.sdk.api.event.call.DialogRecordingStoppedEvent);
+  public abstract void onConferenceRecordingStarted(com.infobip.webrtc.sdk.api.event.call.ConferenceRecordingStartedEvent);
+  public abstract void onConferenceRecordingStopped(com.infobip.webrtc.sdk.api.event.call.ConferenceRecordingStoppedEvent);
+  public abstract void onRoleChanged(com.infobip.webrtc.sdk.api.event.call.RoleChangedEvent);
+  public abstract void onParticipantRoleChanged(com.infobip.webrtc.sdk.api.event.call.ParticipantRoleChangedEvent);
+  public abstract void onTalkingWhileMuted(com.infobip.webrtc.sdk.api.event.call.TalkingWhileMutedEvent);
+  public abstract void onMessageReceived(com.infobip.webrtc.sdk.api.event.call.MessageReceivedEvent);
+  public abstract void onMachineDetectionFinished(com.infobip.webrtc.sdk.api.event.call.MachineDetectionFinishedEvent);
+  public abstract void onMachineDetectionFailed(com.infobip.webrtc.sdk.api.event.call.MachineDetectionFailedEvent);
+}
+
+public interface com.infobip.webrtc.sdk.api.event.listener.IncomingCallEventListener {
+  public abstract void onIncomingWebrtcCall(com.infobip.webrtc.sdk.api.event.rtc.IncomingWebrtcCallEvent);
+}
+Compiled from "IncomingApplicationCallEventListener.java"
+public interface com.infobip.webrtc.sdk.api.event.listener.IncomingApplicationCallEventListener {
+  public abstract void onIncomingApplicationCall(com.infobip.webrtc.sdk.api.event.rtc.IncomingApplicationCallEvent);
+}
+Compiled from "ApplicationCallOptions.java"
+public class com.infobip.webrtc.sdk.api.options.ApplicationCallOptions {
+  public boolean isAudio();
+  public boolean isVideo();
+  public com.infobip.webrtc.sdk.api.options.AudioOptions getAudioOptions();
+  public com.infobip.webrtc.sdk.api.options.VideoOptions getVideoOptions();
+  public java.util.Map<java.lang.String, java.lang.String> getCustomData();
+  public boolean isDataChannel();
+  public com.infobip.webrtc.sdk.api.options.PlatformOptions getPlatform();
+  public boolean isAutoReconnect();
+  public static com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder builder();
+}
+Compiled from "ApplicationCallOptions.java"
+public final class com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder {
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder audio(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder video(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder entityId(java.lang.String);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder audioOptions(com.infobip.webrtc.sdk.api.options.AudioOptions);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder videoOptions(com.infobip.webrtc.sdk.api.options.VideoOptions);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder customData(java.util.Map<java.lang.String, java.lang.String>);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder dataChannel(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder platform(com.infobip.webrtc.sdk.api.options.PlatformOptions);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions$Builder autoReconnect(boolean);
+  public com.infobip.webrtc.sdk.api.options.ApplicationCallOptions build();
+}
+Compiled from "CallApplicationRequest.java"
+public class com.infobip.webrtc.sdk.api.request.CallApplicationRequest {
+  public com.infobip.webrtc.sdk.api.request.CallApplicationRequest(java.lang.String, android.content.Context, java.lang.String, com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener);
+  public java.lang.String getToken();
+  public android.content.Context getContext();
+  public java.lang.String getCallsConfigurationId();
+  public com.infobip.webrtc.sdk.api.event.listener.ApplicationCallEventListener getApplicationCallEventListener();
+}
+
+Huawei 8.14.0 artifact infobip-mobile-messaging-huawei-sdk: no LivechatRegistrationChecker class; Chat event enum has no LIVECHAT_REGISTRATION_ID_UPDATED entry where present.
+
+Huawei 8.14.0 artifact infobip-mobile-messaging-huawei-chat-sdk: no LivechatRegistrationChecker class; Chat event enum has no LIVECHAT_REGISTRATION_ID_UPDATED entry where present.
+Compiled from "MobileApiResourceProvider.java"
+public class org.infobip.mobile.messaging.mobileapi.MobileApiResourceProvider {
+  public org.infobip.mobile.messaging.mobileapi.MobileApiResourceProvider();
+  public org.infobip.mobile.messaging.api.messages.MobileApiMessages getMobileApiMessages(android.content.Context);
+  public org.infobip.mobile.messaging.api.version.MobileApiVersion getMobileApiVersion(android.content.Context);
+  public org.infobip.mobile.messaging.api.appinstance.MobileApiAppInstance getMobileApiAppInstance(android.content.Context);
+  public org.infobip.mobile.messaging.api.appinstance.MobileApiUserData getMobileApiUserData(android.content.Context);
+  public org.infobip.mobile.messaging.api.chat.MobileApiChat getMobileApiChat(android.content.Context);
+  public org.infobip.mobile.messaging.api.baseurl.MobileApiBaseUrl getMobileApiBaseUrl(android.content.Context);
+  public org.infobip.mobile.messaging.api.inbox.MobileApiInbox getMobileApiInbox(android.content.Context);
+  public org.infobip.mobile.messaging.api.rtc.MobileApiRtc getMobileApiRtc(android.content.Context);
+  public org.infobip.mobile.messaging.api.clickreporter.MobileApiClickReporter getMobileApiClickReporter(android.content.Context);
+  public java.lang.String removeNotSupportedChars(java.lang.String);
+}

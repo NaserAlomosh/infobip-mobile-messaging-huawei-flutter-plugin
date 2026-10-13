@@ -1,33 +1,34 @@
+import '../notifications/message.dart';
+
 /// Server-side options used when fetching Inbox messages.
-final class InboxFilterOptions {
-  const InboxFilterOptions({
-    this.from,
-    this.to,
+class FilterOptions {
+  const FilterOptions({
+    DateTime? fromDateTime,
+    DateTime? toDateTime,
     this.topic,
     this.topics,
     this.limit,
-  });
+    DateTime? from,
+    DateTime? to,
+  }) : fromDateTime = fromDateTime ?? from,
+       toDateTime = toDateTime ?? to;
 
-  /// Lower bound for message creation time, forwarded as a UTC instant.
-  final DateTime? from;
-
-  /// Upper bound for message creation time, forwarded as a UTC instant.
-  final DateTime? to;
-
-  /// Exact Inbox topic to request.
+  final DateTime? fromDateTime;
+  final DateTime? toDateTime;
   final String? topic;
-
-  /// Exact Inbox topics to request.
-  ///
-  /// This cannot be combined with [topic].
   final List<String>? topics;
-
-  /// Maximum number of messages returned by the server.
   final int? limit;
+
+  @Deprecated('Use fromDateTime')
+  DateTime? get from => fromDateTime;
+  @Deprecated('Use toDateTime')
+  DateTime? get to => toDateTime;
 }
 
-/// A page of Inbox messages and server-authoritative counters.
-final class Inbox {
+@Deprecated('Use FilterOptions')
+typedef InboxFilterOptions = FilterOptions;
+
+class Inbox {
   const Inbox({
     required this.countTotal,
     required this.countUnread,
@@ -35,7 +36,6 @@ final class Inbox {
     required this.countUnreadFiltered,
     required this.messages,
   });
-
   final int countTotal;
   final int countUnread;
   final int countTotalFiltered;
@@ -43,27 +43,38 @@ final class Inbox {
   final List<InboxMessage> messages;
 }
 
-/// A message returned by Infobip Inbox.
-final class InboxMessage {
+/// A Mobile Inbox message. Its sent time is independent of push receipt time.
+class InboxMessage extends Message {
   const InboxMessage({
-    required this.messageId,
-    required this.title,
-    required this.body,
-    required this.topic,
-    required this.seen,
-    required this.receivedTimestamp,
-    required this.customPayload,
-    required this.deepLink,
-    required this.isSilent,
-  });
+    required String messageId,
+    required String topic,
+    required bool seen,
+    super.title,
+    super.body,
+    super.sound,
+    super.vibrate,
+    super.silent,
+    super.category,
+    super.customPayload,
+    super.internalData,
+    super.contentUrl,
+    super.originalPayload,
+    super.browserUrl,
+    super.deeplink,
+    super.webViewUrl,
+    super.inAppOpenTitle,
+    super.inAppDismissTitle,
+    super.receivedTimestamp,
+    this.sentTimestamp,
+  }) : super(messageId: messageId, topic: topic, seen: seen);
 
-  final String messageId;
-  final String? title;
-  final String? body;
-  final String? topic;
-  final bool seen;
-  final DateTime? receivedTimestamp;
-  final Map<String, Object?> customPayload;
-  final String? deepLink;
-  final bool isSilent;
+  @override
+  String get messageId => super.messageId!;
+  @override
+  String get topic => super.topic!;
+  @override
+  bool get seen => super.seen!;
+
+  /// Milliseconds since epoch supplied by Huawei's sentTimestamp field.
+  final num? sentTimestamp;
 }

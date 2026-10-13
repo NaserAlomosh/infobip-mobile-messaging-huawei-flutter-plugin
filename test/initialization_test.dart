@@ -7,15 +7,24 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 final class InitializationPlatform extends InfobipMobileMessagingHuaweiPlatform
     with MockPlatformInterfaceMixin {
   String? applicationCode;
+  bool? defaultMessageStorage;
+  WebRTCUI? webRTCUI;
   Object? error;
   var registrationCalls = 0;
+  var cleanupCalls = 0;
 
   @override
   Stream<Object?> get events => const Stream.empty();
 
   @override
-  Future<void> initialize({required String applicationCode}) async {
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
+  }) async {
     this.applicationCode = applicationCode;
+    this.defaultMessageStorage = defaultMessageStorage;
+    this.webRTCUI = webRTCUI;
     if (error case final Object error) throw error;
   }
 
@@ -24,12 +33,19 @@ final class InitializationPlatform extends InfobipMobileMessagingHuaweiPlatform
     registrationCalls++;
     if (error case final Object error) throw error;
   }
+
+  @override
+  Future<void> cleanup() async {
+    cleanupCalls++;
+    if (error case final Object error) throw error;
+  }
 }
 
 void main() {
   late InitializationPlatform platform;
 
   setUp(() {
+    InfobipMobileMessagingHuawei.defaultMessageStorage = true;
     platform = InitializationPlatform();
     InfobipMobileMessagingHuaweiPlatform.instance = platform;
   });
@@ -45,6 +61,53 @@ void main() {
   test('delegates initialization to the platform', () async {
     await InfobipMobileMessagingHuawei.initialize(applicationCode: 'test-code');
     expect(platform.applicationCode, 'test-code');
+    expect(platform.defaultMessageStorage, isTrue);
+    expect(platform.webRTCUI, isNull);
+  });
+
+  test('forwards optional WebRTC configuration unchanged', () async {
+    const configuration = WebRTCUI(configurationId: 'rtc-configuration');
+
+    await InfobipMobileMessagingHuawei.initialize(
+      applicationCode: 'test-code',
+      webRTCUI: configuration,
+    );
+
+    expect(platform.applicationCode, 'test-code');
+    expect(platform.webRTCUI, same(configuration));
+    expect(platform.webRTCUI?.configurationId, 'rtc-configuration');
+  });
+
+  test('accepts a WebRTC configuration with a null configuration ID', () async {
+    await InfobipMobileMessagingHuawei.initialize(
+      applicationCode: 'test-code',
+      webRTCUI: const WebRTCUI(),
+    );
+
+    expect(platform.webRTCUI, isNotNull);
+    expect(platform.webRTCUI?.configurationId, isNull);
+  });
+
+  test('uses the official default message storage value', () {
+    expect(InfobipMobileMessagingHuawei.defaultMessageStorage, isTrue);
+  });
+
+  test(
+    'forwards disabled default message storage during initialization',
+    () async {
+      InfobipMobileMessagingHuawei.defaultMessageStorage = false;
+
+      await InfobipMobileMessagingHuawei.initialize(
+        applicationCode: 'test-code',
+      );
+
+      expect(platform.defaultMessageStorage, isFalse);
+    },
+  );
+
+  test('delegates root cleanup to the platform', () async {
+    await InfobipMobileMessagingHuawei.cleanup();
+    expect(platform.cleanupCalls, 1);
   });
 
   test('delegates remote notification registration to the platform', () async {

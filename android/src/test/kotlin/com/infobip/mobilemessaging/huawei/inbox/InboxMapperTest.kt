@@ -79,9 +79,13 @@ class InboxMapperTest {
 
     @Test
     fun `validates seen identifiers`() {
-        assertEquals(listOf("one", "two"), InboxMapper.messageIds(listOf("one", "two")))
+        val messageIds = listOf("1788547032704145206", " id-with-spaces ")
+
+        assertEquals(messageIds, InboxMapper.messageIds(messageIds))
         assertThrows(IllegalArgumentException::class.java) { InboxMapper.messageIds(emptyList<String>()) }
         assertThrows(IllegalArgumentException::class.java) { InboxMapper.messageIds(listOf("")) }
+        assertThrows(IllegalArgumentException::class.java) { InboxMapper.messageIds(listOf("one", null)) }
+        assertThrows(IllegalArgumentException::class.java) { InboxMapper.messageIds(listOf("one", 2)) }
     }
 
     @Test

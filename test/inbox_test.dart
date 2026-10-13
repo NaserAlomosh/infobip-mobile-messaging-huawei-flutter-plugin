@@ -59,12 +59,12 @@ void main() {
           'body': 'Body',
           'topic': 'news',
           'seen': false,
-          'receivedTimestamp': '2026-09-01T12:00:00Z',
+          'receivedTimestamp': 1788264000000,
           'customPayload': {
             'nested': {'enabled': true},
           },
-          'deepLink': 'app://inbox',
-          'isSilent': true,
+          'deeplink': 'app://inbox',
+          'silent': true,
         },
       ],
     });
@@ -73,13 +73,10 @@ void main() {
     expect(inbox.countTotalFiltered, 3);
     expect(inbox.countUnreadFiltered, 1);
     expect(inbox.messages.single.messageId, 'message-1');
-    expect(
-      inbox.messages.single.receivedTimestamp,
-      DateTime.utc(2026, 9, 1, 12),
-    );
-    expect(inbox.messages.single.customPayload['nested'], {'enabled': true});
+    expect(inbox.messages.single.receivedTimestamp, 1788264000000);
+    expect(inbox.messages.single.customPayload?['nested'], {'enabled': true});
     expect(inbox.messages.single.seen, isFalse);
-    expect(inbox.messages.single.isSilent, isTrue);
+    expect(inbox.messages.single.silent, isTrue);
   });
 
   test('rejects conflicting or invalid topic filters', () {
@@ -200,7 +197,7 @@ void main() {
         'countTotalFiltered': 1,
         'countUnreadFiltered': 0,
         'messages': [
-          {'messageId': 'message', 'seen': false, 'isSilent': null},
+          {'messageId': 'message', 'seen': false, 'silent': 'no'},
         ],
       }),
       throwsFormatException,
@@ -305,31 +302,34 @@ void main() {
     expect((calls.last.arguments as Map)[ChannelContract.jwt], isNull);
   });
 
-  test('sets and clears the global JWT without exposing it elsewhere', () async {
-    final calls = <MethodCall>[];
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    messenger.setMockMethodCallHandler(
-      const MethodChannel(ChannelContract.methodChannel),
-      (call) async => calls.add(call),
-    );
-    addTearDown(
-      () => messenger.setMockMethodCallHandler(
+  test(
+    'sets and clears the global JWT without exposing it elsewhere',
+    () async {
+      final calls = <MethodCall>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
         const MethodChannel(ChannelContract.methodChannel),
-        null,
-      ),
-    );
+        (call) async => calls.add(call),
+      );
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(
+          const MethodChannel(ChannelContract.methodChannel),
+          null,
+        ),
+      );
 
-    await InfobipMobileMessagingHuawei.setJwt('  current-token  ');
-    await InfobipMobileMessagingHuawei.setJwt(null);
+      await InfobipMobileMessagingHuawei.setJwt('  current-token  ');
+      await InfobipMobileMessagingHuawei.setJwt(null);
 
-    expect(calls.map((call) => call.method), [
-      ChannelContract.setJwt,
-      ChannelContract.setJwt,
-    ]);
-    expect(calls.first.arguments, {ChannelContract.jwt: 'current-token'});
-    expect(calls.last.arguments, {ChannelContract.jwt: null});
-  });
+      expect(calls.map((call) => call.method), [
+        ChannelContract.setJwt,
+        ChannelContract.setJwt,
+      ]);
+      expect(calls.first.arguments, {ChannelContract.jwt: 'current-token'});
+      expect(calls.last.arguments, {ChannelContract.jwt: null});
+    },
+  );
 
   test('rejects an empty seen update without invoking native code', () {
     expect(
@@ -362,11 +362,7 @@ void main() {
       InfobipMobileMessagingHuawei.fetchInbox(externalUserId: 'user'),
       throwsA(
         isA<PlatformException>()
-            .having(
-              (error) => error.code,
-              'code',
-              'ACCESS_TOKEN_MISSING',
-            )
+            .having((error) => error.code, 'code', 'ACCESS_TOKEN_MISSING')
             .having(
               (error) => error.message,
               'message',

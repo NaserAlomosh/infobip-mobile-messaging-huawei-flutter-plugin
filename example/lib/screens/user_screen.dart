@@ -1,57 +1,61 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
+import '../setup/example_controller.dart';
+import '../setup/safe_display.dart';
 import '../widgets/result_card.dart';
 import '../widgets/section_card.dart';
 
 class UserScreen extends StatefulWidget {
-  const UserScreen({super.key});
+  const UserScreen({required this.controller, super.key});
+  final ExampleController controller;
 
   @override
   State<UserScreen> createState() => _UserScreenState();
 }
 
 class _UserScreenState extends State<UserScreen> {
-  final _firstName = TextEditingController();
-  final _lastName = TextEditingController();
-  final _externalUserId = TextEditingController();
+  late final _firstName = TextEditingController(
+    text: widget.controller.config.firstName,
+  );
+  late final _lastName = TextEditingController(
+    text: widget.controller.config.lastName,
+  );
+
   bool _loading = false;
   String _result = 'No user operation performed.';
-  User? _user;
+  UserData? _user;
 
   Future<void> _run(Future<void> Function() operation) async {
     if (_loading) return;
     setState(() => _loading = true);
     try {
       await operation();
-    } on PlatformException catch (error) {
+      await widget.controller.refresh();
+    } catch (error) {
       if (mounted) {
         setState(
-          () =>
-              _result = '${error.code}: ${error.message ?? 'Operation failed'}',
+          () => _result = error is ExampleBlocked
+              ? 'BLOCKED: ${error.message}'
+              : safeFailure('User operation', error),
         );
       }
-    } on ArgumentError catch (error) {
-      if (mounted) setState(() => _result = error.message.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _setUser(User user, String operation) => setState(() {
+  void _setUser(UserData user, String operation) => setState(() {
     _user = user;
-    _firstName.text = user.firstName ?? '';
-    _lastName.text = user.lastName ?? '';
-    _result = '$operation succeeded.\n${_describe(user)}';
+    _result =
+        '$operation returned SDK data; confirm intended server state.\n${_describe(user)}';
   });
 
-  String _describe(User user) => [
-    'First name: ${user.firstName ?? 'not set'}',
-    'Last name: ${user.lastName ?? 'not set'}',
+  String _describe(UserData user) => [
+    'First name: ${masked(user.firstName)}',
+    'Last name: ${masked(user.lastName)}',
     'Gender: ${user.gender?.name ?? 'not set'}',
-    'Birthday: '
-        '${user.birthday?.toIso8601String().split('T').first ?? 'not set'}',
+    'Birthday: ${masked(user.birthday)}',
     'Tags: ${user.tags?.length ?? 0}',
   ].join('\n');
 
@@ -59,7 +63,6 @@ class _UserScreenState extends State<UserScreen> {
   void dispose() {
     _firstName.dispose();
     _lastName.dispose();
-    _externalUserId.dispose();
     super.dispose();
   }
 
@@ -119,22 +122,13 @@ class _UserScreenState extends State<UserScreen> {
                 onPressed: _loading
                     ? null
                     : () => _run(() async {
-                        final saved =
-                            await InfobipMobileMessagingHuawei.saveUser(
-                              User(
-                                externalUserId: _user?.externalUserId,
-                                firstName: _firstName.text.trim(),
-                                lastName: _lastName.text.trim(),
-                                middleName: _user?.middleName,
-                                gender: _user?.gender,
-                                birthday: _user?.birthday,
-                                phones: _user?.phones,
-                                emails: _user?.emails,
-                                tags: _user?.tags,
-                                customAttributes: _user?.customAttributes,
-                              ),
+                        final saved = await widget.controller
+                            .saveConfiguredUser(
+                              previous: _user,
+                              firstName: _firstName.text.trim(),
+                              lastName: _lastName.text.trim(),
                             );
-                        _setUser(saved, 'User save');
+                        _setUser(saved, 'Server user verification after save');
                       }),
                 child: const Text('Save user'),
               ),
@@ -144,37 +138,40 @@ class _UserScreenState extends State<UserScreen> {
             title: 'Personalization',
             description:
                 'Use a test identity with a non-production Infobip application. '
-                'Values are not persisted by this example.',
+                'The SDK persists user and installation state.',
             children: [
-              TextField(
-                controller: _externalUserId,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  labelText: 'Test external user ID',
-                ),
+              Text(
+                'Configured external user ID: ${masked(widget.controller.config.externalUserId)}',
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 children: [
                   FilledButton(
-                    onPressed: _loading || _externalUserId.text.trim().isEmpty
+                    onPressed:
+                        _loading || !widget.controller.externalUserIdConfigured
                         ? null
                         : () => _run(() async {
-                            final user =
-                                await InfobipMobileMessagingHuawei.personalize(
-                                  UserIdentity(
-                                    externalUserId: _externalUserId.text.trim(),
-                                  ),
-                                  UserAttributes(
-                                    firstName: _firstName.text.trim().isEmpty
-                                        ? null
-                                        : _firstName.text.trim(),
-                                    lastName: _lastName.text.trim().isEmpty
-                                        ? null
-                                        : _lastName.text.trim(),
-                                  ),
-                                );
+                            final ok = await widget.controller.personalize(
+                              attributes: UserAttributes(
+                                firstName: _firstName.text.trim().isEmpty
+                                    ? null
+                                    : _firstName.text.trim(),
+                                lastName: _lastName.text.trim().isEmpty
+                                    ? null
+                                    : _lastName.text.trim(),
+                              ),
+                            );
+                            if (!mounted) return;
+                            if (!ok) {
+                              setState(
+                                () => _result =
+                                    widget.controller.result ??
+                                    'Personalization failed.',
+                              );
+                              return;
+                            }
+                            final user = widget.controller.user!;
                             _setUser(user, 'Personalization');
                           }),
                     child: const Text('Personalize'),
@@ -183,12 +180,12 @@ class _UserScreenState extends State<UserScreen> {
                     onPressed: _loading
                         ? null
                         : () => _run(() async {
-                            await InfobipMobileMessagingHuawei.depersonalize();
+                            await widget.controller.depersonalizeUser();
                             if (mounted) {
                               setState(() {
                                 _user = null;
-                                _externalUserId.clear();
-                                _result = 'Depersonalization succeeded.';
+                                _result =
+                                    'Depersonalization completed; verify empty server identity and Portal state.';
                               });
                             }
                           }),

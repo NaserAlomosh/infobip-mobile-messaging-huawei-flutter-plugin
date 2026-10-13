@@ -2,6 +2,7 @@ package com.infobip.mobilemessaging.huawei.chat
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.infobip.mobile.messaging.chat.core.MultithreadStrategy
 import org.infobip.mobile.messaging.chat.models.MessagePayload
 
 class ChatMapperTest {
@@ -27,5 +28,27 @@ class ChatMapperTest {
     @Test(expected = IllegalArgumentException::class)
     fun `rejects malformed contextual data arguments`() {
         ChatMapper.contextualData(emptyMap<String, Any>())
+    }
+
+    @Test
+    fun `maps all contextual data strategies explicitly`() {
+        MultithreadStrategy.values().forEach { strategy ->
+            assertEquals(
+                strategy,
+                ChatMapper.contextualDataStrategy(
+                    mapOf("chatMultiThreadStrategy" to strategy.name),
+                ),
+            )
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `rejects unsupported contextual data strategy`() {
+        ChatMapper.contextualDataStrategy(mapOf("chatMultiThreadStrategy" to "UNKNOWN"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `rejects empty contextual data`() {
+        ChatMapper.contextualData(mapOf("data" to " "))
     }
 }

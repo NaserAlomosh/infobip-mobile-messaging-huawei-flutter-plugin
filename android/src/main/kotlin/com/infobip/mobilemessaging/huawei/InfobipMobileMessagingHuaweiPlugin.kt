@@ -2,22 +2,36 @@ package com.infobip.mobilemessaging.huawei
 
 import android.app.Activity
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import com.infobip.mobilemessaging.huawei.chat.ChatManager
 import com.infobip.mobilemessaging.huawei.chat.ChatPlatformViewFactory
+import com.infobip.mobilemessaging.huawei.core.CleanupManager
 import com.infobip.mobilemessaging.huawei.core.MobileMessagingInitializer
+import com.infobip.mobilemessaging.huawei.core.MessageOperations
+import com.infobip.mobilemessaging.huawei.event.CustomEventManager
 import com.infobip.mobilemessaging.huawei.inbox.InboxManager
 import com.infobip.mobilemessaging.huawei.installation.InstallationManager
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
 import com.infobip.mobilemessaging.huawei.plugin.NativeEventBridge
+import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcManager
+import com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcVideoPlatformViewFactory
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import com.infobip.mobilemessaging.huawei.user.UserManager
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcFailure
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcOperations
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
+import org.infobip.mobile.messaging.chat.view.styles.PluginChatCustomization
 
 class InfobipMobileMessagingHuaweiPlugin :
     FlutterPlugin,
@@ -27,26 +41,88 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
     private var initializer: MobileMessagingInitializer? = null
+    private var cleanupManager: CleanupManager? = null
     private var applicationContext: Context? = null
     private var eventBridge: NativeEventBridge? = null
     private var userManager: UserManager? = null
     private var installationManager: InstallationManager? = null
+    private var customEventManager: CustomEventManager? = null
+    private var messageOperations: MessageOperations? = null
     private var inboxManager: InboxManager? = null
     private var chatManager: ChatManager? = null
+    private var webRtcOperations: WebRtcOperations? = null
+    private var huaweiRtcManager: HuaweiRtcManager? = null
+    private var huaweiRtcChannel: MethodChannel? = null
+    private var huaweiRtcEvents: EventChannel? = null
+    private var screenCaptureEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val pendingInitializations = mutableSetOf<MethodChannel.Result>()
+    private var lifecycleGeneration = 0L
+    private var cleanupInProgress = false
     private var activity: Activity? = null
+    private var rtcActivityBinding: ActivityPluginBinding? = null
+    private val rtcIntentListener = PluginRegistry.NewIntentListener { intent ->
+        huaweiRtcManager?.handleNotificationIntent(intent)
+        false
+    }
+    private val captureResultListener = PluginRegistry.ActivityResultListener { request, result, data ->
+        huaweiRtcManager?.screenCapture?.permission(request, result, data) ?: false
+    }
+    private fun attachRtcActivity(binding: ActivityPluginBinding) {
+        rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
+        rtcActivityBinding = binding
+        binding.addOnNewIntentListener(rtcIntentListener)
+        binding.addActivityResultListener(captureResultListener)
+        activity = binding.activity
+        huaweiRtcManager?.screenCapture?.attach(binding.activity)
+        binding.activity.intent?.let { huaweiRtcManager?.handleNotificationIntent(it) }
+    }
+    private fun detachRtcActivity() {
+        huaweiRtcManager?.screenCapture?.detach()
+        rtcActivityBinding?.removeActivityResultListener(captureResultListener)
+        rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
+        rtcActivityBinding = null
+        activity = null
+    }
+    private var drawableLoader: PluginChatCustomization.DrawableLoader? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         applicationContext = binding.applicationContext
+        drawableLoader = FlutterAssetDrawableLoader(binding)
         chatManager =
             ChatManager(
                 context = binding.applicationContext,
                 initialized = { initializer?.isInitialized == true },
+                requestDartJwt = { id, generation -> eventBridge?.emitChatJwtRequested(id, generation) == true },
             )
-        initializer =
-            MobileMessagingInitializer(binding.applicationContext) {
-                chatManager?.activate()
-            }
+        initializer = MobileMessagingInitializer(binding.applicationContext)
+        huaweiRtcManager = HuaweiRtcManager(
+            binding.applicationContext,
+            initialized = { initializer?.isInitialized == true },
+            canStartCall = {
+                activity?.let {
+                    !it.isFinishing && !it.isDestroyed &&
+                        ((it as? LifecycleOwner)?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) ?: it.hasWindowFocus())
+                } == true
+            },
+        )
+        huaweiRtcChannel = MethodChannel(binding.binaryMessenger, HuaweiRtcManager.METHOD_CHANNEL).also {
+            it.setMethodCallHandler(huaweiRtcManager)
+        }
+        huaweiRtcManager?.configureScreenCapture(binding.applicationContext)
+        screenCaptureEvents = EventChannel(binding.binaryMessenger,
+            com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcScreenCaptureController.EVENTS).also {
+            it.setStreamHandler(huaweiRtcManager?.screenCapture)
+        }
+        huaweiRtcEvents = EventChannel(binding.binaryMessenger, HuaweiRtcManager.EVENT_CHANNEL).also {
+            it.setStreamHandler(huaweiRtcManager)
+        }
+        webRtcOperations =
+            WebRtcOperations(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+                configuration = { initializer?.webRtcConfiguration },
+            )
         userManager =
             UserManager(
                 context = binding.applicationContext,
@@ -57,10 +133,36 @@ class InfobipMobileMessagingHuaweiPlugin :
                 context = binding.applicationContext,
                 isInitialized = { initializer?.isInitialized == true },
             )
+        customEventManager =
+            CustomEventManager(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+            )
+        messageOperations =
+            MessageOperations(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+            )
         inboxManager =
             InboxManager(
                 context = binding.applicationContext,
                 isInitialized = { initializer?.isInitialized == true },
+            )
+        cleanupManager =
+            CleanupManager(
+                context = binding.applicationContext,
+                isInitialized = { initializer?.isInitialized == true },
+                clearPluginJwtState = {
+                    eventBridge?.clearPendingTaps()
+                    inboxManager?.clearJwtState()
+                    chatManager?.clearJwtProvider()
+                    chatManager?.clearExceptionHandler()
+                },
+                resetPluginState = {
+                    webRtcOperations?.reset()
+                    initializer?.reset()
+                    chatManager?.resetAfterCleanup()
+                },
             )
         eventBridge = NativeEventBridge(binding.applicationContext).also { it.register() }
         methodChannel =
@@ -79,40 +181,69 @@ class InfobipMobileMessagingHuaweiPlugin :
                 chatManager = requireNotNull(chatManager),
             ),
         )
+        try {
+            val registered = binding.platformViewRegistry.registerViewFactory(
+                HuaweiRtcVideoPlatformViewFactory.VIEW_TYPE,
+                HuaweiRtcVideoPlatformViewFactory(requireNotNull(huaweiRtcManager)),
+            )
+            if (!registered) Log.e(TAG, "RTC video view registration unavailable")
+        } catch (error: Exception) {
+            Log.e(TAG, "RTC video view registration failed (${error.javaClass.simpleName})")
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        lifecycleGeneration++
+        pendingInitializations.toList().forEach { detached(it) }
+        pendingInitializations.clear()
+        cleanupInProgress = false
+        initializer?.reset()
+        detachRtcActivity()
+        huaweiRtcManager?.dispose()
+        huaweiRtcChannel?.setMethodCallHandler(null)
+        huaweiRtcEvents?.setStreamHandler(null)
+        screenCaptureEvents?.setStreamHandler(null)
+        screenCaptureEvents = null
+        huaweiRtcManager = null
+        huaweiRtcChannel = null
+        huaweiRtcEvents = null
         inboxManager?.setJwt(null)
         methodChannel?.setMethodCallHandler(null)
         eventChannel?.setStreamHandler(null)
         eventBridge?.detach()
-        chatManager?.detach()
+        chatManager?.dispose()
         methodChannel = null
         eventChannel = null
         initializer = null
+        cleanupManager = null
         eventBridge = null
         userManager = null
         installationManager = null
+        customEventManager = null
+        messageOperations = null
         inboxManager = null
         chatManager = null
+        webRtcOperations?.reset()
+        webRtcOperations = null
         applicationContext = null
+        drawableLoader = null
         activity = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-        activity = binding.activity
+        attachRtcActivity(binding)
     }
 
     override fun onDetachedFromActivityForConfigChanges() {
-        activity = null
+        try { huaweiRtcManager?.detachVideoViews() } finally { detachRtcActivity() }
     }
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
-        activity = binding.activity
+        attachRtcActivity(binding)
     }
 
     override fun onDetachedFromActivity() {
-        activity = null
+        try { huaweiRtcManager?.detachVideoViews() } finally { detachRtcActivity() }
     }
 
     override fun onMethodCall(
@@ -124,6 +255,65 @@ class InfobipMobileMessagingHuaweiPlugin :
                 initialize(call, result)
             }
 
+            ChannelContract.CLEANUP -> {
+                if (cleanupInProgress || pendingInitializations.isNotEmpty()) {
+                    result.error("operation_in_progress", "Initialization or cleanup is in progress", null)
+                    return
+                }
+                val manager = cleanupManager ?: return detached(result)
+                val rtc = webRtcOperations ?: return detached(result)
+                val outgoingRtc = huaweiRtcManager ?: return detached(result)
+                val outgoingFailure = outgoingRtc.prepareCleanup()
+                if (outgoingFailure != null) {
+                    result.error(outgoingFailure.code, outgoingFailure.message, null)
+                    return
+                }
+                cleanupInProgress = true
+                val generation = lifecycleGeneration
+                rtc.cleanup { failure ->
+                    mainHandler.post {
+                        try {
+                            if (generation != lifecycleGeneration || webRtcOperations !== rtc || cleanupManager !== manager) {
+                                detached(result)
+                            } else if (failure != null) result.error(failure.code, failure.message, null)
+                            else {
+                                val error = manager.cleanup()
+                                if (error == null) {
+                                    lifecycleGeneration++
+                                    result.success(null)
+                                } else result.error(error.code, error.message, error.details)
+                            }
+                        } finally {
+                            outgoingRtc.completeCleanup()
+                            if (cleanupManager === manager) cleanupInProgress = false
+                        }
+                    }
+                }
+            }
+
+            ChannelContract.ENABLE_CALLS -> {
+                val identity = call.arguments as? String
+                if (identity == null) {
+                    result.error("invalid_argument", "identity must be a string", null)
+                    return
+                }
+                webRtcOperations?.enableCalls(identity) { failure ->
+                    completeWebRtc(result, failure)
+                } ?: detached(result)
+            }
+
+            ChannelContract.ENABLE_CHAT_CALLS -> {
+                webRtcOperations?.enableChatCalls { failure ->
+                    completeWebRtc(result, failure)
+                } ?: detached(result)
+            }
+
+            ChannelContract.DISABLE_CALLS -> {
+                webRtcOperations?.disableCalls { failure ->
+                    completeWebRtc(result, failure)
+                } ?: detached(result)
+            }
+
             ChannelContract.REGISTER_FOR_REMOTE_NOTIFICATIONS -> {
                 initializer?.registerForRemoteNotifications { error ->
                     mainHandler.post {
@@ -131,6 +321,13 @@ class InfobipMobileMessagingHuaweiPlugin :
                         else result.error(error.code, error.message, error.details)
                     }
                 } ?: detached(result)
+            }
+
+            ChannelContract.MARK_MESSAGES_SEEN -> {
+                val manager = messageOperations ?: return detached(result)
+                val failure = manager.markMessagesSeen(call.arguments)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.GET_USER -> {
@@ -169,6 +366,20 @@ class InfobipMobileMessagingHuaweiPlugin :
                 } ?: detached(result)
             }
 
+            ChannelContract.SUBMIT_EVENT -> {
+                customEventManager?.submit(
+                    call.argument<Any?>(ChannelContract.CUSTOM_EVENT),
+                ) { _, failure -> result.completeCustomEvent(null, failure) }
+                    ?: detached(result)
+            }
+
+            ChannelContract.SUBMIT_EVENT_IMMEDIATELY -> {
+                customEventManager?.submitImmediately(
+                    call.argument<Any?>(ChannelContract.CUSTOM_EVENT),
+                ) { event, failure -> result.completeCustomEvent(event, failure) }
+                    ?: detached(result)
+            }
+
             ChannelContract.SET_JWT -> {
                 try {
                     inboxManager?.setJwt(call.argument<Any?>(ChannelContract.JWT))
@@ -177,6 +388,61 @@ class InfobipMobileMessagingHuaweiPlugin :
                 } catch (_: IllegalArgumentException) {
                     result.error("invalid_argument", "jwt must be a string or null", null)
                 }
+            }
+
+            ChannelContract.SET_CHAT_JWT_PROVIDER -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setJwtProvider()
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SET_CHAT_EXCEPTION_HANDLER -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setExceptionHandler(
+                    call.argument<Any?>(ChannelContract.ENABLED),
+                ) { payload -> eventBridge?.emitChatException(payload) }
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SET_CHAT_CUSTOMIZATION -> {
+                setChatCustomization(call, result)
+            }
+
+            ChannelContract.SET_CHAT_PUSH_TITLE -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setChatPushTitle(call.arguments as String?)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SET_CHAT_PUSH_BODY -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.setChatPushBody(call.arguments as String?)
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.SHOW_CHAT -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.showChat()
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.RESOLVE_CHAT_JWT -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.resolveJwt(call.argument<Any?>("requestId"), call.argument<Any?>("generation"), call.argument<Any?>(ChannelContract.JWT))
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.REJECT_CHAT_JWT -> {
+                val manager = chatManager ?: return detached(result)
+                val failure = manager.rejectJwt(call.argument<Any?>("requestId"), call.argument<Any?>("generation"))
+                if (failure == null) result.success(null)
+                else result.error(failure.code, failure.message, null)
             }
 
             ChannelContract.GET_INSTALLATION -> {
@@ -198,6 +464,21 @@ class InfobipMobileMessagingHuaweiPlugin :
                     call.argument<Any?>(ChannelContract.INSTALLATION),
                     { value, failure -> result.completeInstallation(value, failure) },
                 ) ?: detached(result)
+            }
+
+            ChannelContract.DEPERSONALIZE_INSTALLATION -> {
+                installationManager?.depersonalizeInstallation(
+                    call.argument<Any?>(ChannelContract.PUSH_REGISTRATION_ID),
+                ) { installations, failure -> result.completeInstallations(installations, failure) }
+                    ?: detached(result)
+            }
+
+            ChannelContract.SET_INSTALLATION_AS_PRIMARY -> {
+                installationManager?.setInstallationAsPrimary(
+                    call.argument<Any?>(ChannelContract.PUSH_REGISTRATION_ID),
+                    call.argument<Any?>(ChannelContract.IS_PRIMARY),
+                ) { installations, failure -> result.completeInstallations(installations, failure) }
+                    ?: detached(result)
             }
 
             ChannelContract.FETCH_INBOX -> {
@@ -225,6 +506,24 @@ class InfobipMobileMessagingHuaweiPlugin :
                         } else {
                             result.error(failure.code, failure.message, null)
                         }
+                    }
+                } ?: detached(result)
+            }
+
+            ChannelContract.IS_CHAT_AVAILABLE -> {
+                chatManager?.isChatAvailable { available, failure ->
+                    mainHandler.post {
+                        if (failure == null) result.success(available)
+                        else result.error(failure.code, failure.message, null)
+                    }
+                } ?: detached(result)
+            }
+
+            ChannelContract.RESET_CHAT_MESSAGE_COUNTER -> {
+                chatManager?.resetMessageCounter { _, failure ->
+                    mainHandler.post {
+                        if (failure == null) result.success(null)
+                        else result.error(failure.code, failure.message, null)
                     }
                 } ?: detached(result)
             }
@@ -274,6 +573,20 @@ class InfobipMobileMessagingHuaweiPlugin :
         }
     }
 
+    private fun MethodChannel.Result.completeInstallations(
+        installations: List<Map<String, Any?>>?,
+        failure: com.infobip.mobilemessaging.huawei.installation.InstallationFailure?,
+    ) {
+        if (failure == null) success(installations) else error(failure.code, failure.message, failure.details)
+    }
+
+    private fun MethodChannel.Result.completeCustomEvent(
+        event: Map<String, Any?>?,
+        failure: com.infobip.mobilemessaging.huawei.event.CustomEventFailure?,
+    ) {
+        if (failure == null) success(event) else error(failure.code, failure.message, failure.details)
+    }
+
     private fun MethodChannel.Result.completeInbox(
         inbox: Map<String, Any?>?,
         failure: com.infobip.mobilemessaging.huawei.inbox.InboxFailure?,
@@ -289,25 +602,100 @@ class InfobipMobileMessagingHuaweiPlugin :
         result.error("native_error", "Plugin is not attached to an engine", null)
     }
 
+    private fun completeWebRtc(
+        result: MethodChannel.Result,
+        failure: WebRtcFailure?,
+    ) {
+        mainHandler.post {
+            if (failure == null) result.success(null)
+            else result.error(failure.code, failure.message, failure.details)
+        }
+    }
+
+    private fun setChatCustomization(
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val context = applicationContext ?: return detached(result)
+        val json = call.arguments as? String
+        val customization = json?.let(PluginChatCustomization::parseOrNull)
+        if (customization == null) {
+            Log.w(TAG, "Ignoring invalid Chat customization")
+            result.success(null)
+            return
+        }
+        val loader = drawableLoader ?: return detached(result)
+        val theme = customization.createTheme(context, loader)
+        org.infobip.mobile.messaging.chat.InAppChat.getInstance(context).setTheme(theme)
+        result.success(null)
+    }
+
+    private class FlutterAssetDrawableLoader(
+        binding: FlutterPlugin.FlutterPluginBinding,
+    ) : PluginChatCustomization.DrawableLoader {
+        private val flutterAssets = binding.flutterAssets
+
+        override fun loadDrawable(
+            context: Context,
+            drawableSrc: String?,
+        ): Drawable? {
+            if (drawableSrc.isNullOrBlank()) return null
+
+            return try {
+                val assetKey = flutterAssets.getAssetFilePathByName(drawableSrc)
+                context.assets.open(assetKey).use {
+                    Drawable.createFromStream(it, drawableSrc)
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     private fun initialize(
         call: MethodCall,
         result: MethodChannel.Result,
     ) {
+        if (cleanupInProgress) {
+            result.error("operation_in_progress", "Cleanup is in progress", null)
+            return
+        }
         val applicationCode = call.argument<String>(ChannelContract.APPLICATION_CODE)
         if (applicationCode.isNullOrBlank()) {
             result.error("invalid_argument", "applicationCode must not be empty", null)
             return
         }
+        val defaultMessageStorage =
+            call.argument<Boolean>(ChannelContract.DEFAULT_MESSAGE_STORAGE) ?: true
+        val webRtcConfiguration = try {
+            WebRtcConfiguration.fromMethodChannel(
+                call.argument<Any?>(ChannelContract.WEB_RTC_UI),
+            )
+        } catch (error: IllegalArgumentException) {
+            result.error("invalid_argument", error.message, null)
+            return
+        }
 
-        initializer?.initialize(applicationCode) { error ->
+        val currentInitializer = initializer ?: return detached(result)
+        val currentChat = chatManager ?: return detached(result)
+        val generation = lifecycleGeneration
+        pendingInitializations.add(result)
+        currentInitializer.initialize(applicationCode, defaultMessageStorage, webRtcConfiguration) { error ->
             mainHandler.post {
+                if (!pendingInitializations.remove(result)) return@post
+                if (generation != lifecycleGeneration || initializer !== currentInitializer || chatManager !== currentChat) {
+                    detached(result)
+                    return@post
+                }
                 if (error == null) {
-                    result.success(null)
+                    val chatFailure = currentChat.activate()
+                    if (chatFailure == null) result.success(null)
+                    else result.error(chatFailure.code, chatFailure.message, null)
                 } else {
                     result.error(error.code, error.message, error.details)
                 }
             }
-        } ?: result.error("native_error", "Plugin is not attached to an engine", null)
+        }
     }
 
     override fun onListen(
@@ -319,5 +707,10 @@ class InfobipMobileMessagingHuaweiPlugin :
 
     override fun onCancel(arguments: Any?) {
         eventBridge?.cancel()
+        chatManager?.detach()
+    }
+
+    private companion object {
+        const val TAG = "InfobipHuaweiPlugin"
     }
 }

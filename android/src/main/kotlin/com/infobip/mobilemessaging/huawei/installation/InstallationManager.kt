@@ -51,10 +51,71 @@ internal class InstallationManager(
         }
     }
 
+    fun depersonalizeInstallation(
+        pushRegistrationIdValue: Any?,
+        callback: InstallationsCallback,
+    ) {
+        if (!initializedList(callback)) return
+        val pushRegistrationId = validPushRegistrationId(pushRegistrationIdValue, callback) ?: return
+        executeList("installation_depersonalization_failed", callback) {
+            mobileMessaging.depersonalizeInstallation(
+                pushRegistrationId,
+                installationsListener(
+                    callback,
+                    "installation_depersonalization_failed",
+                    "Unable to depersonalize installation",
+                ),
+            )
+        }
+    }
+
+    fun setInstallationAsPrimary(
+        pushRegistrationIdValue: Any?,
+        isPrimaryValue: Any?,
+        callback: InstallationsCallback,
+    ) {
+        if (!initializedList(callback)) return
+        val pushRegistrationId = validPushRegistrationId(pushRegistrationIdValue, callback) ?: return
+        val isPrimary = isPrimaryValue as? Boolean
+        if (isPrimary == null) {
+            failList(callback, "invalid_argument", "isPrimary must be a boolean")
+            return
+        }
+        executeList("installation_primary_update_failed", callback) {
+            mobileMessaging.setInstallationAsPrimary(
+                pushRegistrationId,
+                isPrimary,
+                installationsListener(
+                    callback,
+                    "installation_primary_update_failed",
+                    "Unable to update primary installation",
+                ),
+            )
+        }
+    }
+
     private fun initialized(callback: Callback): Boolean {
         if (isInitialized()) return true
         fail(callback, "not_initialized", "Initialize the Infobip SDK first")
         return false
+    }
+
+    private fun initializedList(callback: InstallationsCallback): Boolean {
+        if (isInitialized()) return true
+        failList(callback, "not_initialized", "Initialize the Infobip SDK first")
+        return false
+    }
+
+    private fun validPushRegistrationId(
+        value: Any?,
+        callback: InstallationsCallback,
+    ): String? {
+        val id = (value as? String)?.trim()
+        if (id.isNullOrEmpty()) {
+            failList(callback, "invalid_argument", "pushRegistrationId must not be empty")
+            return null
+        }
+        return id
     }
 
     private fun complete(
@@ -81,7 +142,7 @@ internal class InstallationManager(
         fail(
             callback,
             error?.code?.toString() ?: fallbackCode,
-            error?.message ?: fallbackMessage,
+            fallbackMessage,
         )
     }
 
@@ -97,6 +158,57 @@ internal class InstallationManager(
             } else {
                 fail(callback, result.error, code, message)
             }
+        }
+    }
+
+    private fun installationsListener(
+        callback: InstallationsCallback,
+        code: String,
+        message: String,
+    ) = object : MobileMessaging.ResultListener<List<Installation>>() {
+        override fun onResult(result: Result<List<Installation>, MobileMessagingError>) {
+            val installations = result.data
+            if (result.isSuccess) {
+                mainHandler.post {
+                    callback(installations?.map(InstallationMapper::toMap), null)
+                }
+            } else {
+                failList(callback, result.error, code, message)
+            }
+        }
+    }
+
+    private fun failList(
+        callback: InstallationsCallback,
+        code: String,
+        message: String,
+    ) {
+        mainHandler.post { callback(null, InstallationFailure(code, message)) }
+    }
+
+    private fun failList(
+        callback: InstallationsCallback,
+        error: MobileMessagingError?,
+        fallbackCode: String,
+        fallbackMessage: String,
+    ) {
+        val code = error?.code?.toString() ?: fallbackCode
+        val message = fallbackMessage
+        val details = error?.let { mapOf("code" to code) }
+        mainHandler.post { callback(null, InstallationFailure(code, message, details)) }
+    }
+
+    private fun executeList(
+        code: String,
+        callback: InstallationsCallback,
+        operation: () -> Unit,
+    ) {
+        try {
+            operation()
+        } catch (_: IllegalArgumentException) {
+            failList(callback, "invalid_argument", "Invalid installation argument")
+        } catch (error: Exception) {
+            failList(callback, code, "Installation operation failed")
         }
     }
 
@@ -116,8 +228,10 @@ internal class InstallationManager(
 }
 
 internal typealias Callback = (Map<String, Any?>?, InstallationFailure?) -> Unit
+internal typealias InstallationsCallback = (List<Map<String, Any?>>?, InstallationFailure?) -> Unit
 
 internal data class InstallationFailure(
     val code: String,
     val message: String,
+    val details: Map<String, Any?>? = null,
 )

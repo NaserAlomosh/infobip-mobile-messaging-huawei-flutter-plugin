@@ -28,6 +28,10 @@ internal class InboxManager(
         mobileMessaging.setJwtSupplier(JwtSupplier { jwt })
     }
 
+    fun clearJwtState() {
+        jwt = null
+    }
+
     fun fetch(
         externalUserIdValue: Any?,
         jwtValue: Any?,

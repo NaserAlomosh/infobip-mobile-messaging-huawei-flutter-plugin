@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.util.Log
 import com.infobip.mobilemessaging.huawei.R
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfiguration
+import com.infobip.mobilemessaging.huawei.webrtc.WebRtcConfigurationState
 import org.infobip.mobile.messaging.MobileMessaging
 import org.infobip.mobile.messaging.NotificationSettings
 import org.infobip.mobile.messaging.mobileapi.InternalSdkError
@@ -14,15 +16,18 @@ internal class MobileMessagingInitializer(
     afterInitialization: () -> Unit = {},
 ) {
     private val application = context.applicationContext as Application
+    private val webRtcState = WebRtcConfigurationState()
 
     private val coordinator =
         InitializationCoordinator(
-            start = { applicationCode, complete ->
+            start = { applicationCode, defaultMessageStorage, webRtcConfiguration, complete ->
                 try {
-                    Log.d(
-                        TAG,
-                        "Starting Infobip initialization. applicationCode length=${applicationCode.length}",
-                    )
+                    val appId = HmsConfiguration.appId(application)
+                    if (appId == null) {
+                        complete(HmsConfiguration.failure())
+                        return@InitializationCoordinator
+                    }
+                    Log.d(TAG, "Starting Infobip initialization")
 
                     val notificationSettings =
                         NotificationSettings
@@ -31,57 +36,63 @@ internal class MobileMessagingInitializer(
                             .withDefaultIcon(R.drawable.ic_notification)
                             .build()
 
-                    MobileMessaging
+                    val builder = MobileMessaging
                         .Builder(application)
                         .withApplicationCode(applicationCode)
-                        .withMessageStore(SQLiteMessageStore::class.java)
+                        .withSenderId(appId)
                         .withFullFeaturedInApps()
                         .withDisplayNotification(notificationSettings)
-                        .build(
-                            object : MobileMessaging.InitListener {
-                                override fun onSuccess() {
-                                    Log.d(CHAT_TAG, "MobileMessaging initialization completed")
-                                    complete(null)
-                                }
 
-                                override fun onError(
-                                    error: InternalSdkError,
-                                    errorCode: Int?,
-                                ) {
-                                    Log.e(
-                                        TAG,
-                                        "Infobip initialization failed. error=$error, errorCode=$errorCode",
-                                    )
+                    if (defaultMessageStorage) {
+                        builder.withMessageStore(SQLiteMessageStore::class.java)
+                    }
 
-                                    complete(
-                                        InitializationError(
-                                            "initialization_failed",
-                                            "Infobip SDK initialization failed: $error",
-                                        ),
-                                    )
-                                }
-                            },
-                        )
-                } catch (e: Exception) {
-                    Log.e(
-                        TAG,
-                        "Exception while initializing Infobip SDK",
-                        e,
+                    builder.build(
+                        object : MobileMessaging.InitListener {
+                            override fun onSuccess() {
+                                Log.d(CHAT_TAG, "MobileMessaging initialization completed")
+                                complete(null)
+                            }
+
+                            override fun onError(
+                                error: InternalSdkError,
+                                errorCode: Int?,
+                            ) {
+                                Log.e(
+                                    TAG,
+                                    "Infobip initialization failed. error=$error, errorCode=$errorCode",
+                                )
+
+                                complete(
+                                    InitializationError(
+                                        "initialization_failed",
+                                        "Infobip SDK initialization failed: $error",
+                                    ),
+                                )
+                            }
+                        },
                     )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Exception while initializing Infobip SDK")
 
                     complete(
                         InitializationError(
                             "native_error",
-                            "Unable to initialize the Infobip SDK: ${e.message}",
+                            "Unable to initialize the Infobip SDK",
                         ),
                     )
                 }
             },
-            afterSuccess = afterInitialization,
+            afterSuccess = { webRtcConfiguration ->
+                webRtcState.capture(webRtcConfiguration)
+                afterInitialization()
+            },
         )
 
     fun initialize(
         applicationCode: String,
+        defaultMessageStorage: Boolean,
+        webRtcConfiguration: WebRtcConfiguration?,
         callback: (InitializationError?) -> Unit,
     ) {
         if (applicationCode.isBlank()) {
@@ -94,11 +105,24 @@ internal class MobileMessagingInitializer(
             return
         }
 
-        coordinator.initialize(applicationCode, callback)
+        coordinator.initialize(
+            applicationCode,
+            defaultMessageStorage,
+            webRtcConfiguration,
+            callback,
+        )
     }
 
     val isInitialized: Boolean
         get() = coordinator.isInitialized
+
+    val webRtcConfiguration: WebRtcConfiguration?
+        get() = webRtcState.current
+
+    fun reset() {
+        coordinator.reset()
+        webRtcState.clear()
+    }
 
     fun registerForRemoteNotifications(callback: (InitializationError?) -> Unit) {
         if (!isInitialized) {
@@ -114,11 +138,11 @@ internal class MobileMessagingInitializer(
             MobileMessaging.getInstance(application).registerForRemoteNotifications()
             callback(null)
         } catch (e: Exception) {
-            Log.e(TAG, "Unable to register for remote notifications", e)
+            Log.e(TAG, "Unable to register for remote notifications")
             callback(
                 InitializationError(
                     "registration_failed",
-                    e.message ?: "Unable to register for remote notifications",
+                    "Unable to register for remote notifications",
                 ),
             )
         }

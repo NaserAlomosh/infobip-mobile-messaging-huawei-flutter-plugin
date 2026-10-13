@@ -3,10 +3,12 @@ import 'dart:async';
 import '../platform/channel_contract.dart';
 import '../platform/infobip_mobilemessaging_huawei_platform.dart';
 import 'notification_events.dart';
-import 'push_message.dart';
+import 'message.dart';
 import 'push_message_codec.dart';
 import '../installation/installation.dart';
 import '../installation/installation_codec.dart';
+import '../user/user.dart';
+import '../user/user_codec.dart';
 
 /// Notification and registration lifecycle events.
 final class InfobipHuaweiNotifications {
@@ -18,10 +20,10 @@ final class InfobipHuaweiNotifications {
   Stream<Object?> get _events =>
       InfobipMobileMessagingHuaweiPlatform.instance.events;
 
-  Stream<PushMessage> get onMessageReceived =>
+  Stream<Message> get onMessageReceived =>
       _typed(ChannelContract.messageReceived, _message);
 
-  Stream<PushMessage> get onNotificationTapped =>
+  Stream<Message> get onNotificationTapped =>
       _typed(ChannelContract.notificationTapped, _message);
 
   Stream<NotificationActionEvent> get onNotificationActionTapped => _typed(
@@ -39,6 +41,29 @@ final class InfobipHuaweiNotifications {
   /// Emits when the native SDK updates the installation.
   Stream<Installation> get onInstallationUpdated =>
       _typed(ChannelContract.installationUpdated, _installation);
+
+  /// Emits the user delivered by the Huawei `USER_UPDATED` broadcast.
+  Stream<User> get onUserUpdated => _typed(ChannelContract.userUpdated, _user);
+
+  /// Emits the user delivered by the Huawei `PERSONALIZED` broadcast.
+  Stream<User> get onPersonalized =>
+      _typed(ChannelContract.personalized, _user);
+
+  /// Emits when the Huawei SDK reports that depersonalization completed.
+  Stream<void> get onDepersonalized => _signal(ChannelContract.depersonalized);
+
+  Stream<void> _signal(String type) => _events.transform(
+    StreamTransformer<Object?, void>.fromHandlers(
+      handleData: (event, sink) {
+        if (event is Map &&
+            event['version'] == ChannelContract.eventVersion &&
+            event['type'] == type &&
+            event['payload'] is Map) {
+          sink.add(null);
+        }
+      },
+    ),
+  );
 
   Stream<T> _typed<T>(
     String type,
@@ -61,7 +86,7 @@ final class InfobipHuaweiNotifications {
     ),
   );
 
-  static PushMessage _message(Map<Object?, Object?> payload) {
+  static Message _message(Map<Object?, Object?> payload) {
     final message = payload['message'];
     if (message is! Map) throw const FormatException('Missing message');
     return PushMessageCodec.decode(message.cast<Object?, Object?>());
@@ -69,4 +94,7 @@ final class InfobipHuaweiNotifications {
 
   static Installation _installation(Map<Object?, Object?> payload) =>
       InstallationCodec.decode(payload[ChannelContract.installation]);
+
+  static User _user(Map<Object?, Object?> payload) =>
+      UserCodec.decode(payload[ChannelContract.user]);
 }

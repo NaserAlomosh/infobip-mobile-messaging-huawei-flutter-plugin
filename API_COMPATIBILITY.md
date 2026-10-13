@@ -4,6 +4,90 @@ This document summarizes the public API coverage of
 `infobip_mobilemessaging_huawei` v1.0.0 against the Infobip Huawei
 Mobile Messaging Android SDK 8.14.0.
 
+## Initial public API for 1.0.0
+
+Version 1.0.0 is the first public release. This package has never been publicly
+released and has no consumers of the unpublished `main` API. The current
+`development` API defines the initial public contract. Differences from earlier
+branches are intentional pre-release evolution, not compatibility requirements.
+The comparisons below describe coverage of the referenced Infobip APIs; they
+do not promise source compatibility with earlier branches or other packages.
+
+Use `personalize(PersonalizeContext(...))`, `UserData`, `Message`,
+`InboxMessage`, and `FilterOptions` in new integrations. User birthdays are
+nullable `YYYY-MM-DD` strings; message timestamps are numeric epoch milliseconds.
+`UserData`, `UserIdentity`, `UserAttributes`, and `Installation` have non-const
+constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
+Historical audit reports excluded from the published package record their
+original verification snapshots, not the current release status.
+
+## Huawei outgoing RTC extension (separate from official parity)
+
+[`HuaweiRtc`](doc/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
+hangup, native call snapshots and typed events via RTC Core 2.5.28. Tokens are acquired
+internally through Huawei MM. `callsConfigurationId` is explicitly separate from the
+WebRTCUI push configuration. This is a Huawei/plugin extension, not an official
+Mobile Messaging Flutter parity method. Audio/video/hangup are code/unit verified;
+device verification is pending. `enableCalls`, `enableChatCalls`, `disableCalls` and
+HMS incoming-call signaling remain unsupported/guarded. See the
+[implementation verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md).
+
+## Default Message Storage
+
+The official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d` declares the following mutable
+static field:
+
+```dart
+static bool defaultMessageStorage = true;
+```
+
+It is a non-nullable Dart initialization option, not a getter/setter pair or a
+runtime native switch. Assigning the field performs no MethodChannel call. The
+official `init` call reads its current value and sends `defaultMessageStorage`
+with the other initialization arguments. On Android, the plugin conditionally
+adds `SQLiteMessageStore.class` to `MobileMessaging.Builder.withMessageStore`.
+It does not rebuild the active SDK merely because the Dart field changes, and
+the setting is not separately persisted by the plugin.
+
+Huawei Mobile Messaging SDK 8.14.0 at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` provides the equivalent builder
+API, `withMessageStore(Class<? extends MessageStore>)`, and bundles
+`org.infobip.mobile.messaging.storage.SQLiteMessageStore` in the core Huawei
+SDK artifact. The builder instantiates the supplied store class. No store is
+installed implicitly when `withMessageStore` is omitted, and there is no API
+for replacing the store after `build()`. SQLite initialization is lazy: the
+store object can be created during SDK construction without opening the
+database until a storage operation occurs.
+
+| Official Flutter | Official Android | Huawei 8.14 | Our plugin | Classification | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `static bool defaultMessageStorage = true` | During `init`, conditionally calls `withMessageStore(SQLiteMessageStore.class)` | `MobileMessaging.Builder.withMessageStore(Class<? extends MessageStore>)` and `SQLiteMessageStore` | Sends the field value with `initialize`; native initialization conditionally configures `SQLiteMessageStore::class.java` | **EXACT** | Selection occurs before `build()` and defaults to enabled. |
+
+The setting is captured by the native initialization attempt. Repeating
+`initialize` with the same application code remains idempotent and does not
+create a second SDK instance or change its store. Changing the Dart field while
+initialized only affects an initialization performed after `cleanup`. It does
+not migrate, expose, or delete already stored messages. Huawei's SDK cleanup
+clears Mobile Messaging state, including messages held by the configured
+store, before this plugin resets its initialization coordinator; a subsequent
+initialization can therefore select a different storage mode.
+
+`markMessagesSeen` remains independent at the plugin boundary. Huawei's
+`setMessagesSeen` updates matching records when a `MessageStore` is configured
+and also queues seen reporting, but this feature does not change that API.
+Default message storage is regular Mobile Messaging notification storage; it
+is not Mobile Inbox storage and does not involve `InboxManager`, Inbox JWTs, or
+`setInboxMessagesSeen`. It also does not control Chat transcripts, runtime
+events, customization, or push presentation. The pinned official Flutter
+commit exposes no general stored-message retrieval API, so this mapping adds
+none.
+
+Known limitation: disabling storage prevents local persistence for newly
+received regular Mobile Messaging messages, but changing the Dart field alone
+cannot reconfigure an already built native SDK. Applications must call
+`cleanup` before initializing with a different selection.
+
 The package is Android-only and targets Huawei Mobile Services (HMS).
 
 ## Status Legend
@@ -23,7 +107,7 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | --- | --- | --- |
 | Initialize with Application Code | **Adapted** | Asynchronous and application-context scoped. |
 | Configure JWT | **Adapted** | `setJwt` sets or clears the in-memory JWT used by supported requests. |
-| SDK shutdown / reset | **Unsupported** | Flutter engine detachment does not reset the native SDK singleton. |
+| Local SDK cleanup | **Supported** | `cleanup()` removes local SDK state after native success; engine detachment alone does not reset the singleton. |
 
 ---
 
@@ -49,6 +133,59 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Installation updates | **Adapted** | Exposes updated `Installation`. |
 | Raw token injection | **Unsupported** | HMS and the Infobip SDK own token acquisition and refresh. |
 | Background Dart isolate callback | **Unsupported** | Native processing remains available, but no Dart background handler is registered. |
+
+### Regular Message Seen Status
+
+The official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d` exposes:
+
+```dart
+static Future<void> markMessagesSeen(List<String> messageIds)
+```
+
+It sends the list directly as the `markMessagesSeen` MethodChannel argument.
+The official native implementations validate the argument and call their core
+Mobile Messaging seen API synchronously; they do not wait for a server
+acknowledgement. An empty list is invalid. This package likewise leaves Dart
+validation to the native handler so invalid calls complete with a
+`PlatformException` rather than throwing an early Dart `ArgumentError`.
+
+Huawei Mobile Messaging SDK 8.14.0, at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`, exposes
+`MobileMessaging.setMessagesSeen(String... messageIds)`. The mapping is
+**MAPPABLE** with equivalent core semantics: the bridge accepts a direct
+`List<String>`, preserves every ID exactly (including ordering, duplicates,
+whitespace, numeric-looking values, and unusual Unicode), and invokes the
+native method once. Malformed arguments, non-string elements, and empty lists
+return `invalid_argument`; use before initialization returns
+`not_initialized`.
+
+`Future<void>` completes after `setMessagesSeen` returns locally. The native
+method has no per-call completion callback, so completion does not confirm that
+the Infobip backend has persisted the status. Huawei stores unreported seen
+IDs, marks matching messages in its configured `MessageStore` as seen, and
+schedules asynchronous reporting. Its internal reporter emits
+`Event.SEEN_REPORTS_SENT` after successful reporting; the pinned official
+Flutter API exposes no corresponding public event, so this package does not
+add one. The SDK must already be initialized, and the plugin does not manually
+change message models or storage.
+
+This regular Mobile Messaging API does not take an `externalUserId`, does not
+use an Inbox JWT, and is not the same operation as `MobileInbox.setSeen` or this
+package's `setInboxMessagesSeen`. In particular, it does not promise that a
+subsequent Mobile Inbox fetch reflects the same state. Huawei's automatic
+`NotificationSettings.markSeenOnTap()` behavior remains independent and is not
+changed by manual marking.
+
+Minimal usage:
+
+```dart
+await InfobipMobileMessagingHuawei.markMessagesSeen(
+  <String>[
+    message.messageId,
+  ],
+);
+```
 
 ---
 
@@ -94,6 +231,67 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 
 ## In-App Chat
 
+### `showChat`
+
+The global Chat presentation API was audited against the official Flutter
+plugin at commit `8b630d0f736d400635317131d549c345349bd54d` and Huawei Mobile
+Messaging SDK 8.14.0 at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`.
+
+The official Flutter API is:
+
+```dart
+static Future<void> showChat({
+  bool shouldBePresentedModallyIOS = true,
+})
+```
+
+Its official Android implementation calls
+`InAppChat.getInstance(activity.getApplication()).inAppChatScreen().show()`.
+Huawei 8.14.0 exposes the same supported screen flow through
+`InAppChat.getInstance(applicationContext).inAppChatScreen().show()`, so the
+mapping is **MAPPABLE**. The public Dart method remains global on
+`InfobipMobileMessagingHuawei`; it does not require a
+`InfobipHuaweiChatController`, create an `InfobipHuaweiChatView`, or use a
+Flutter route. The iOS-only `shouldBePresentedModallyIOS` argument is sent as a
+boolean for public and channel compatibility and has no effect on Huawei
+Android.
+
+Huawei's `show()` uses the application context to launch its SDK-owned
+`InAppChatActivity`; it does not require the current Flutter `Activity` or an
+embedded `InAppChatFragment`. The native activity owns its lifecycle and back
+navigation. Notification entry points remain SDK-owned and are not changed by
+this method.
+
+The plugin requires successful Mobile Messaging initialization and Chat
+activation before presenting the screen. It does not initialize implicitly and
+does not add an `isChatAvailable()` pre-check: widget/backend availability,
+network state, and authenticated-widget behavior remain controlled by the
+native screen. Calls made before initialization return `not_initialized`; a
+failed Chat activation returns `chat_unavailable`; synchronous presentation
+failures return `native_error`. Native widget failures continue through the
+configured `setChatExceptionHandler` behavior rather than a separate
+`showChat` event API.
+
+Global customization installed by `setChatCustomization` calls
+`InAppChat.setTheme` and is therefore used by the SDK-owned screen. The Chat JWT
+provider is also installed on the same `InAppChat` singleton and is requested
+normally by the presented widget. `setWidgetTheme` remains an independent,
+view-scoped controller operation for the embedded `InfobipHuaweiChatView`; it
+is not repurposed as global-screen configuration.
+
+Huawei's native Chat screen owns unread-state changes when a conversation is
+opened. The Flutter bridge neither reads nor manually resets the counter as
+part of `showChat`; counter updates and any reset are emitted by the SDK through
+its existing native behavior.
+
+| Official capability | Huawei 8.14 mapping | Classification | Notes |
+| --- | --- | --- | --- |
+| Global `showChat()` | `InAppChat.inAppChatScreen().show()` | **MAPPABLE** | SDK-owned Android activity and navigation. |
+| `shouldBePresentedModallyIOS` | Ignored | **IOS_ONLY** | Preserved and forwarded only for API parity. |
+| Application context presentation | `InAppChat.getInstance(applicationContext)` | **EXACT** | No attached Flutter activity is required. |
+| Embedded Chat controller/view | Not used | **EXACT** | Global and embedded presentation modes remain independent. |
+
 ### UI
 
 | Capability | Status | Notes |
@@ -112,12 +310,126 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | Unread count updates | **Adapted** | Exposed as a Flutter stream. |
 | Send text message | **Adapted** | Requires an attached Chat view. |
 | Send contextual data | **Adapted** | Requires an attached Chat view. |
+| Set draft message | **NOT_AVAILABLE** | Dart API retained; Huawei 8.14 has no composer draft setter. Returns `not_available`. |
 | Language | **Adapted** | View-scoped native widget configuration. |
 | Widget theme | **Adapted** | View-scoped native widget configuration. |
-| Programmatic attachments | **Intentionally omitted** | Android URI ownership and permission semantics are not part of v1. |
+| Chat exception handler | **MAPPABLE** | Uses Huawei screen/fragment error handlers; passing null restores default presentation. |
+| Programmatic attachments | **Unsupported** | The pinned official Flutter API has no public programmatic attachment contract to reproduce. Huawei 8.14.0 exposes attachment handling only through its native Chat component contract; the plugin does not invent a Dart file/URI model. |
 | Thread APIs | **Intentionally omitted** | Stable thread models are not exposed in v1. |
-| Raw Chat messages | **Intentionally omitted** | v1 does not expose raw component messages. |
-| Additional Chat runtime events | **Intentionally omitted** | Only stable v1 Chat events are exposed. |
+| Raw Chat messages | **Supported** | Exposed unchanged through a typed, view-scoped runtime event. |
+| Official Chat runtime events | **Adapted** | The official public event contract is exposed through typed, view-scoped events; connection callbacks share the existing connection-state event. |
+
+### Contextual Data Audit
+
+The public behavior was compared with the official Flutter plugin at commit
+`8b630d0f736d400635317131d549c345349bd54d`. Its public API defines
+`ChatMultithreadStrategies` with `ACTIVE`, `ALL`, and `ALL_PLUS_NEW`, keeps the
+boolean `sendContextualData` API deprecated, and defaults
+`sendContextualDataWithStrategy` to `ACTIVE`. Its Android implementation maps
+the public strategy to the Android Chat SDK multithread strategy. The iOS
+implementation is relevant to cross-platform parity, but this package remains
+Android/Huawei-only.
+
+Huawei Mobile Messaging SDK 8.14.0 source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` exposes
+`InAppChatFragment.sendContextualData(String, MultithreadStrategy)` and all
+three `MultithreadStrategy` values used below.
+
+| Official Flutter strategy | Huawei 8.14 native strategy | Classification | Semantics and requirements |
+| --- | --- | --- | --- |
+| `ACTIVE` | `MultithreadStrategy.ACTIVE` | **EXACT** | Applies to the active conversation. This is the default and the behavior of the package's pre-existing `sendContextualData(String)` API. |
+| `ALL` | `MultithreadStrategy.ALL` | **EXACT** | Applies to all existing conversations. It has multithread significance only when the configured widget is multithread. |
+| `ALL_PLUS_NEW` | `MultithreadStrategy.ALL_PLUS_NEW` | **EXACT** | Applies to all existing conversations and conversations created later. It has multithread significance only when the configured widget is multithread. |
+
+The operation remains view-scoped: a controller must be attached to a live
+`InAppChatFragment`. The plugin does not retain a global Fragment or force the
+widget into multithread mode. In single-thread mode, behavior remains entirely
+SDK-defined. Contextual data is opaque and forwarded byte-for-byte as a Dart
+`String`; empty or whitespace-only values continue to be rejected before the
+native call, preserving the package's existing contract.
+
+`sendContextualData(String)` delegates to `ACTIVE`.
+`sendContextualDataWithStrategy` accepts the explicit strategy. The initial
+public API does not expose the official deprecated
+`sendContextualData(String, bool)` signature.
+
+### Chat Draft Messages
+
+The public `InfobipHuaweiChatController.setChatDraftMessage(String)` contract
+is retained, including empty-string input. Huawei 8.14.0 at commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824` has no composer setter or equivalent
+clear operation on `InAppChatFragment`, `InAppChatView`, or `LivechatWidgetApi`.
+Classification: **NOT_AVAILABLE**. On an attached native view, valid calls
+return `PlatformException(code: "not_available")`; invalid channel arguments
+still return `invalid_argument`, and unavailable views return `chat_unavailable`.
+
+Huawei's `send(MessagePayload.Draft(...))` sends a draft payload to the widget;
+it is also used internally to report native input changes. It rejects blank
+messages and does not set/clear the native composer. It is not an equivalent
+implementation of this Dart API. No reflection or duplicate draft state is used.
+
+### Chat Attachments
+
+**Feature classification: PARTIALLY_SUPPORTED.** Attachment sending is
+available from the embedded Huawei native composer. There is no semantically
+equivalent public programmatic attachment API to add to Dart at the pinned
+official Flutter revision, so this audit does not add a controller method,
+attachment model, channel command, or custom upload implementation.
+
+The official Flutter plugin was inspected at commit
+`8b630d0f736d400635317131d549c345349bd54d`. Its public Chat surface contains
+text sending through `sendChatMessage(String)`, but it does not export
+`sendAttachment`, `sendChatAttachment`, `ChatAttachment`, or another public
+file/URI attachment input. Its Android and iOS Chat presentation integrations
+leave attachment selection and sending to their respective native Chat UI.
+Consequently there are no official public attachment constructor fields,
+enums, serialization rules, completion result, progress callback, or
+deprecated attachment methods to reproduce.
+
+Huawei Mobile Messaging SDK 8.14.0 was inspected at source commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`. The Chat module contains
+`InAppChatAttachment` and `AttachmentSource`, and `InAppChatFragment` owns the
+native input and its attachment workflow. The component also accepts
+`MessagePayload` through `send(MessagePayload)`, but the pinned sources do not
+establish an official-Flutter-compatible public file/URI contract. These native
+types are therefore not exposed over the MethodChannel and are not projected
+into a fabricated Dart model.
+
+| Official API / field | Huawei 8.14 API | Classification | Notes |
+| --- | --- | --- | --- |
+| Native Chat composer attachment action | `InAppChatFragment` native input using `InAppChatAttachment` / `AttachmentSource` | **MAPPABLE** | Already available in `InfobipHuaweiChatView` when `withInput` is enabled; selection, upload, and native result handling remain SDK-owned. |
+| Public programmatic attachment method | No official public Flutter method | **NOT_AVAILABLE** | No Dart controller method or channel command is added. |
+| Public attachment model | No official public Flutter model | **NOT_AVAILABLE** | Native attachment objects are not serialized as untyped maps. |
+| File path or URI argument | No official public Flutter argument | **NOT_AVAILABLE** | The bridge does not convert paths to URIs, resolve `content://` values, read bytes, or retain URI grants. |
+| MIME type argument | No official public Flutter argument | **NOT_AVAILABLE** | MIME detection and validation remain inside the native composer/SDK workflow. |
+| File-name argument | No official public Flutter argument | **NOT_AVAILABLE** | The plugin neither supplies nor fabricates a file name. |
+| Upload progress | No official public Flutter callback | **NOT_AVAILABLE** | No progress event is exposed or simulated. |
+| Programmatic send completion | No official public Flutter result | **NOT_AVAILABLE** | Native composer feedback remains native; the plugin makes no delivery or upload-completion guarantee. |
+| Android native composer | Huawei Chat component | **ANDROID_ONLY** | This package supports Huawei Android only. |
+| Official iOS native composer | Infobip iOS Chat UI | **IOS_ONLY** | Reviewed for parity awareness; no iOS implementation is included in this package. |
+
+The native composer determines which configured attachment sources and media
+types are offered. The audited public surfaces do not provide a portable,
+exhaustive file-type list, and the plugin therefore does not claim support for
+images, video, audio, PDF, generic documents, or arbitrary files individually.
+No plugin-specific file-size limit is imposed; backend and SDK validation still
+apply, and this document does not infer a limit that is not public in the
+audited contract.
+
+Attachment destination follows the native composer. In single-thread mode it
+uses that conversation; in multithread mode it uses the conversation whose
+composer is currently active. The plugin does not add a `threadId`, change the
+active thread, or preserve an attachment across thread changes. On the thread
+list there is no active conversation composer.
+
+The operation remains bound to the existing `InAppChatFragment` and Android
+view lifecycle. Disposal removes the fragment and its channel handler; the
+plugin retains no `Activity`, `Context`, `Fragment`, `Uri`, path, MIME value, or
+attachment metadata for later use. Native picker permission requests and URI
+access remain owned by Huawei Chat and Android. The plugin adds no broad storage
+permission, `FileProvider`, Storage Access Framework bridge, or persistable URI
+grant. Applications should validate the native picker behavior on their
+supported Android versions and devices.
 
 ---
 
@@ -125,20 +437,16 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 
 ### Notifications
 
-`PushMessage`
-
-Contains:
-
-- message ID
-- title
-- body
-- custom payload
-- deep link
-- silent-message status
+`Message` mirrors the official shared notification model. Huawei-backed values
+include message presentation, timestamps, seen state, URL actions, custom
+payload, internal data, and Chat state. `originalPayload` remains nullable
+because Huawei 8.14.0 cannot provide the iOS-specific value.
+`PushMessage` is a deprecated typedef for `Message`. This name does not imply
+source compatibility with unpublished model contracts.
 
 ### User
 
-- `User`
+- `UserData` (`User` remains a deprecated alias)
 - `UserIdentity`
 - `UserAttributes`
 
@@ -158,21 +466,52 @@ Only fields explicitly supported for modification by the plugin can be updated.
 ### Inbox
 
 - `Inbox`
-- `InboxMessage`
-- `InboxFilterOptions`
+- `InboxMessage extends Message` (a concrete class, not an alias)
+- `FilterOptions` (`InboxFilterOptions` remains a deprecated alias)
 
 Supports server counters, Inbox messages, time filters, topic filters, and result
 limits.
+
+`Inbox.messages` is `List<InboxMessage>`. Each `InboxMessage` requires non-null
+`messageId`, `topic`, and `seen`, inherits the shared message fields, and adds
+numeric `sentTimestamp`. Its constructor uses `deeplink` and `silent`; it does
+not accept `deepLink` or `isSilent`. `customPayload` is nullable.
 
 ### Chat
 
 - `InfobipHuaweiChatMessagePayload`
 - `InfobipHuaweiChatError`
+- `ChatException`
 
 `InfobipHuaweiChatMessagePayload` represents outbound text messages.
 
 `InfobipHuaweiChatError` represents typed Chat view lifecycle and availability
 errors.
+
+`ChatException` retains the official Flutter nullable `message` and `name`
+fields. Both are supplied by Huawei `InAppChatException` without fabrication.
+
+### Chat exception mapping audit
+
+At Huawei commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`, `InAppChat`
+has no `setExceptionHandler`. The exact alternatives are
+`InAppChat.inAppChatScreen().errorHandler: InAppChatErrorsHandler?` and
+`InAppChatFragment.errorsHandler: InAppChatFragment.ErrorsHandler`.
+Both call `handleError(InAppChatException): Boolean`; true marks the error as
+handled, while false allows Huawei's default error presentation.
+
+| Official Flutter API / field | Huawei 8.14.0 capability | Classification |
+| --- | --- | --- |
+| `setChatExceptionHandler(handler, onError)` | Screen `errorHandler` and fragment `errorsHandler` | **MAPPABLE** |
+| Replace/remove the handler | Stable bridge reads the current Dart emitter; absent emitter returns false | **MAPPABLE** |
+| `ChatException.message` / `name` | `InAppChatException.message` / `name` | **EXACT** |
+
+The bridge is installed during activation and before fullscreen presentation,
+and on each embedded fragment. Existing screens and fragments reference the
+same bridge, so replacement/removal takes effect without recreating the view.
+Cleanup clears the emitter and screen handler. Invalid `enabled` values return
+`invalid_argument`; native registration failures return `native_error`.
+No reflection or synthetic exception callbacks are used.
 
 ---
 
@@ -213,3 +552,301 @@ In-App Chat requires:
 
 Chat is exposed primarily as a native UI integration rather than a headless
 conversation API.
+## Model Parity
+
+The reference audit is pinned to official Flutter commit
+`8b630d0f736d400635317131d549c345349bd54d` and Huawei SDK 8.14.0
+(reference revision `83786a498f165386041bf75e71488f1635f8af94`).
+
+`Message.receivedTimestamp` and `Message.seenDate` are numeric milliseconds
+since the Unix epoch. `UserData.birthday` and `UserAttributes.birthday` are
+nullable `YYYY-MM-DD` strings. Huawei converts those strings to and from its
+native `Date` representation without exposing `DateTime` in Dart.
+
+`PushServiceType.APNS` is retained for official model parity but cannot be returned by the Huawei Android SDK. `PushServiceType.HMS` represents the Huawei transport and is never remapped to Firebase.
+
+| Model | Field | Official Flutter type | Huawei native type/source | Initial 1.0.0 plugin type | Status |
+| --- | --- | --- | --- | --- | --- |
+| `Message` | `messageId` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `title` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `body` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `sound` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `icon` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `category` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `internalData` | `String?` | `Message.getInternalData()` | `String?` | **EXACT** |
+| `Message` | `contentUrl` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `browserUrl` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `deeplink` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `webViewUrl` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `inAppOpenTitle` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `inAppDismissTitle` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `vibrate` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `silent` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `seen` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `chat` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `customPayload` | `Map<String, dynamic>?` | `Message.customPayload (JSONObject)` | `Map<String, dynamic>?` | **CONVERTED** |
+| `Message` | `originalPayload` | `Map<String, dynamic>?` | `Not available on Huawei Android` | `Map<String, dynamic>?` | **NULL_ON_HUAWEI** |
+| `Message` | `receivedTimestamp` | `num?` | `MessageJson numeric epoch milliseconds` | `num?` | **CONVERTED** |
+| `Message` | `seenDate` | `num?` | `MessageJson numeric epoch milliseconds` | `num?` | **CONVERTED** |
+| `Message` | `topic` | `String?` | `InboxMessage.topic` | `String?` | **HUAWEI_EXTENSION** |
+| `Installation` | `installationId` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `pushRegistrationId` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `pushServiceToken` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `sdkVersion` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `appVersion` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `os` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `osVersion` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceManufacturer` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceModel` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `language` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceTimezoneOffset` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `applicationUserId` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceName` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `pushServiceType` | `PushServiceType?` | `PushServiceType (HMS on Huawei)` | `PushServiceType? (GCM, Firebase, APNS, HMS)` | **CONVERTED** |
+| `Installation` | `isPrimaryDevice` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `isPushRegistrationEnabled` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `notificationsEnabled` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `deviceSecure` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `customAttributes` | `Map<String, dynamic>?` | `Installation.customAttributes` | `Map<String, dynamic>?` | **CONVERTED** |
+| `UserData` | `externalUserId` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `firstName` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `lastName` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `middleName` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `birthday` | `String?` | `Date? formatted by UserJson as yyyy-MM-dd` | `String? mutable` | **CONVERTED** |
+| `UserData` | `gender` | `Gender?` | `UserAttributes.Gender` | `Gender? (Male, Female)` | **CONVERTED** |
+| `UserData` | `type` | `Type?` | `User.Type` | `Type? (LEAD, CUSTOMER)` | **CONVERTED** |
+| `UserData` | `phones` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | **EXACT** |
+| `UserData` | `emails` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | **EXACT** |
+| `UserData` | `tags` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | **EXACT** |
+| `UserData` | `customAttributes` | `Map<String, dynamic>?` | `Map<String, CustomAttributeValue>?` | `Map<String, dynamic>?` | **CONVERTED** |
+| `UserData` | `installations` | `List<Installation>?` | `List<Installation>?` | `List<Installation>?` | **EXACT** |
+| `UserIdentity` | `externalUserId` | `String?` | `UserIdentity.externalUserId` | `String? mutable` | **CONVERTED** |
+| `UserIdentity` | `phones` | `List<String>?` | `Set<String>?` | `List<String>? mutable` | **CONVERTED** |
+| `UserIdentity` | `emails` | `List<String>?` | `Set<String>?` | `List<String>? mutable` | **CONVERTED** |
+| `UserAttributes` | `firstName` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `lastName` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `middleName` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `birthday` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `gender` | `Gender?` | `UserAttributes.Gender` | `Gender? mutable (Male, Female)` | **CONVERTED** |
+| `UserAttributes` | `tags` | `List<String>?` | `Set<String>?` | `List<String>? mutable` | **CONVERTED** |
+| `UserAttributes` | `customAttributes` | `Map<String, dynamic>?` | `Map<String, CustomAttributeValue>?` | `Map<String, dynamic>? mutable` | **CONVERTED** |
+| `PersonalizeContext` | `forceDepersonalize` | `bool` | `PersonalizeContext.forceDepersonalize` | `bool` | **EXACT** |
+| `PersonalizeContext` | `userIdentity` | `UserIdentity` | `UserIdentity` | `UserIdentity` | **EXACT** |
+| `PersonalizeContext` | `userAttributes` | `UserAttributes?` | `UserAttributes?` | `UserAttributes?` | **EXACT** |
+| `Inbox` | `countTotal` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `countUnread` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `countTotalFiltered` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `countUnreadFiltered` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `messages` | `List<Message>` | `List<InboxMessage> mapped to Message JSON` | `List<InboxMessage>` | **HUAWEI_EXTENSION** |
+| `FilterOptions` | `fromDateTime` | `DateTime?` | `MobileInboxFilterOptions Date?` | `DateTime?` | **EXACT** |
+| `FilterOptions` | `toDateTime` | `DateTime?` | `MobileInboxFilterOptions Date?` | `DateTime?` | **EXACT** |
+| `FilterOptions` | `topic` | `String?` | `MobileInboxFilterOptions topic` | `String?` | **EXACT** |
+| `FilterOptions` | `limit` | `int?` | `MobileInboxFilterOptions limit` | `int?` | **EXACT** |
+| `FilterOptions` | `topics` | `Not in official API` | `Huawei list-topic constructor` | `List<String>?` | **HUAWEI_EXTENSION** |
+
+### Deprecated names in the initial API
+
+The existing typedefs are `PushMessage = Message`, `User = UserData`, and
+`InboxFilterOptions = FilterOptions`. `InboxMessage` is not a typedef.
+`Message` exposes deprecated `deepLink` and `isSilent` getters, and its
+constructor accepts those alternate names. `Installation` exposes deprecated
+`pushRegistrationEnabled`, `applicationVersion`, `operatingSystem`,
+`operatingSystemVersion`, `deviceTimezoneId`, and `appUserId` names.
+`FilterOptions` exposes deprecated `from` and `to` getters and constructor names.
+Enum alternate names and the `personalizeUser` helper also remain in the
+current implementation. These existing names are not a guarantee that
+unpublished callers compile unchanged. New integrations should use the canonical
+names documented above; no additional compatibility layer is required for 1.0.0.
+
+## Chat Customization
+
+**Official reference:** `infobip/mobile-messaging-flutter-plugin` commit `8b630d0f736d400635317131d549c345349bd54d`
+**Huawei source:** `infobip/mobile-messaging-sdk-huawei` commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`
+**Classification:** **MAPPABLE**
+
+`InfobipMobileMessagingHuawei.setChatCustomization(ChatCustomization)` is a global API. It serializes the official-compatible Dart model and maps Huawei's `PluginChatCustomization` through `createTheme(...)` to `InAppChat.setTheme(...)`. It does not require a Chat view or controller. This is separate from the view-scoped Livechat `setWidgetTheme` and `getWidgetTheme` APIs.
+
+| Official field / API | Huawei 8.14 | Classification | Notes |
+| --- | --- | --- | --- |
+| `setChatCustomization` | `InAppChat.setTheme` | MAPPABLE | The native parser creates `InAppChatTheme`. |
+| `ToolbarCustomization` | `PluginChatToolbarCustomization` | EXACT | Includes Android subtitle fields. |
+| Status bar fields | Same fields | EXACT | Color strings remain native Android color strings. |
+| `chatToolbar` | Same field | EXACT | Nested JSON object. |
+| `attachmentPreviewToolbar` and menu item fields | Same fields | EXACT | Drawable paths use the Flutter-aware loader. |
+| Network error fields | Same fields | EXACT | Icon and icon tint are Android-only. |
+| Banner error fields | Same fields | EXACT | Text appearance is Android-only. |
+| Full-screen error fields | Same fields | EXACT | Includes title, description, icon, background, and refresh button. |
+| Chat background and progress fields | Same fields | EXACT | Forwarded without color conversion. |
+| Chat input fields | Same fields | EXACT | Includes attachment/send icons, backgrounds, separator, cursor, and counter. |
+| `shouldHandleKeyboardAppearance` | None | IOS_ONLY | Retained for public model parity and ignored by Huawei Android. |
+
+Drawable-valued strings may identify Flutter assets. Android resolves their Flutter asset lookup keys through the embedding's `FlutterAssets` API and safely returns `null` when an optional asset cannot be loaded. Other drawable, mipmap, raw, style, and text-appearance strings remain resource names interpreted by Huawei; Dart does not trim or reinterpret them. Color strings are also forwarded unchanged for Android parsing.
+
+The public API does not expose reset or `null` customization because the referenced Flutter API does not. `InAppChat.setTheme` is global and can be called before creating a Chat view. Huawei source does not guarantee that an already visible fragment redraws immediately; apply customization before showing Chat, or recreate the Chat UI when changing it at runtime.
+
+## Chat Push Notification Title / Body
+
+**Official reference:** `infobip/mobile-messaging-flutter-plugin` commit `8b630d0f736d400635317131d549c345349bd54d`
+
+**Huawei source:** `infobip/mobile-messaging-sdk-huawei` commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`
+
+**Classification:** **EXACT**, **ANDROID_ONLY**
+
+The official global APIs are
+`static Future<void> setChatPushTitle(String? title)` and
+`static Future<void> setChatPushBody(String? body)`. The official Android
+channel handlers pass each nullable string directly to the corresponding
+`InAppChat` setter; there is no iOS implementation. This plugin uses the same
+method names and direct nullable-string channel argument shape.
+
+| Official Flutter API | Huawei 8.14 native API | Classification |
+| --- | --- | --- |
+| `setChatPushTitle(String?)` | `InAppChat.setChatPushTitle(String?)` | EXACT, ANDROID_ONLY |
+| `setChatPushBody(String?)` | `InAppChat.setChatPushBody(String?)` | EXACT, ANDROID_ONLY |
+
+Both native setters store global Chat notification configuration. Huawei's
+nullable contract removes the stored override when `null` is supplied. Empty
+strings remain distinct from `null`, and the Flutter and Android bridges do not
+trim or otherwise transform either value. Huawei uses the configured strings
+as Chat notification title and body overrides; they are not Android resource
+keys. These APIs do not rewrite notification payloads and do not configure
+regular Mobile Messaging notifications.
+
+The setters only require an attached plugin context so that the global
+`InAppChat` instance can be obtained. They do not call Mobile Messaging
+initialization, Chat activation, `ChatManager.attach()`, `showChat()`, or
+`InAppChatScreen.show()`. They can therefore be configured before Chat is
+activated or presented. They do not create, require, or update an embedded
+`InfobipHuaweiChatView` or `InfobipHuaweiChatController`; an already displayed
+Chat UI is outside their scope. Changes apply when Huawei builds subsequent
+Chat notifications. The source does not establish retroactive effects for
+notifications that Android has already displayed.
+
+Known limitation: this is an Android-only capability, matching the official
+Flutter plugin. Native default and fallback content remains owned by Huawei SDK
+8.14.0 when an override is absent.
+
+## Chat Runtime Events
+
+The runtime-event contract was audited against the official Flutter plugin at
+commit `8b630d0f736d400635317131d549c345349bd54d` and Huawei SDK 8.14.0 at commit
+`5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`. Events remain scoped to one
+embedded view and use the existing buffered `chatOnRuntimeEvent` channel path.
+
+| Official Flutter event | Huawei 8.14 callback | Our public event | Classification | Notes |
+| --- | --- | --- | --- | --- |
+| `chatLoaded` | `onChatLoadingFinished(result)` | `InfobipHuaweiChatLoadedEvent(success)` | **EXACT** | Emitted for success and failure; the boolean is `result.isSuccess()`. Loading failure also retains the existing error callback. The initial public constructor requires the named `success` argument. |
+| `chatDisconnected` | `onChatConnectionPaused(result)` | `InfobipHuaweiChatConnectionChangedEvent(disconnected)` | **MAPPABLE** | Existing typed connection abstraction is retained and is emitted on successful callback results. |
+| `chatReconnected` | `onChatConnectionResumed(result)` | `InfobipHuaweiChatConnectionChangedEvent(connected)` | **MAPPABLE** | Existing typed connection abstraction is retained and is emitted on successful callback results. |
+| `exitChatPressed` | `onExitChatPressed()` | `InfobipHuaweiChatExitPressedEvent` | **EXACT** | Observational only; Flutter navigation is not changed. |
+| `chatWidgetThemeChanged` | `onChatWidgetThemeChanged(result)` | `InfobipHuaweiChatWidgetThemeChangedEvent(theme)` | **EXACT** | Emitted only when the result supplies a non-null theme. |
+| `chatWidgetInfoUpdated` | `onChatWidgetInfoUpdated(widgetInfo)` | `InfobipHuaweiChatWidgetInfoUpdatedEvent(widgetInfo)` | **EXACT** | All official widget and attachment configuration fields are mapped directly. |
+| `chatViewChanged` | `onChatViewChanged(view)` | `InfobipHuaweiChatViewChangedEvent` | **MAPPABLE** | Known `LivechatWidgetView` values are typed and the raw value has an unknown fallback. |
+| `attachmentPreviewOpened` | `onChatAttachmentPreviewOpened(url, type, caption)` | `InfobipHuaweiChatAttachmentPreviewOpenedEvent(attachment)` | **EXACT** | Nullable values are retained and the callback returns `false`, leaving preview handling native. |
+| `chatRawMessageReceived` | `onChatRawMessageReceived(rawMessage)` | `InfobipHuaweiChatRawMessageReceivedEvent(rawMessage)` | **EXACT** | The opaque string is forwarded unchanged and is not JSON-decoded. |
+
+The following callbacks exist in Huawei 8.14 but are not part of the official
+Flutter public `ChatViewEvent` contract at the reference commit. They are
+therefore `HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE` and are intentionally not
+exposed as Dart runtime events.
+
+| Huawei callback | Official Flutter public equivalent | Status |
+| --- | --- | --- |
+| `onChatSent` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatContextualDataSent` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadCreated` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadsReceived` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatActiveThreadReceived` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadShown` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatThreadListShown` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatLanguageChanged` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatControlsVisibilityChanged` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE** |
+| `onChatUrlInteracted` | None | **HUAWEI_NATIVE_ONLY_FOR_THIS_REFERENCE**; returns `false` and remains unexposed. |
+
+## Huawei 8.14 baseline compile audit
+
+Authority: Huawei SDK commit `5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824`.
+The root `build.gradle` pins `infobip-mobile-messaging-api-java` to **15.1.0**;
+its source JAR supplies the shared widget models. This is the Huawei SDK's
+existing dependency, not the standard Android Mobile Messaging SDK.
+
+| Capability | Classification | Native mapping |
+| --- | --- | --- |
+| Chat exception handler | **MAPPABLE** | Exact screen/fragment error-handler APIs; native exception `message` and `name` are preserved. |
+| WidgetInfo type/package | **RENAMED** | `org.infobip.mobile.messaging.api.chat.WidgetInfo`. |
+| WidgetInfo fields | **EXACT** | All requested fields exist; Java Boolean getters use Kotlin `is…` properties. Nullable strings/configuration remain null. |
+| Attachment extensions | **MAPPABLE** | Native `Set<String>` becomes a channel-compatible list; null remains null. |
+| `LivechatWidgetResult.isSuccess` | **EXACT** | Kotlin Boolean property, not a method. |
+| Composer draft setter | **NOT_AVAILABLE** | Explicit `not_available`; sending a draft payload is not a composer setter. |
+| CustomEvent `eventId` | **NOT_AVAILABLE** | Native output includes null; Dart field retained. |
+| CustomEvent `createdAt` | **NOT_AVAILABLE** | Native output includes null; Dart field retained. |
+| CustomEvent properties | **MAPPABLE** | Typed `Map<String, CustomAttributeValue>` for strings, numbers, Booleans and tagged dates. |
+
+`EventPropertiesMapper` supports `Type.Date` but does not serialize `DateTime`
+or `CustomList` event properties. Lists, nested objects, null values and malformed
+date tags are rejected with `invalid_argument`. Missing properties become an
+empty map. Tagged dates use UTC ISO strings stored as `Type.Date`, which the
+pinned `dateValue()` reader accepts, avoiding the Date constructor's local-time
+formatting. Huawei's date serialization has second precision; fractional seconds
+are truncated. Tests cover typed values, channel output, backend serialization
+and a non-UTC default timezone. No unavailable event metadata is invented.
+
+Source files inspected in the pinned Huawei repository (paths relative to repo):
+
+- `build.gradle`
+- `infobip-mobile-messaging-huawei-chat-sdk/build.gradle`
+- `infobip-mobile-messaging-huawei-sdk/build.gradle`
+- Under `infobip-mobile-messaging-huawei-chat-sdk/src/main/java/org/infobip/mobile/messaging/chat/`:
+  `InAppChat.java`, `InAppChatImpl.java`, `InAppChatScreen.kt`,
+  `view/InAppChatActivity.kt`, `view/InAppChatFragment.kt`, `view/InAppChatEventsListener.kt`,
+  `view/InAppChatErrorsHandler.kt`,
+  `view/InAppChatView.kt`, `core/InAppChatException.kt`,
+  `core/widget/LivechatWidgetApi.kt`, `core/widget/LivechatWidgetResult.kt`,
+  `core/widget/LivechatWidgetClientImpl.kt`, `models/MessagePayload.kt`.
+- Under `infobip-mobile-messaging-huawei-sdk/src/main/java/org/infobip/mobile/messaging/`:
+  `CustomEvent.java`, `CustomAttributeValue.java`, `ListCustomAttributeValue.java`,
+  `EventPropertiesHolder.java`, `EventPropertiesMapper.java`, `util/DateTimeUtil.java`.
+- In the pinned Java API 15.1.0 source JAR:
+  `org/infobip/mobile/messaging/api/chat/WidgetInfo.java` and
+  `org/infobip/mobile/messaging/api/chat/WidgetAttachmentConfig.java`.
+
+Validation on JDK 17.0.19 / Flutter 3.35.7 / Dart 3.9.2:
+
+- `flutter pub get`: PASS.
+- `dart format --set-exit-if-changed .`: PASS, 61 files, zero changes.
+- `flutter analyze`: no errors or warnings; 22 info-level deprecation notices.
+- `flutter test`: PASS, 170 tests.
+- `./gradlew :app:assembleDebug`: PASS with WebRTC disabled (default).
+- `./gradlew :infobip_mobilemessaging_huawei:testDebugUnitTest`: blocked at
+  `InitializationCoordinatorTest.kt`, whose existing trailing lambdas bind to
+  `afterSuccess` instead of the required `start` constructor parameter.
+- With only that test source excluded using an external temporary Gradle init
+  script: 117 tests run, 115 pass. Existing failures are `MessageMapperTest`
+  (Android `JSONObject.put` is not mocked) and `UserMapperTest`
+  (expected 12:00Z, actual 15:00Z under the local timezone).
+- With the same external exclusion and test filters for
+  `com.infobip.mobilemessaging.huawei.chat.*` and
+  `com.infobip.mobilemessaging.huawei.event.CustomEventMapperTest`: all 60 pass.
+  This includes the new exception bridge and widget/property conversion tests.
+
+No test exclusions, Gradle changes, standard Android Mobile Messaging SDK,
+WebRTC implementation/configuration changes, or unrelated test fixes are part
+of this change. No application/plugin compile errors remain in the baseline
+build; the full native test-suite limitation above remains separate.
+
+## Current outgoing RTC and screen-sharing extension
+
+The historical official-API audits above do not define the later outgoing RTC
+extension. The current exported `HuaweiRtc`, `HuaweiRtcCallRequest`,
+`HuaweiRtcVideoView`, `HuaweiRtcControls` and `HuaweiRtcScreenAsCamera` support
+outgoing audio/video application calls, local/remote camera rendering, current-call
+controls, call notification return and Android 10+ screen sharing through camera
+substitution. No incoming HMS signaling or separate screen-sharing track is added.
+See the [current README](README.md) and [screen-sharing guide](doc/screen-sharing.md).
+
+Chat initialization includes retryable activation (one-second cooldown); JWT
+provider requests have 25-second Dart and 30-second native deadlines, each with
+32-request limits. Cleanup preserves Dart Chat registrations on native rejection;
+success clears them. Vendor-internal cleanup is not guaranteed to roll back.
+See [reliability evidence](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-chat-api-reliability.md) and
+[security guidance](SECURITY.md) for the unresolved upstream logging issue.

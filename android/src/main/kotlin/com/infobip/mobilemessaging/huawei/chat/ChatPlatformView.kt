@@ -2,6 +2,8 @@ package com.infobip.mobilemessaging.huawei.chat
 
 import android.app.Activity
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
@@ -13,21 +15,28 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
-import org.infobip.mobile.messaging.chat.core.MultithreadStrategy
+import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetResult
 import org.infobip.mobile.messaging.chat.core.widget.LivechatWidgetView
-import org.infobip.mobile.messaging.chat.view.InAppChatFragment
+import org.infobip.mobile.messaging.api.chat.WidgetInfo
 import org.infobip.mobile.messaging.chat.view.DefaultInAppChatFragmentEventsListener
+import org.infobip.mobile.messaging.chat.view.InAppChatFragment
 
 internal class ChatPlatformView(
     context: Context,
     viewId: Int,
     messenger: BinaryMessenger,
     activity: Activity?,
-    chatManager: ChatManager,
+    private val chatManager: ChatManager,
     private val options: ChatViewOptions,
 ) : PlatformView, MethodChannel.MethodCallHandler {
     private val channel = MethodChannel(messenger, ChannelContract.CHAT_VIEW_CHANNEL + viewId)
     private val pendingError = PendingChatViewError()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val runtimeEvents = ChatRuntimeEventBridge { event ->
+        mainHandler.post {
+            if (!disposed) channel.invokeMethod(ChannelContract.CHAT_ON_RUNTIME_EVENT, event)
+        }
+    }
     private var fragmentActivity: FragmentActivity? = activity as? FragmentActivity
     private var fragment: InAppChatFragment? = null
     private var currentWidgetView: LivechatWidgetView? = null
@@ -75,20 +84,69 @@ internal class ChatPlatformView(
         try {
             Log.d(TAG, "InAppChatFragment creation started")
             val created = InAppChatFragment().apply {
+                errorsHandler = chatManager.exceptionBridge
                 withInput = options.withInput
                 withToolbar = options.withToolbar
                 eventsListener = object : DefaultInAppChatFragmentEventsListener() {
                     override fun onChatViewChanged(view: LivechatWidgetView) {
                         if (!disposed && fragment === this@apply) {
                             currentWidgetView = view
+                            publishRuntimeEvent(ChannelContract.CHAT_VIEW_CHANGED, view.name)
                         }
+                    }
+                    override fun onChatLoadingFinished(result: LivechatWidgetResult<Unit>) {
+                        publishRuntimeEvent(
+                            ChannelContract.CHAT_LOADED,
+                            result.isSuccess,
+                        )
+                        if (!result.isSuccess) {
+                            reportError(ChatViewError("chat_runtime_error", "Chat loading failed"))
+                        }
+                    }
+                    override fun onChatConnectionResumed(result: LivechatWidgetResult<Unit>) {
+                        publishRuntimeResult(
+                            result,
+                            ChannelContract.CHAT_CONNECTION_CHANGED,
+                            value = "CONNECTED",
+                            failureMessage = "Chat connection could not be resumed",
+                        )
+                    }
+                    override fun onChatConnectionPaused(result: LivechatWidgetResult<Unit>) {
+                        publishRuntimeResult(
+                            result,
+                            ChannelContract.CHAT_CONNECTION_CHANGED,
+                            value = "DISCONNECTED",
+                            failureMessage = "Chat connection could not be paused",
+                        )
                     }
                     override fun onChatAttachmentPreviewOpened(
                         url: String?,
                         type: String?,
                         caption: String?,
-                    ): Boolean = false
-                    override fun onExitChatPressed() = Unit
+                    ): Boolean {
+                        publishRuntimeEvent(
+                            ChannelContract.CHAT_ATTACHMENT_PREVIEW_OPENED,
+                            ChatRuntimeEventMapper.attachment(url, type, caption),
+                        )
+                        return false
+                    }
+                    override fun onExitChatPressed() {
+                        publishRuntimeEvent(ChannelContract.CHAT_EXIT_PRESSED)
+                    }
+                    override fun onChatWidgetThemeChanged(result: LivechatWidgetResult<String?>) {
+                        result.getOrNull()?.let {
+                            publishRuntimeEvent(ChannelContract.CHAT_WIDGET_THEME_CHANGED, it)
+                        }
+                    }
+                    override fun onChatWidgetInfoUpdated(widgetInfo: WidgetInfo) {
+                        publishRuntimeEvent(
+                            ChannelContract.CHAT_WIDGET_INFO_UPDATED,
+                            ChatRuntimeEventMapper.widgetInfo(widgetInfo),
+                        )
+                    }
+                    override fun onChatRawMessageReceived(rawMessage: String) {
+                        publishRuntimeEvent(ChannelContract.CHAT_RAW_MESSAGE_RECEIVED, rawMessage)
+                    }
                 }
             }
             currentWidgetView = null
@@ -103,7 +161,7 @@ internal class ChatPlatformView(
                 .commit()
         } catch (error: RuntimeException) {
             fragment = null
-            Log.e(TAG, "Native Chat error while attaching InAppChatFragment", error)
+            Log.e(TAG, "Native Chat error while attaching InAppChatFragment")
             reportError(ChatViewError("native_error", "Chat fragment could not be attached"))
         }
     }
@@ -113,6 +171,7 @@ internal class ChatPlatformView(
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         if (call.method == ChannelContract.CHAT_VIEW_READY) {
             flutterReady = true
+            runtimeEvents.ready()
             pendingError.take()?.let { channel.invokeMethod(ChannelContract.CHAT_ON_ERROR, it.toMap()) }
             result.success(null)
             return
@@ -124,16 +183,23 @@ internal class ChatPlatformView(
         }
         when (call.method) {
             ChannelContract.CHAT_NAVIGATE_BACK -> handleNavigateBack(current, result)
+            ChannelContract.CHAT_SHOW_THREADS_LIST -> runCommand(current, result) {
+                current.showThreadList()
+            }
+            ChannelContract.CHAT_IS_MULTITHREAD -> runQuery(current, result) {
+                current.isMultiThread
+            }
             ChannelContract.CHAT_SEND -> handleSend(call, result, current)
+            ChannelContract.CHAT_SET_DRAFT_MESSAGE -> handleDraftMessage(call, result)
             ChannelContract.CHAT_SEND_CONTEXTUAL_DATA -> handleContextualData(call, result, current)
             ChannelContract.CHAT_SET_LANGUAGE -> handleLanguage(call, result, current)
-            ChannelContract.CHAT_GET_LANGUAGE -> runOnFragment(current, result) {
+            ChannelContract.CHAT_GET_LANGUAGE -> runQuery(current, result) {
                 ChatLanguageMapper.toWidgetCode(current.getLanguage())
             }
             ChannelContract.CHAT_SET_WIDGET_THEME -> handleStringArgument(call, result, current) {
                 current.setWidgetTheme(it)
             }
-            ChannelContract.CHAT_GET_WIDGET_THEME -> runOnFragment(current, result) {
+            ChannelContract.CHAT_GET_WIDGET_THEME -> runQuery(current, result) {
                 current.getWidgetTheme()
             }
             else -> result.notImplemented()
@@ -142,7 +208,7 @@ internal class ChatPlatformView(
 
     private fun handleNavigateBack(current: InAppChatFragment, result: MethodChannel.Result) {
         Log.d(TAG, "Chat back navigation requested")
-        runOnFragment(current, result) {
+        runQuery(current, result) {
             val handled = ChatBackNavigation.isHandledInternally(current.isMultiThread, currentWidgetView)
             if (handled) {
                 current.showThreadList()
@@ -161,7 +227,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", "Unsupported Chat language", null)
             return
         }
-        runOnFragment(current, result) { current.setLanguage(language) }
+        runCommand(current, result) { current.setLanguage(language) }
     }
 
     private fun handleStringArgument(
@@ -175,7 +241,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", "widgetTheme must not be empty", null)
             return
         }
-        runOnFragment(current, result) { operation(value) }
+        runCommand(current, result) { operation(value) }
     }
 
     private fun handleSend(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {
@@ -185,25 +251,47 @@ internal class ChatPlatformView(
             result.error("invalid_argument", error.message, null)
             return
         }
-        runOnFragment(current, result) { current.send(payload) }
+        runCommand(current, result) { current.send(payload) }
     }
 
-    private fun handleContextualData(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {
-        val data = try {
-            ChatMapper.contextualData(call.arguments)
+    private fun handleDraftMessage(
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        try {
+            ChatMapper.draftMessage(call.arguments)
         } catch (error: IllegalArgumentException) {
             result.error("invalid_argument", error.message, null)
             return
         }
-        runOnFragment(current, result) {
+        result.error("not_available", "Composer draft messages are not available in Huawei SDK 8.14.0", null)
+    }
+
+    private fun handleContextualData(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {
+        val (data, strategy) = try {
+            ChatMapper.contextualData(call.arguments) to ChatMapper.contextualDataStrategy(call.arguments)
+        } catch (error: IllegalArgumentException) {
+            result.error("invalid_argument", error.message, null)
+            return
+        }
+        runCommand(current, result) {
             current.sendContextualData(
                 data,
-                MultithreadStrategy.ACTIVE,
+                strategy,
             )
         }
     }
 
-    private fun runOnFragment(
+    private fun runCommand(
+        current: InAppChatFragment,
+        result: MethodChannel.Result,
+        operation: () -> Unit,
+    ) = runQuery(current, result) {
+        operation()
+        null
+    }
+
+    private fun runQuery(
         current: InAppChatFragment,
         result: MethodChannel.Result,
         operation: () -> Any?,
@@ -216,7 +304,7 @@ internal class ChatPlatformView(
             try {
                 result.success(operation())
             } catch (error: RuntimeException) {
-                Log.e(TAG, "Native Chat operation failed", error)
+                Log.e(TAG, "Native Chat operation failed")
                 result.error("native_error", "Chat operation failed", null)
             }
         }
@@ -225,6 +313,8 @@ internal class ChatPlatformView(
     override fun dispose() {
         if (disposed) return
         disposed = true
+        runtimeEvents.dispose()
+        mainHandler.removeCallbacksAndMessages(null)
         channel.setMethodCallHandler(null)
         val current = fragment
         fragment = null
@@ -237,7 +327,7 @@ internal class ChatPlatformView(
                 if (manager.isStateSaved) transaction.commitAllowingStateLoss() else transaction.commit()
                 Log.d(TAG, "InAppChatFragment removed")
             } catch (error: RuntimeException) {
-                Log.w(TAG, "InAppChatFragment could not be removed", error)
+                Log.w(TAG, "InAppChatFragment could not be removed")
             }
         }
         Log.d(TAG, "ChatPlatformView disposed")
@@ -245,6 +335,23 @@ internal class ChatPlatformView(
 
     private fun reportError(error: ChatViewError) {
         if (flutterReady) channel.invokeMethod(ChannelContract.CHAT_ON_ERROR, error.toMap()) else pendingError.set(error)
+    }
+
+    private fun publishRuntimeEvent(event: String, value: Any? = null) {
+        runtimeEvents.publish(ChatRuntimeEventMapper.event(event, value))
+    }
+
+    private fun publishRuntimeResult(
+        result: LivechatWidgetResult<Unit>,
+        event: String,
+        value: String? = null,
+        failureMessage: String,
+    ) {
+        val payload = mutableMapOf(ChannelContract.EVENT to event)
+        value?.let { payload[ChannelContract.VALUE] = it }
+        runtimeEvents.publishResult(result is LivechatWidgetResult.Success, payload) {
+            reportError(ChatViewError("chat_runtime_error", failureMessage))
+        }
     }
 
     private fun neutralView(context: Context, error: ChatViewError): View {

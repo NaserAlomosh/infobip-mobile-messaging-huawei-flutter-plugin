@@ -1,6 +1,7 @@
 package com.infobip.mobilemessaging.huawei.user
 
 import com.infobip.mobilemessaging.huawei.plugin.ChannelContract
+import org.infobip.mobile.messaging.CustomAttributeValue
 import org.infobip.mobile.messaging.User
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -29,22 +30,41 @@ class UserMapperTest {
             Date.from(instant),
             user.customAttributes?.get("created")?.dateTimeValue()?.date,
         )
-        assertEquals(instant.toString(), user.customAttributes?.get("text")?.stringValue())
+
+        assertEquals(
+            instant.toString(),
+            user.customAttributes?.get("text")?.stringValue(),
+        )
     }
 
     @Test
     fun `native dates map to tagged channel values`() {
         val instant = Instant.parse("2026-09-01T12:00:00Z")
+
         val user = User().apply {
             customAttributes = mapOf(
-                "created" to org.infobip.mobile.messaging.CustomAttributeValue(Date.from(instant)),
+                "created" to CustomAttributeValue(
+                    CustomAttributeValue.DateTime(
+                        Date.from(instant),
+                    ),
+                ),
             )
         }
 
-        val custom = UserMapper.toMap(user)[ChannelContract.CUSTOM_ATTRIBUTES] as Map<*, *>
+        val custom =
+            UserMapper.toMap(user)[ChannelContract.CUSTOM_ATTRIBUTES] as Map<*, *>
+
         val created = custom["created"] as Map<*, *>
-        assertEquals(ChannelContract.CUSTOM_DATE_TYPE, created[ChannelContract.CUSTOM_VALUE_TYPE])
-        assertEquals(instant.toString(), created[ChannelContract.CUSTOM_VALUE])
+
+        assertEquals(
+            ChannelContract.CUSTOM_DATE_TYPE,
+            created[ChannelContract.CUSTOM_VALUE_TYPE],
+        )
+
+        assertEquals(
+            instant.toString(),
+            created[ChannelContract.CUSTOM_VALUE],
+        )
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -64,7 +84,11 @@ class UserMapperTest {
     @Test(expected = IllegalArgumentException::class)
     fun `unsupported custom values are rejected`() {
         UserMapper.toUser(
-            mapOf(ChannelContract.CUSTOM_ATTRIBUTES to mapOf("bad" to Any())),
+            mapOf(
+                ChannelContract.CUSTOM_ATTRIBUTES to mapOf(
+                    "bad" to Any(),
+                ),
+            ),
         )
     }
 }

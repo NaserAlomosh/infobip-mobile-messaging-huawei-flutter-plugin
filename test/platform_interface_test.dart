@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 import 'package:infobip_mobilemessaging_huawei/src/platform/channel_contract.dart';
 import 'package:infobip_mobilemessaging_huawei/src/platform/infobip_mobilemessaging_huawei_platform.dart';
 import 'package:infobip_mobilemessaging_huawei/src/platform/method_channel_infobip_mobilemessaging_huawei.dart';
@@ -15,7 +16,11 @@ final class FakePlatform extends InfobipMobileMessagingHuaweiPlatform
   Stream<Object?> get events => const Stream.empty();
 
   @override
-  Future<void> initialize({required String applicationCode}) async {
+  Future<void> initialize({
+    required String applicationCode,
+    bool defaultMessageStorage = true,
+    WebRTCUI? webRTCUI,
+  }) async {
     initializedWith = applicationCode;
   }
 }
@@ -45,6 +50,113 @@ void main() {
       ChannelContract.eventChannel,
       'com.infobip.mobilemessaging.huawei/events',
     );
+  });
+
+  test('forwards message storage configuration with initialization', () async {
+    const channelName = 'initialization-method-test';
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel(channelName);
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final platform = MethodChannelInfobipMobileMessagingHuawei(
+      methodChannel: channel,
+      eventChannel: const EventChannel('initialization-event-test'),
+    );
+    await platform.initialize(
+      applicationCode: 'test-code',
+      defaultMessageStorage: false,
+    );
+
+    expect(calls.single.method, ChannelContract.initialize);
+    expect(calls.single.arguments, <String, Object>{
+      ChannelContract.applicationCode: 'test-code',
+      ChannelContract.defaultMessageStorage: false,
+    });
+  });
+
+  test('forwards cleanup over the method channel', () async {
+    const channelName = 'cleanup-method-test';
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel(channelName);
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    final platform = MethodChannelInfobipMobileMessagingHuawei(
+      methodChannel: channel,
+      eventChannel: const EventChannel('cleanup-event-test'),
+    );
+    await platform.cleanup();
+
+    expect(calls.single.method, ChannelContract.cleanup);
+    expect(calls.single.arguments, isNull);
+  });
+
+  test('forwards nested WebRTC initialization configuration', () async {
+    const channelName = 'webrtc-initialization-method-test';
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel(channelName);
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final platform = MethodChannelInfobipMobileMessagingHuawei(
+      methodChannel: channel,
+      eventChannel: const EventChannel('webrtc-initialization-event-test'),
+    );
+
+    await platform.initialize(
+      applicationCode: 'test-code',
+      webRTCUI: const WebRTCUI(configurationId: ' rtc-id '),
+    );
+
+    expect(calls.single.arguments, <String, Object?>{
+      ChannelContract.applicationCode: 'test-code',
+      ChannelContract.defaultMessageStorage: true,
+      ChannelContract.webRTCUI: <String, Object?>{
+        ChannelContract.configurationId: ' rtc-id ',
+      },
+    });
+  });
+
+  test('preserves a null WebRTC configuration ID', () async {
+    const channelName = 'null-webrtc-initialization-method-test';
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const channel = MethodChannel(channelName);
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final platform = MethodChannelInfobipMobileMessagingHuawei(
+      methodChannel: channel,
+      eventChannel: const EventChannel('null-webrtc-initialization-event-test'),
+    );
+
+    await platform.initialize(
+      applicationCode: 'test-code',
+      webRTCUI: const WebRTCUI(),
+    );
+
+    final arguments = calls.single.arguments as Map<Object?, Object?>;
+    expect(arguments[ChannelContract.webRTCUI], <String, Object?>{
+      ChannelContract.configurationId: null,
+    });
   });
 
   test(

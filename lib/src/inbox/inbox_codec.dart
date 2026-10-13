@@ -1,12 +1,13 @@
 import 'inbox.dart';
 import '../platform/channel_contract.dart';
+import '../notifications/push_message_codec.dart';
 
 abstract final class InboxCodec {
   static Map<String, Object?>? encodeOptions(InboxFilterOptions? options) {
     if (options == null) return null;
-    if (options.from != null &&
-        options.to != null &&
-        options.from!.isAfter(options.to!)) {
+    if (options.fromDateTime != null &&
+        options.toDateTime != null &&
+        options.fromDateTime!.isAfter(options.toDateTime!)) {
       throw ArgumentError('from must not be after to');
     }
     if (options.topic != null && options.topic!.trim().isEmpty) {
@@ -28,8 +29,8 @@ abstract final class InboxCodec {
       throw ArgumentError.value(options.limit, 'limit', 'Must be positive');
     }
     return {
-      ChannelContract.from: options.from?.toUtc().toIso8601String(),
-      ChannelContract.to: options.to?.toUtc().toIso8601String(),
+      ChannelContract.from: options.fromDateTime?.toUtc().toIso8601String(),
+      ChannelContract.to: options.toDateTime?.toUtc().toIso8601String(),
       ChannelContract.topic: options.topic,
       ChannelContract.topics: options.topics,
       ChannelContract.limit: options.limit,
@@ -70,21 +71,39 @@ abstract final class InboxCodec {
 
   static InboxMessage _decodeMessage(Object? value) {
     final map = _map(value, 'Inbox message');
-    final id = map[ChannelContract.messageId];
-    final seen = map[ChannelContract.seen];
-    if (id is! String || id.isEmpty || seen is! bool) {
+    final message = PushMessageCodec.decode(map);
+    if (message.messageId == null ||
+        message.messageId!.isEmpty ||
+        message.seen == null ||
+        message.topic == null) {
       throw const FormatException('Invalid Inbox message');
     }
+    final sentTimestamp = map['sentTimestamp'];
+    if (sentTimestamp != null &&
+        (sentTimestamp is! num || !sentTimestamp.isFinite)) {
+      throw const FormatException('Invalid Inbox sentTimestamp');
+    }
     return InboxMessage(
-      messageId: id,
-      title: _nullableString(map[ChannelContract.title], 'title'),
-      body: _nullableString(map[ChannelContract.body], 'body'),
-      topic: _nullableString(map[ChannelContract.topic], 'topic'),
-      seen: seen,
-      receivedTimestamp: _date(map[ChannelContract.receivedTimestamp]),
-      customPayload: _payload(map[ChannelContract.customPayload]),
-      deepLink: _nullableString(map[ChannelContract.deepLink], 'deepLink'),
-      isSilent: _requiredBool(map[ChannelContract.isSilent], 'isSilent'),
+      messageId: message.messageId!,
+      topic: message.topic!,
+      seen: message.seen!,
+      title: message.title,
+      body: message.body,
+      sound: message.sound,
+      vibrate: message.vibrate,
+      silent: message.silent,
+      category: message.category,
+      customPayload: message.customPayload,
+      internalData: message.internalData,
+      contentUrl: message.contentUrl,
+      originalPayload: null,
+      browserUrl: message.browserUrl,
+      deeplink: message.deeplink,
+      webViewUrl: message.webViewUrl,
+      inAppOpenTitle: message.inAppOpenTitle,
+      inAppDismissTitle: message.inAppDismissTitle,
+      receivedTimestamp: message.receivedTimestamp,
+      sentTimestamp: sentTimestamp as num?,
     );
   }
 
@@ -102,43 +121,4 @@ abstract final class InboxCodec {
     if (result < 0) throw FormatException('Invalid $name');
     return result;
   }
-
-  static bool _requiredBool(Object? value, String name) {
-    if (value is! bool) throw FormatException('Invalid $name');
-    return value;
-  }
-
-  static String? _nullableString(Object? value, String name) {
-    if (value == null) return null;
-    if (value is! String) throw FormatException('Invalid $name');
-    return value;
-  }
-
-  static DateTime? _date(Object? value) {
-    if (value == null) return null;
-    if (value is! String) {
-      throw const FormatException('Invalid Inbox timestamp');
-    }
-    return DateTime.tryParse(value)?.toUtc() ??
-        (throw const FormatException('Invalid Inbox timestamp'));
-  }
-
-  static Map<String, Object?> _payload(Object? value) {
-    if (value == null) return const {};
-    if (value is! Map || value.keys.any((key) => key is! String)) {
-      throw const FormatException('Invalid Inbox custom payload');
-    }
-    return Map.unmodifiable(
-      value.map((key, item) => MapEntry(key as String, _payloadValue(item))),
-    );
-  }
-
-  static Object? _payloadValue(Object? value) => switch (value) {
-    null || String() || bool() || int() || double() => value,
-    List() => List.unmodifiable(value.map(_payloadValue)),
-    Map() when value.keys.every((key) => key is String) => Map.unmodifiable(
-      value.map((key, item) => MapEntry(key as String, _payloadValue(item))),
-    ),
-    _ => throw const FormatException('Invalid Inbox custom payload'),
-  };
 }

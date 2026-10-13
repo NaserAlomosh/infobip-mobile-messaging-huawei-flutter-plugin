@@ -1,4 +1,4 @@
-import 'push_message.dart';
+import 'message.dart';
 
 /// A notification action selection and its related message.
 final class NotificationActionEvent {
@@ -8,5 +8,5 @@ final class NotificationActionEvent {
   });
 
   final String? actionId;
-  final PushMessage message;
+  final Message message;
 }

@@ -71,10 +71,21 @@ internal object InboxMapper {
             ChannelContract.BODY to value.body,
             ChannelContract.TOPIC to value.topic,
             ChannelContract.SEEN to value.isSeen,
-            ChannelContract.RECEIVED_TIMESTAMP to timestamp(value.receivedTimestamp),
-            ChannelContract.CUSTOM_PAYLOAD to jsonObject(value.customPayload),
-            ChannelContract.DEEP_LINK to value.deeplink,
-            ChannelContract.IS_SILENT to value.isSilent,
+            ChannelContract.RECEIVED_TIMESTAMP to value.receivedTimestamp,
+            ChannelContract.CUSTOM_PAYLOAD to value.customPayload?.let(::jsonObject),
+            "sound" to value.sound,
+            "vibrate" to value.isVibrate,
+            "category" to value.category,
+            "internalData" to value.getInternalData(),
+            "contentUrl" to value.contentUrl,
+            "browserUrl" to value.browserUrl,
+            "webViewUrl" to value.webViewUrl,
+            "inAppOpenTitle" to value.inAppOpenTitle,
+            "inAppDismissTitle" to value.inAppDismissTitle,
+            "sentTimestamp" to value.sentTimestamp,
+            "originalPayload" to null,
+            "deeplink" to value.deeplink,
+            "silent" to value.isSilent,
         )
 
     private fun optionalString(
@@ -134,8 +145,6 @@ internal object InboxMapper {
             throw IllegalArgumentException("$key must be a UTC timestamp")
         }
     }
-
-    private fun timestamp(value: Long): String = Instant.ofEpochMilli(value).toString()
 
     private fun jsonObject(value: JSONObject?): Map<String, Any?> {
         if (value == null) return emptyMap()
