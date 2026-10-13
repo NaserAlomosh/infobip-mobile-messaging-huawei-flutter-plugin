@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
@@ -202,7 +203,7 @@ void main() {
 
   for (final fail in [false, true]) {
     test(
-      'delayed cleanup failure=$fail cannot erase a newer provider',
+      'cleanup failure=$fail gates registration and commits only on success',
       () async {
         await InfobipMobileMessagingHuawei.setChatJwtProvider(
           () async => 'old',
@@ -213,12 +214,19 @@ void main() {
         final outcome = fail
             ? expectLater(cleanup, throwsStateError)
             : expectLater(cleanup, completes);
-        await InfobipMobileMessagingHuawei.setChatJwtProvider(
-          () async => 'new',
+        await expectLater(
+          InfobipMobileMessagingHuawei.setChatJwtProvider(() async => 'new'),
+          throwsA(
+            isA<PlatformException>().having(
+              (e) => e.code,
+              'code',
+              'operation_in_progress',
+            ),
+          ),
         );
         platform.requestJwt();
         await pumpEventQueue();
-        expect(platform.resolved, ['new']);
+        expect(platform.resolved, ['old']);
         if (fail) {
           pendingCleanup.completeError(StateError('cleanup failed'));
         } else {
@@ -228,8 +236,13 @@ void main() {
         platform.pendingCleanup = null;
         platform.requestJwt();
         await pumpEventQueue();
-        expect(platform.resolved, ['new', 'new']);
-        expect(platform.responseIds, ['request-1', 'request-2']);
+        expect(platform.resolved, fail ? ['old', 'old'] : ['old']);
+        await InfobipMobileMessagingHuawei.setChatJwtProvider(
+          () async => 'new',
+        );
+        platform.requestJwt();
+        await pumpEventQueue();
+        expect(platform.resolved.last, 'new');
       },
     );
   }

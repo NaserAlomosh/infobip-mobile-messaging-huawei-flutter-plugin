@@ -8,7 +8,7 @@ packaged. No vendor binaries are redistributed here.
 From `example/android`, with the repository's normal Flutter/Android toolchain:
 
 ```sh
-./gradlew -I ../../docs/evidence/webrtc-core/resolve.gradle \
+./gradlew -I ../../doc/evidence/webrtc-core/resolve.gradle \
   -PrtcResearchOutput=/private/tmp/huawei-rtc-core-research \
   :app:rtcCoreResearchDebug :app:rtcCoreResearchRelease --console=plain
 ```
@@ -24,7 +24,7 @@ the scan; they are not counted as six extra packaged libraries.
 From the repository root:
 
 ```sh
-python3 docs/evidence/webrtc-core/inspect_artifacts.py \
+python3 doc/evidence/webrtc-core/inspect_artifacts.py \
   /private/tmp/huawei-rtc-core-research
 ```
 

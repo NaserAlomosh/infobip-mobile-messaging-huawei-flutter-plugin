@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 import '../notifications/notifications.dart';
 import '../platform/channel_contract.dart';
@@ -60,6 +61,28 @@ final class InfobipMobileMessagingHuawei {
         shouldBePresentedModallyIOS: shouldBePresentedModallyIOS,
       );
 
+  static Future<void>? _cleanupFuture;
+  static int _initializing = 0;
+  static int _chatConfigurationOperations = 0;
+  static final Set<_ChatJwtRequest> _chatJwtRequests = {};
+  static const _chatJwtTimeout = Duration(seconds: 25);
+
+  static void _checkLifecycleAvailable() {
+    if (_cleanupFuture != null) {
+      throw PlatformException(
+        code: 'operation_in_progress',
+        message: 'Cleanup is in progress',
+      );
+    }
+  }
+
+  static void _invalidateChatJwtRequests() {
+    for (final request in _chatJwtRequests.toList()) {
+      request.cancel();
+    }
+    _chatJwtRequests.clear();
+  }
+
   static int _chatJwtGeneration = 0;
   static Future<String> Function()? _chatJwtProvider;
   static void Function(Object error)? _chatJwtProviderErrorHandler;
@@ -71,11 +94,14 @@ final class InfobipMobileMessagingHuawei {
   /// Initializes the native SDK with an Infobip application code.
   ///
   /// Equivalent calls are idempotent. A different application code is rejected
-  /// once initialization has started.
+  /// once initialization has started. Chat activation errors are surfaced while
+  /// Mobile Messaging stays initialized. Repeat the same call after one second
+  /// to retry Chat activation without rebuilding Mobile Messaging.
   static Future<void> initialize({
     required String applicationCode,
     WebRTCUI? webRTCUI,
   }) {
+    _checkLifecycleAvailable();
     if (applicationCode.trim().isEmpty) {
       throw ArgumentError.value(
         applicationCode,
@@ -83,34 +109,71 @@ final class InfobipMobileMessagingHuawei {
         'Must not be empty or whitespace-only',
       );
     }
-    return InfobipMobileMessagingHuaweiPlatform.instance.initialize(
-      applicationCode: applicationCode,
-      defaultMessageStorage: defaultMessageStorage,
-      webRTCUI: webRTCUI,
-    );
+    _initializing++;
+    return _initializeNative(applicationCode, webRTCUI);
+  }
+
+  static Future<void> _initializeNative(
+    String applicationCode,
+    WebRTCUI? webRTCUI,
+  ) async {
+    try {
+      await InfobipMobileMessagingHuaweiPlatform.instance.initialize(
+        applicationCode: applicationCode,
+        defaultMessageStorage: defaultMessageStorage,
+        webRTCUI: webRTCUI,
+      );
+    } finally {
+      _initializing--;
+    }
   }
 
   /// Removes local Mobile Messaging SDK data and state.
   ///
   /// Initialize the SDK again before further use. For signing a user out, use
-  /// [depersonalize] instead.
-  static Future<void> cleanup() async {
-    _chatJwtGeneration++;
-    _chatJwtProvider = null;
-    _chatJwtProviderErrorHandler = null;
-    final jwtCancellation = _chatJwtSubscription?.cancel();
-    _chatJwtSubscription = null;
-    _chatExceptionHandler = null;
-    _chatExceptionErrorHandler = null;
-    final exceptionCancellation = _chatExceptionSubscription?.cancel();
-    _chatExceptionSubscription = null;
+  /// [depersonalize] instead. Native rejection preserves Chat callbacks and
+  /// subscriptions. Concurrent cleanup calls share one operation; initialization
+  /// and Chat configuration during cleanup fail with operation_in_progress.
+  static Future<void> cleanup() {
+    final existing = _cleanupFuture;
+    if (existing != null) return existing;
+    if (_initializing != 0 || _chatConfigurationOperations != 0) {
+      return Future.error(
+        PlatformException(
+          code: 'operation_in_progress',
+          message: 'Initialization or Chat configuration is in progress',
+        ),
+      );
+    }
+    final completion = Completer<void>();
+    _cleanupFuture = completion.future;
+    _performCleanup(completion);
+    return completion.future;
+  }
+
+  static Future<void> _performCleanup(Completer<void> completion) async {
     try {
+      // Native RTC rejection or SDK failure leaves all Dart-owned state intact.
       await InfobipMobileMessagingHuaweiPlatform.instance.cleanup();
+      _chatJwtGeneration++;
+      _invalidateChatJwtRequests();
+      _chatJwtProvider = null;
+      _chatJwtProviderErrorHandler = null;
+      final jwtSubscription = _chatJwtSubscription;
+      _chatJwtSubscription = null;
+      _chatExceptionHandler = null;
+      _chatExceptionErrorHandler = null;
+      final exceptionSubscription = _chatExceptionSubscription;
+      _chatExceptionSubscription = null;
+      await Future.wait([
+        if (jwtSubscription != null) jwtSubscription.cancel(),
+        if (exceptionSubscription != null) exceptionSubscription.cancel(),
+      ]);
+      completion.complete();
+    } on Object catch (error, stack) {
+      completion.completeError(error, stack);
     } finally {
-      // Cancel only subscriptions owned by this cleanup. A later registration
-      // must not be erased when the native cleanup future completes.
-      await jwtCancellation;
-      await exceptionCancellation;
+      _cleanupFuture = null;
     }
   }
 
@@ -233,33 +296,46 @@ final class InfobipMobileMessagingHuawei {
   ///
   /// The native Chat SDK may invoke [jwtProvider] repeatedly, including after
   /// reconnection and lifecycle changes. Return a fresh, non-empty JWT for
-  /// every invocation. This provider is separate from [setJwt], which
+  /// every invocation. Each Dart request expires after 25 seconds; native expiry
+  /// independently occurs at 30 seconds, with at most 32 pending requests.
+  /// Late results are ignored; the underlying Future is not cancelled.
+  /// This provider is separate from [setJwt], which
   /// configures Mobile Messaging and Inbox authorization.
   static Future<void> setChatJwtProvider(
     Future<String> Function() jwtProvider, [
     void Function(Object error)? onError,
   ]) async {
-    final registration = ++_chatJwtGeneration;
-    _chatJwtProvider = jwtProvider;
-    _chatJwtProviderErrorHandler = onError;
-    final previousSubscription = _chatJwtSubscription;
-    _chatJwtSubscription = null;
-    await previousSubscription?.cancel();
-    if (registration != _chatJwtGeneration) return;
-    _chatJwtSubscription = InfobipMobileMessagingHuaweiPlatform.instance.events
-        .where(_isChatJwtRequest)
-        .listen(_provideChatJwt);
+    _checkLifecycleAvailable();
+    _chatConfigurationOperations++;
     try {
-      await InfobipMobileMessagingHuaweiPlatform.instance.setChatJwtProvider();
-    } on Object {
-      if (registration != _chatJwtGeneration) rethrow;
-      _chatJwtGeneration++;
-      _chatJwtProvider = null;
-      _chatJwtProviderErrorHandler = null;
-      final failedSubscription = _chatJwtSubscription;
+      final registration = ++_chatJwtGeneration;
+      _invalidateChatJwtRequests();
+      _chatJwtProvider = jwtProvider;
+      _chatJwtProviderErrorHandler = onError;
+      final previousSubscription = _chatJwtSubscription;
       _chatJwtSubscription = null;
-      await failedSubscription?.cancel();
-      rethrow;
+      await previousSubscription?.cancel();
+      if (registration != _chatJwtGeneration) return;
+      _chatJwtSubscription = InfobipMobileMessagingHuaweiPlatform
+          .instance
+          .events
+          .where(_isChatJwtRequest)
+          .listen(_provideChatJwt);
+      try {
+        await InfobipMobileMessagingHuaweiPlatform.instance
+            .setChatJwtProvider();
+      } on Object {
+        if (registration != _chatJwtGeneration) rethrow;
+        _chatJwtGeneration++;
+        _chatJwtProvider = null;
+        _chatJwtProviderErrorHandler = null;
+        final failedSubscription = _chatJwtSubscription;
+        _chatJwtSubscription = null;
+        await failedSubscription?.cancel();
+        rethrow;
+      }
+    } finally {
+      _chatConfigurationOperations--;
     }
   }
 
@@ -271,28 +347,34 @@ final class InfobipMobileMessagingHuawei {
     Future<void> Function(ChatException exception)? exceptionHandler, [
     void Function(Object error)? onError,
   ]) async {
-    await _chatExceptionSubscription?.cancel();
-    _chatExceptionSubscription = null;
-    _chatExceptionHandler = exceptionHandler;
-    _chatExceptionErrorHandler = exceptionHandler == null ? null : onError;
-
-    if (exceptionHandler != null) {
-      _chatExceptionSubscription = InfobipMobileMessagingHuaweiPlatform
-          .instance
-          .events
-          .where(_isChatException)
-          .listen(_handleChatException);
-    }
-
+    _checkLifecycleAvailable();
+    _chatConfigurationOperations++;
     try {
-      await InfobipMobileMessagingHuaweiPlatform.instance
-          .setChatExceptionHandler(enabled: exceptionHandler != null);
-    } on Object {
-      _chatExceptionHandler = null;
-      _chatExceptionErrorHandler = null;
       await _chatExceptionSubscription?.cancel();
       _chatExceptionSubscription = null;
-      rethrow;
+      _chatExceptionHandler = exceptionHandler;
+      _chatExceptionErrorHandler = exceptionHandler == null ? null : onError;
+
+      if (exceptionHandler != null) {
+        _chatExceptionSubscription = InfobipMobileMessagingHuaweiPlatform
+            .instance
+            .events
+            .where(_isChatException)
+            .listen(_handleChatException);
+      }
+
+      try {
+        await InfobipMobileMessagingHuaweiPlatform.instance
+            .setChatExceptionHandler(enabled: exceptionHandler != null);
+      } on Object {
+        _chatExceptionHandler = null;
+        _chatExceptionErrorHandler = null;
+        await _chatExceptionSubscription?.cancel();
+        _chatExceptionSubscription = null;
+        rethrow;
+      }
+    } finally {
+      _chatConfigurationOperations--;
     }
   }
 
@@ -345,7 +427,21 @@ final class InfobipMobileMessagingHuawei {
     if (provider == null) return;
     late final String jwt;
     try {
-      jwt = (await provider()).trim();
+      if (_chatJwtRequests.length >= 32) {
+        throw StateError('Too many pending Chat JWT requests');
+      }
+      final request = _ChatJwtRequest(_chatJwtTimeout);
+      _chatJwtRequests.add(request);
+      // A Future cannot be cancelled. Only this request's completion is bounded.
+      Future<String>.sync(
+        provider,
+      ).then(request.succeed, onError: request.fail);
+      try {
+        jwt = (await request.future).trim();
+      } finally {
+        request.dispose();
+        _chatJwtRequests.remove(request);
+      }
       if (session != _chatJwtGeneration) return;
       if (jwt.isEmpty) {
         throw const FormatException('Chat JWT must not be empty');
@@ -439,4 +535,31 @@ final class InfobipMobileMessagingHuawei {
       messageIds: List.unmodifiable(messageIds),
     );
   }
+}
+
+/// Request-local completion gate; late provider results retain no plugin callbacks.
+final class _ChatJwtRequest {
+  _ChatJwtRequest(Duration timeout) {
+    _timer = Timer(
+      timeout,
+      () => fail(TimeoutException('Chat JWT request timed out')),
+    );
+  }
+  final _completion = Completer<String>();
+  late final Timer _timer;
+  Future<String> get future => _completion.future;
+  void succeed(String value) {
+    if (!_completion.isCompleted) _completion.complete(value);
+  }
+
+  void fail(Object error, [StackTrace? stack]) {
+    if (!_completion.isCompleted) _completion.completeError(error, stack);
+  }
+
+  void cancel() {
+    _timer.cancel();
+    fail(StateError('Chat JWT request invalidated'));
+  }
+
+  void dispose() => _timer.cancel();
 }

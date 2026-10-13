@@ -6,13 +6,6 @@ enable Mobile Messaging incoming calls. `enableCalls`, `enableChatCalls` and
 `disableCalls` keep their existing guarded behavior. No HMS incoming registration,
 RTC UI, Chat registration, incoming push bridge or iOS implementation is added.
 
-This implements the separate outgoing scope on top of research commit
-`bbee8577f8bfa442b7a87e67991bb1e0286192a9`, based on development commit
-`a5cb643c046f42d40a542dab705cc42222504c0e`. The earlier
-[research decision](webrtc-core-research.md) remains the historical decision for
-the official incoming-call contract. See the
-[verification report](huawei-rtc-outgoing-verification.md) for executed checks.
-
 ## Consumer API
 
 Initialize Huawei Mobile Messaging with your existing application configuration.
@@ -81,11 +74,12 @@ permission dialog is launched by the plugin, and no Activity is passed to Core.
 
 Audio uses the actual `ApplicationCallOptions.builder().audio(true).video(false)`.
 Video uses `.audio(true).video(true)` and therefore requests real camera media.
-The only media control exposed in this MVP is native `ApplicationCall.hangup()`.
-Mute, routing, camera switching, video toggles, screen sharing and renderers are
-deliberately not exposed. There is **no local preview or remote video view** in
-this first API. Confirm outgoing video at the receiving endpoint. A host needing
-an in-app rendered video conversation needs a subsequent renderer integration.
+Current controls include microphone mute, audio routing, speaker selection, camera
+switching and camera enablement. `HuaweiRtcVideoView` renders local/remote camera
+tracks; `HuaweiRtcScreenAsCamera` replaces camera output for sharing. See the
+[current integration guide](../README.md), [screen-sharing guide](screen-sharing.md),
+[rendering](#local-and-remote-video-rendering) and
+[call controls and notifications](#rtc-call-controls-and-notifications).
 
 ## Token acquisition and privacy
 
@@ -109,7 +103,7 @@ authorization on a real account**. Token issuance still needs device/backend tes
 
 Sources: [Huawei provider at the inspected revision][provider],
 [shared MobileApiRtc 15.1.0][service], [RTC UI's token provider 15.1.0][token-provider],
-and [published API signatures](evidence/huawei-rtc-outgoing/api-evidence.txt).
+and the repository-only [published API signatures](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/evidence/huawei-rtc-outgoing/api-evidence.txt).
 
 The token wait has a 30-second plugin timeout. Cancellation, timeout, MM cleanup
 and engine disposal invalidate late completions; stale responses cannot start a
@@ -124,12 +118,10 @@ process-wide `InfobipRTC.setLogLevel(Level.OFF)` before outgoing calls. The plug
 does not re-enable it on hangup; integrators should not enable raw SDK diagnostics
 with real credentials.
 
-The previously identified Huawei 8.14.0 `AuthorizationUtils` authorization-header
-`System.out.println` remains an upstream security concern, explicitly outside
-this change. Disabling Core logging does not fix that independent MM path. No SDK
-patch or stdout interception is applied. Keep device evidence sanitized and do
-not collect/share raw credential-bearing logs. No live credentials were used in
-the automated verification.
+Huawei 8.14.0 authorization-header logging and RTC 2.5.28 signaling stdout logging
+remain unresolved upstream risks. The latter may expose temporary TURN credentials.
+Disabling Core logging does not disable these direct stdout paths. See
+[security guidance](../SECURITY.md) for the optional host R8 workaround and its limits.
 
 ## Events and lifecycle
 
@@ -146,6 +138,7 @@ Every event has a typed `type`, optional call snapshot, optional numeric
 | `finished` | `onHangup`, including numeric termination reason when available |
 | `error` | `onError`; **not necessarily terminal** |
 | `reconnecting` / `reconnected` | Corresponding Core callbacks |
+| `returnToCall` | Validated ongoing-notification tap; consume `takeNotificationCall` |
 
 Statuses map exactly to Core's `INITIALIZING`, `INITIALIZED`, `CALLING`, `RINGING`,
 `CONNECTING`, `ESTABLISHED`, `FINISHING`, `FINISHED`. There is no separate
@@ -182,10 +175,12 @@ If engine-disposal hangup throws, disposal cannot report remote termination; the
 Core singleton's active-call check prevents a new engine from overlapping the
 remaining call. No undocumented singleton reset/unregister API is invoked.
 
-There is no foreground call service or persistent call notification in this MVP.
-Foreground use is the supported validation target. Background/locked-screen media
-and process death recovery are **NOT_VERIFIED**, with no guarantee of continuation.
-Do not use this API as an incoming registration or background calling service.
+The current extension starts a microphone/camera foreground call service before
+media and supplies an ongoing notification with return-to-call/hangup actions.
+Start from the foreground; notification permission is host-owned. See
+[call controls and notifications](#rtc-call-controls-and-notifications). Background/locked-screen media
+and process-death behavior require physical Huawei validation; continuation is
+not guaranteed. Incoming HMS registration remains unsupported.
 
 ## Stable errors
 
@@ -205,17 +200,76 @@ Local request validation throws `ArgumentError`. Native operation errors become
 Existing official methods keep their `webrtc_*` guards (including
 `webrtc_not_enabled` for disable without a session).
 
+## Local and remote video rendering
+
+```dart
+Widget buildVideo(String callId) => Row(children: [
+  Expanded(child: SizedBox(
+    height: 240,
+    child: HuaweiRtcVideoView(callId: callId, source: HuaweiRtcVideoSource.local),
+  )),
+  Expanded(child: SizedBox(
+    height: 240,
+    child: HuaweiRtcVideoView(callId: callId, source: HuaweiRtcVideoSource.remote),
+  )),
+]);
+```
+
+Use the current native video call ID and bounded dimensions. Remote rendering
+pins one unambiguous camera endpoint; unavailable/ambiguous sources remain blank.
+There is no multiparty gallery or separate remote screen-track selector.
+Views suspend on inactive/paused/detached Flutter lifecycle and recreate on resume.
+Disposing a view releases its renderer, not the SDK track or call. Local preview
+shows the substituted screen during sharing; front-camera selfie mirroring is
+restored after sharing stops.
+
+## RTC call controls and notifications
+
+```dart
+Future<void> updateCallControls(String callId) async {
+  await HuaweiRtc.setMicrophoneMuted(true, callId: callId);
+  await HuaweiRtc.setSpeakerEnabled(true, callId: callId);
+  final controls = await HuaweiRtc.getCallControls(callId: callId);
+  if (controls.availableAudioOutputs.contains(HuaweiRtcAudioOutput.earpiece)) {
+    await HuaweiRtc.selectAudioOutput(HuaweiRtcAudioOutput.earpiece, callId: callId);
+  }
+}
+
+Future<void> updateVideoControls(String callId) async {
+  await HuaweiRtc.setCameraEnabled(true, callId: callId);
+  await HuaweiRtc.switchCamera(callId: callId);
+}
+
+Future<HuaweiRtcCall?> consumeCallNotification() =>
+    HuaweiRtc.takeNotificationCall();
+```
+
+Mutations require an established foreground call and its current ID. Returned
+`HuaweiRtcControls` are SDK readback, not optimistic state. Speaker-off selects
+earpiece explicitly and fails if absent. Audio outputs depend on device/headset
+and permissions. Camera controls require video; switching also requires the camera
+enabled. Camera switching/toggling is locked while capture or its shutdown is busy.
+
+A native microphone/camera foreground service starts before media. Its ongoing
+notification offers return-to-call and hangup. Grant notification permission on
+Android 13+ to see it in the drawer; denial does not waive foreground-service
+requirements. Handle `returnToCall`, and check `takeNotificationCall()` on initial
+attachment/resume; consume the tap and open your existing call screen, without
+starting a new call. Stale taps return null. Navigation away does not hang up.
+Activity recreation preserves call ownership; engine disposal attempts hangup.
+Background media and vendor power-management behavior require physical testing.
+
 ## Device testing
 
-Open the existing example's **Huawei outgoing RTC** screen after initialization.
-Grant permissions in Android App info → Permissions. Enter a test Calls
-configuration ID and optionally a test identity; nothing is persisted or hardcoded.
-Exercise audio, video and hangup and observe the bounded event list. Leaving that
-screen cancels its event listener but does not hang up; return to end the call.
-Use the [repository device checklist](webrtc-core-device-validation.md).
+Use the [current example guide](../example/README.md): configure the ignored local
+Dart test fields and actual Huawei host, initialize, grant call permissions in
+Setup, then open **Huawei RTC Audio** or **Huawei RTC Video**. Configure Calls
+routing and an optional authorized token subject. Exercise rendering, controls,
+notifications, sharing and hangup; leaving a route does not end the call.
 
-No feature in this implementation is DEVICE_VERIFIED. External Huawei evidence
-from a different Flutter plugin does not change this repository's status.
+No physical Huawei/backend test was performed by this documentation task.
+Historical reports and supplied device observations retain their own scope;
+unit tests do not establish live authentication, delivery or peer media.
 
 [provider]: https://github.com/infobip/mobile-messaging-sdk-huawei/blob/5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824/infobip-mobile-messaging-huawei-sdk/src/main/java/org/infobip/mobile/messaging/mobileapi/MobileApiResourceProvider.java
 [service]: https://github.com/infobip/mobile-messaging-sdk-android/blob/d2755309de0b3f68d1ef1ed8302d65d75b3526c6/infobip-mobile-messaging-api-java/src/main/java/org/infobip/mobile/messaging/api/rtc/MobileApiRtc.java

@@ -8,7 +8,7 @@ import org.junit.Test
 
 class CleanupManagerTest {
     @Test
-    fun `cleanup clears JWT supplier before SDK and resets initialization`() {
+    fun `cleanup commits JWT removal after SDK success and resets initialization`() {
         var pluginJwt: String? = "plugin-token"
         var supplierJwt: String? = "supplier-token"
         var initialized = true
@@ -26,8 +26,8 @@ class CleanupManagerTest {
                 },
                 cleanupSdk = {
                     calls += "cleanup"
-                    assertNull(pluginJwt)
-                    assertNull(supplierJwt)
+                    assertEquals("plugin-token", pluginJwt)
+                    assertEquals("supplier-token", supplierJwt)
                 },
                 resetPluginState = {
                     calls += "reset"
@@ -37,7 +37,7 @@ class CleanupManagerTest {
 
         assertNull(manager.cleanup())
 
-        assertEquals(listOf("pluginJwt", "sdkJwt", "cleanup", "reset"), calls)
+        assertEquals(listOf("cleanup", "pluginJwt", "sdkJwt", "reset"), calls)
         assertNull(pluginJwt)
         assertNull(supplierJwt)
         assertFalse(initialized)
@@ -64,11 +64,12 @@ class CleanupManagerTest {
     @Test
     fun `native cleanup failure does not report success or reset initialization`() {
         var initialized = true
+        var cleared = false
         val manager =
             CleanupManager.forTesting(
                 isInitialized = { initialized },
-                clearPluginJwtState = {},
-                clearSdkJwtSupplier = {},
+                clearPluginJwtState = { cleared = true },
+                clearSdkJwtSupplier = { cleared = true },
                 cleanupSdk = { error("failure") },
                 resetPluginState = { initialized = false },
             )
@@ -77,5 +78,6 @@ class CleanupManagerTest {
 
         assertEquals("native_error", error?.code)
         assertTrue(initialized)
+        assertFalse(cleared)
     }
 }

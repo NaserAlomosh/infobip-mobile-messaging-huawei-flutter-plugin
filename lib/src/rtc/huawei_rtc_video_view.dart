@@ -9,7 +9,8 @@ enum HuaweiRtcVideoSource { local, remote }
 ///
 /// Give this widget bounded space. Call/source changes create a fresh native view;
 /// ordinary rebuilds reuse it. Remote selection pins the sole endpoint and blanks
-/// when ambiguous or unavailable. Screen sharing is never selected.
+/// when ambiguous or unavailable. This selects camera tracks only; local camera
+/// output includes Screen-as-Camera substitution while screen capture is active.
 class HuaweiRtcVideoView extends StatefulWidget {
   const HuaweiRtcVideoView({
     required this.callId,

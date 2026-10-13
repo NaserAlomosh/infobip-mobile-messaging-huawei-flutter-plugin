@@ -3,6 +3,10 @@
 This assessment fixes GRADLE-04 from audit commit `c13833fcf6adcda61a504cf01ecb856ec54e4a86`.
 It applies to the pinned Huawei 8.14.0 dependency graph, not arbitrary future SDK versions.
 
+For the subsequent SEC-01 Release logging mitigation and actual APK disassembly,
+see [SEC-01 verification](sec01-release-logging-mitigation.md). Optional-dependency
+consumer rules below are unchanged; print suppression is a host Release opt-in.
+
 The baseline `:app:assembleRelease` reproduced 16 missing-class diagnostics and an absent
 `app/proguard-rules.pro`. The library now exports exact class rules through
 `android/consumer-rules.pro`; the example supplies the expected application rules file.

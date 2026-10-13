@@ -8,7 +8,7 @@ application credentials, tokens or APKs are committed.
 From `example/android`:
 
 ```sh
-./gradlew -I ../../docs/evidence/huawei-rtc-outgoing/resolve.gradle \
+./gradlew -I ../../doc/evidence/huawei-rtc-outgoing/resolve.gradle \
   -PrtcEvidenceOutput=/private/tmp/huawei-rtc-outgoing \
   :app:rtcRuntimeDebug :app:rtcRuntimeRelease \
   :app:dependencies --configuration debugRuntimeClasspath --console=plain
@@ -18,7 +18,7 @@ From `example/android`:
 From the repository root:
 
 ```sh
-python3 docs/evidence/huawei-rtc-outgoing/inspect_artifacts.py \
+python3 doc/evidence/huawei-rtc-outgoing/inspect_artifacts.py \
   /private/tmp/huawei-rtc-outgoing
 ```
 

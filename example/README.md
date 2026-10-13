@@ -1,6 +1,6 @@
 # Huawei SDK Test Center
 
-A manual integration test application for a **physical Huawei device**, using the existing plugin on `feature/huawei-rtc-core`. All runtime results come from public SDK APIs, real events, or explicit tester confirmation. No physical-device test has been performed by this refactor.
+A manual integration test application for a **physical Huawei device**, using the plugin on `release/rtc-production-certification`. All runtime results come from public SDK APIs, real events, or explicit tester confirmation. No physical-device test has been performed by this refactor.
 
 ## One editable Dart configuration
 
@@ -11,7 +11,7 @@ flutter pub get
 dart run tool/prepare_local.dart
 ```
 
-Edit **`example/lib/config/example_test_config.dart`**. It is Git-ignored. The launcher creates it from the tracked empty `example_test_config.template.dart` only if it does not already exist, and never overwrites existing local values. Then run:
+Edit **`example/lib/config/example_test_config.dart`**. It is Git-ignored. The launcher creates it from the tracked empty `example_test_config.template.dart` only if it does not already exist, and never overwrites existing local configuration values. It regenerates the ignored `lib/main_local.dart` launcher each time; preserve any custom launcher edits before rerunning it. Then run:
 
 ```sh
 flutter run -t lib/main_local.dart -d YOUR_HUAWEI_DEVICE_ID
@@ -43,12 +43,12 @@ Use controlled test credentials and decrypted values only. Signing secrets are e
 1. In AppGallery Connect create/select your Android application. Its package must match `example/android/app/build.gradle.kts`: `com.infobip.mobilemessaging.huawei.example`, or change that `applicationId` to your registered test package.
 2. Register the SHA-256 fingerprint of the certificate actually signing your installed debug APK. Use `cd android && ./gradlew :app:signingReport` to inspect it; do not assume a release fingerprint covers debug builds.
 3. Enable HMS Push Kit and configure the matching Huawei credentials in the Infobip Mobile Messaging App Profile. Match the Infobip Application Code to that profile.
-4. Download the real **`agconnect-services.json`** into **`example/android/app/agconnect-services.json`**. Git ignores it. Do not create a fake file. The AppGallery App ID comes from its `client.app_id`; Gradle provides the HMS manifest app-id metadata from this value and conditionally applies the AppGallery Connect plugin. Empty checkouts build but cannot establish real HMS registration.
-5. Huawei Maven repositories are configured in `example/android/settings.gradle.kts`; the AGC classpath and conditional plugin application are in `example/android/app/build.gradle.kts`. AGC tooling is loaded only when the real local file is present. No production plugin Gradle/source files are changed.
+4. Download the real **`agconnect-services.json`** into **`example/android/app/agconnect-services.json`**. Git ignores it. Do not create a fake file. The AppGallery App ID comes from its `client.app_id`; The current app Gradle file reads this value into manifest metadata and `example_huawei_app_id`; it does **not** populate the required `app_id` resource. Replace the literal `APP_ID` in `android/app/src/main/res/values/strings.xml` with your numeric, nonzero Huawei App ID. The plugin validates this resource before initialization. Keep it consistent with the downloaded file. Empty checkouts compile but initialization fails with `hms_configuration_missing` until this is configured.
+5. Huawei Maven repositories are configured in `example/android/settings.gradle.kts`; AGConnect `1.9.1.301` is declared with `apply false` in settings. The current app module does **not** apply it, conditionally or otherwise. Add `id("com.huawei.agconnect")` to your private host app module setup if required for your Huawei integration. Do not assume downloading JSON applies AGConnect. No host setup changes are made by this documentation task.
 6. The host already extends **FlutterFragmentActivity** and requests runtime permissions through its example-only channel. Manifest permissions cover notifications (Android 13+), microphone, camera, and Nearby devices/Bluetooth connect (Android 12+). Grant notifications during Push registration and call permissions in Setup. Verify notification channels, Huawei battery/background settings and HMS Core availability on the device.
 7. The main screen reports host App ID resource presence only, not credential correctness or device readiness. A real installation ID/HMS token and Portal delivery are required to confirm setup.
 
-Host configuration placement follows [Huawei's Flutter Android integration guide](https://developer.huawei.com/consumer/en/doc/HMS-Plugin-Guides-V1/integrating-sdk-0000001052151811-V1). The no-file build path does not validate real AGC credentials/plugin processing; verify the downloaded file on your device build.
+Host configuration placement follows [Huawei's Flutter Android integration guide](https://developer.huawei.com/consumer/en/doc/HMS-Plugin-Guides-V1/integrating-sdk-0000001052151811-V1). The no-file build path does not validate real AGC credentials/plugin processing; verify the downloaded file, numeric `app_id`, host plugin application and signing configuration on your device build. The existing `app_name` and `infobip_application_code` strings are placeholders; initialization uses the Dart `infobipApplicationCode`, not that application-code resource.
 
 ## Guided execution order
 
@@ -58,8 +58,9 @@ Host configuration placement follows [Huawei's Flutter Android integration guide
 4. **User / Installation:** read cache and server, save configured test values, personalize/depersonalize, verify server matches. Installation primary/push registration/custom attributes are tested through actual writable fields.
 5. **Mobile Inbox:** run both auth paths; verify filters, limits, unread counters, mark-seen/re-fetch, empty results, invalid identity and auth errors. Mark-seen retains its existing installation context with no invented JWT argument.
 6. **In-App Chat:** open embedded/global Chat, send/reply with a real agent, attachments in native composer, unread count/stream, contextual data, language, theme, draft, events/errors, back navigation and reopening.
-7. **Huawei RTC:** configure Calls routing and a reachable peer; start audio/video, observe establishment and native errors, confirm media at peer, hang up and await `finished`. Run repeated calls, second-call rejection, permission denial, network interruption, Activity recreation, active snapshots and media cleanup. Rejection probes call the same guarded public API; no safeguard is bypassed.
-8. **Event Logs / Test Report:** inspect sanitized evidence and explicitly confirm Pass/Fail or mark Blocked. Copy/Export writes sanitized JSON to clipboard; paste it into a local `.json` file. Export before uninstall/clear-data.
+7. **Huawei RTC:** use native local/remote previews and controls for mute, speaker/audio output and camera enable/switch; configure Calls routing and a reachable peer; start audio/video, observe establishment and native errors, confirm media at peer, hang up and await `finished`. Run repeated calls, second-call rejection, permission denial, network interruption, Activity recreation, active snapshots and media cleanup. Rejection probes call the same guarded public API; no safeguard is bypassed.
+8. **Screen Sharing:** follow the dedicated checklist below.
+9. **Event Logs / Test Report:** inspect sanitized evidence and explicitly confirm Pass/Fail or mark Blocked. Copy/Export writes sanitized JSON to clipboard; paste it into a local `.json` file. Export before uninstall/clear-data.
 
 Every catalog row has a stable ID, description, configuration, permissions, auth context, steps, expected and actual result, status, error, timestamp and elapsed duration. Successful method completion produces `REQUIRES_MANUAL_VERIFICATION`, never automatic Pass. Missing prerequisites produce Blocked; unexpected operation errors produce Fail and require a re-run before Pass. Expected negative-test errors remain awaiting manual comparison before confirmation. Statuses are NOT_RUN, RUNNING, PASS, FAIL, BLOCKED, UNSUPPORTED and REQUIRES_MANUAL_VERIFICATION. The report includes all status counts, per-test auth mode, device model/Android version, timestamps/durations and sanitized errors.
 
@@ -69,16 +70,63 @@ The event store omits raw notification bodies, titles, deep links, payloads, use
 
 ## Reused features and unsupported boundaries
 
-Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpers, Inbox, User, Installation, native/embedded Chat and existing outgoing RTC screens. `HuaweiRtc.callApplication`, `hangup`, `getActiveCall`, and `events` remain the only RTC integration; token acquisition remains native. Production source and public APIs are untouched.
+Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpers, Inbox, User, Installation, native/embedded Chat and existing outgoing RTC screens. `HuaweiRtc.callApplication`, `hangup`, `getActiveCall`, `events`, current-call controls and notification return consumption drive RTC. `HuaweiRtcVideoView` provides local/remote rendering; `HuaweiRtcScreenAsCamera` drives capture. Token acquisition remains native. Screen navigation alone does not hang up. This documentation task changes no runtime behavior.
 
-**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, local video preview/remote renderer and extra RTC media controls not exposed by this branch. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; screen navigation alone does not hang up.
+**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, multiparty video gallery, a separate screen-share track and configurable screen encoding resolution. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; screen navigation alone does not hang up.
 
-See the existing [RTC scope](../docs/huawei-rtc-outgoing.md), [verification](../docs/huawei-rtc-outgoing-verification.md), [device plan](../docs/webrtc-core-device-validation.md), [WebRTC safeguards](../docs/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
+See the existing [RTC scope](../doc/huawei-rtc-outgoing.md), [verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md), [device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md), [WebRTC safeguards](../doc/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
 
 ## Validation
 
-From `example/`: `dart format lib test tool`, `flutter analyze`, `flutter test`, `flutter build apk --debug -t lib/main_local.dart`. Also validate root plugin analysis/tests without changing production code. Automated tests use synthetic fixtures only; they do not count as device report Passes. Current executed results are recorded in `VALIDATION.md`.
+From `example/`: `flutter analyze --no-pub`, `flutter test --no-pub`. For a privately configured device host, build/run `flutter build apk --debug -t lib/main_local.dart` or the run command above. Root plugin: `flutter analyze --no-pub` and `flutter test --no-pub`. From `example/android/`, run `./gradlew :infobip_mobilemessaging_huawei:testDebugUnitTest` with Java 21 for Android 36 Robolectric coverage. Automated tests use synthetic fixtures only; they do not count as device report Passes. [Release packaging results](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/release-packaging.md) record this task; `VALIDATION.md` remains historical.
 
 ## Final configuration/authentication audit
 
-See [CONFIG_AUTH_AUDIT.md](CONFIG_AUTH_AUDIT.md) for source-confirmed contracts, scoped defect fixes, validation and remaining UNVERIFIED items. Supplied JWTs are checked against their separate MM/widget claims and expiry; signature/backend acceptance is not inferred. An omitted Chat `exp` uses the documented `iat + 15` default. User writes use the configured identity/contacts and server re-fetch. Once Chat is prepared, restart before changing identity; hang up and await finished before user changes during RTC. A null active-call snapshot does not prove no token request is pending, so finish direct RTC call attempts before leaving to change users. Restored test outcomes are historical evidence; re-run after changing profile/user/configuration.
+See [CONFIG_AUTH_AUDIT.md](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/example/CONFIG_AUTH_AUDIT.md) for source-confirmed contracts, scoped defect fixes, validation and remaining UNVERIFIED items. Supplied JWTs are checked against their separate MM/widget claims and expiry; signature/backend acceptance is not inferred. An omitted Chat `exp` uses the documented `iat + 15` default. User writes use the configured identity/contacts and server re-fetch. Once Chat is prepared, restart before changing identity; hang up and await finished before user changes during RTC. A null active-call snapshot does not prove no token request is pending, so finish direct RTC call attempts before leaving to change users. Restored test outcomes are historical evidence; re-run after changing profile/user/configuration.
+
+## Chat recovery and screen-sharing device checklist
+
+Chat JWTs use separate widget credentials, never the MM key. Dart provider timeout
+is 25 seconds, native deadline 30 seconds, with at most 32 pending requests per
+side. A supplied static token cannot refresh itself. Test fresh JWT retrieval,
+expiry, network failure and safe recovery. For Chat activation failure, wait at
+least one second and retry Setup initialization with the same Application Code;
+`chat_activation_busy` signals the cooldown or concurrent activation. Successful
+method completion alone does not prove widget/backend authentication.
+
+Screen-as-Camera is supported for the intended stable release. The current example
+button heading still says “Experimental”; that is a retained runtime UI label,
+not the current support classification. Runtime UI edits are outside this task.
+
+1. Use a physical Huawei device with Android 10+, real HMS/MM configuration,
+   authorized Calls routing and a receiving agent. Grant microphone/camera and
+   applicable Nearby devices/notification permissions.
+2. Open **Huawei RTC Video**, start a call and wait for `established`. Confirm
+   two-way audio, local preview and real remote camera frames. Exercise controls;
+   route availability is device-specific.
+3. Keep the camera enabled and Activity focused. Press **Start Screen as Camera**,
+   grant fresh Android consent and confirm the agent receives display content in
+   the existing camera stream. There is no separate screen track. Validate the
+   foreground capture notification, Stop action and OS privacy indicator.
+4. Check asymmetric text/corner markers, portrait and landscape readability,
+   aspect-preserving black bars and unmirrored local screen preview. Output is
+   640×480 through the pinned RTC Core camera filter path.
+5. Rotate/change captured size: a changed resize report after the initial report
+   stops capture. Restart manually with new consent. Confirm no automatic reuse.
+6. Stop from the example and from the notification. Confirm `framesBlocked`,
+   `projectionTerminated` and `resourcesReleased`; wait for normal camera frames
+   and `cameraOutputRestored`. Remote restoration still requires agent confirmation.
+7. Test background capture, OS projection revocation, Activity detach/recreation,
+   local/remote hangup, repeated start/stop and permission cancellation. Detach/end
+   stops sharing; backgrounding alone may leave projection active. OS/vendor
+   restrictions can interrupt it. Protect confidential content during testing.
+8. On `screen_stop_uncertain`, do not record successful shutdown. Query capture
+   state, retry Stop or use Android capture controls, and record actual results.
+   Native Stop has a 3-second deadline; the Dart fallback is 5 seconds.
+9. Hang up and wait for `finished` before MM cleanup/account changes. Export only
+   sanitized evidence. See [screen-sharing guide](../doc/screen-sharing.md).
+
+There are no production RTC token/signing secrets to fill in Dart. The native
+provider asks the backend for a token through initialized MM. Local Chat/MM signing
+helpers are controlled-test conveniences only; production issuance belongs on a
+trusted backend. This run does not supply credentials or claim physical testing.

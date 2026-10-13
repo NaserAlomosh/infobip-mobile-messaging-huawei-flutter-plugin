@@ -6,14 +6,14 @@ Mobile Messaging Android SDK 8.14.0.
 
 ## Huawei outgoing RTC extension (separate from official parity)
 
-[`HuaweiRtc`](docs/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
+[`HuaweiRtc`](doc/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
 hangup, native call snapshots and typed events via RTC Core 2.5.28. Tokens are acquired
 internally through Huawei MM. `callsConfigurationId` is explicitly separate from the
 WebRTCUI push configuration. This is a Huawei/plugin extension, not an official
 Mobile Messaging Flutter parity method. Audio/video/hangup are code/unit verified;
 device verification is pending. `enableCalls`, `enableChatCalls`, `disableCalls` and
 HMS incoming-call signaling remain unsupported/guarded. See the
-[implementation verification](docs/huawei-rtc-outgoing-verification.md).
+[implementation verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md).
 
 ## Default Message Storage
 
@@ -90,7 +90,7 @@ The package is Android-only and targets Huawei Mobile Services (HMS).
 | --- | --- | --- |
 | Initialize with Application Code | **Adapted** | Asynchronous and application-context scoped. |
 | Configure JWT | **Adapted** | `setJwt` sets or clears the in-memory JWT used by supported requests. |
-| SDK shutdown / reset | **Unsupported** | Flutter engine detachment does not reset the native SDK singleton. |
+| Local SDK cleanup | **Supported** | `cleanup()` removes local SDK state after native success; engine detachment alone does not reset the singleton. |
 
 ---
 
@@ -805,3 +805,20 @@ No test exclusions, Gradle changes, standard Android Mobile Messaging SDK,
 WebRTC implementation/configuration changes, or unrelated test fixes are part
 of this change. No application/plugin compile errors remain in the baseline
 build; the full native test-suite limitation above remains separate.
+
+## Current outgoing RTC and screen-sharing extension
+
+The historical official-API audits above do not define the later outgoing RTC
+extension. The current exported `HuaweiRtc`, `HuaweiRtcCallRequest`,
+`HuaweiRtcVideoView`, `HuaweiRtcControls` and `HuaweiRtcScreenAsCamera` support
+outgoing audio/video application calls, local/remote camera rendering, current-call
+controls, call notification return and Android 10+ screen sharing through camera
+substitution. No incoming HMS signaling or separate screen-sharing track is added.
+See the [current README](README.md) and [screen-sharing guide](doc/screen-sharing.md).
+
+Chat initialization includes retryable activation (one-second cooldown); JWT
+provider requests have 25-second Dart and 30-second native deadlines, each with
+32-request limits. Cleanup preserves Dart Chat registrations on native rejection;
+success clears them. Vendor-internal cleanup is not guaranteed to roll back.
+See [reliability evidence](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-chat-api-reliability.md) and
+[security guidance](SECURITY.md) for the unresolved upstream logging issue.
