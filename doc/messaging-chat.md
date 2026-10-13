@@ -87,12 +87,11 @@ Use the published package in your host application's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  infobip_mobilemessaging_huawei: ^1.0.0
+  infobip_mobilemessaging_huawei: ^1.0.1
 ```
 
-Run `flutter pub get`. This constraint accepts the documentation-only 1.0.1 update
-once released. A local path dependency is only needed when evaluating a checkout.
-No release tag is assumed. Import the public library in the Dart examples below:
+Run `flutter pub get`. A local path dependency is only needed when evaluating a
+repository checkout. Import the public library in the Dart examples below:
 
 ```dart
 import 'dart:async';

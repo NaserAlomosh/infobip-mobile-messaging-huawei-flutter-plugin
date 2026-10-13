@@ -3,8 +3,7 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout prepares the documentation update **1.0.1**; the current published
-version is **1.0.0**. The public API and SDK dependencies are unchanged.
+This README documents release **1.0.1**.
 
 ## Features
 
@@ -37,10 +36,10 @@ integration on physical Huawei hardware. Android 36 Robolectric tests require Ja
 
 ## Installation
 
-Use the published version today:
+Install the package from pub.dev:
 
 ```sh
-flutter pub add infobip_mobilemessaging_huawei:^1.0.0
+flutter pub add infobip_mobilemessaging_huawei
 ```
 
 Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
@@ -49,12 +48,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^1.0.0
+  infobip_mobilemessaging_huawei: ^1.0.1
 ```
 
-The caret constraint also accepts 1.0.1 once released. For reviewing this local
-1.0.1 checkout, a path dependency is optional; it is not needed for normal installation.
-Do not copy the example's path dependency into a production host.
+The example uses a local path dependency to test the repository checkout. Use
+the hosted dependency above in your own application.
 
 ## Quick Start
 
