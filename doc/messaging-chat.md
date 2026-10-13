@@ -1,7 +1,7 @@
 # Messaging, Inbox and Chat integration
 
-Complete [Android/Huawei setup](../README.md#android--huawei-configuration) first.
-The examples use the imports shown in the [README](../README.md#initialization).
+Complete [Android/Huawei setup](../README.md#android-configuration) first.
+The examples use the imports shown in the [README](../README.md#flutter-initialization).
 
 ## Initialization and Chat activation recovery
 
@@ -83,16 +83,15 @@ Message `receivedTimestamp` and `seenDate` values are numeric Unix epoch millise
 
 ## Installation
 
-For local evaluation before publication, use the checkout:
+Use the published package in your host application's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  infobip_mobilemessaging_huawei:
-    path: /path/to/mobile-messaging-huawei-flutter-plugin
+  infobip_mobilemessaging_huawei: ^1.0.0
 ```
 
-Run `flutter pub get`. Once the owner has actually published 1.0.0, a hosted
-`infobip_mobilemessaging_huawei: ^1.0.0` dependency can replace the path.
+Run `flutter pub get`. This constraint accepts the documentation-only 1.0.1 update
+once released. A local path dependency is only needed when evaluating a checkout.
 No release tag is assumed. Import the public library in the Dart examples below:
 
 ```dart
@@ -102,6 +101,12 @@ import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.da
 ```
 
 ## Inbox
+
+Production profiles require backend-issued JWTs. Sandbox profiles may use
+Application Code or JWT according to profile policy. Chat JWTs are separate.
+For the Application Code Sandbox example below, omit `jwt` only when that policy
+allows it; otherwise supply a backend-issued token in `fetchInbox(jwt: ...)`.
+See the [Infobip profile guide](https://www.infobip.com/docs/mobile-push/get-started/mobile-application-profile).
 
 ```dart
 final inbox = await InfobipMobileMessagingHuawei.fetchInbox(

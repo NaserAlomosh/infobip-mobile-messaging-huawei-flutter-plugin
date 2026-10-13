@@ -4,6 +4,7 @@ abstract final class ExampleTestConfig {
   // ==========================================
   // 1. INFOBIP APPLICATION
   // ==========================================
+  // Obtain Application Code from your saved Infobip Mobile Messaging profile.
   // Backend ApplicationCode -> INFOBIP_APPLICATION_CODE -> this SDK input.
   static const String infobipApplicationCode = '';
   // NOT USED: AppKey -> INFOBIP_APP_KEY, InfobipApplicationId ->
@@ -13,7 +14,9 @@ abstract final class ExampleTestConfig {
   // ==========================================
   // 2. MOBILE MESSAGING JWT
   // ==========================================
-  // Supply an unexpired test JWT OR fill the hex signing-key fields.
+  // Prefer an unexpired backend-issued test JWT. Local signing fields below
+  // are isolated test helpers only; never embed production signing keys.
+  // Production Inbox requires JWT; MM user-data auth follows profile policy.
   // A supplied JWT cannot be renewed locally; replace it when expired.
   static const String jwtToken = '';
   static const String jwtKid = '';
@@ -25,6 +28,8 @@ abstract final class ExampleTestConfig {
   // ==========================================
   static const String chatAuthMode = 'installation'; // installation or jwt
   static const String chatJwtToken = '';
+  // Widget ID/key ID/key come from the linked Live Chat widget's security
+  // configuration, used by your backend signer (local fields are test-only).
   static const String chatWidgetId = '';
   static const String chatKeyId = '';
   static const String chatSecretKey = ''; // Base64 widget key, NOT MM hex key
@@ -59,6 +64,7 @@ abstract final class ExampleTestConfig {
   // ==========================================
   // 7. OUTGOING HUAWEI RTC / WEBRTC
   // ==========================================
+  // Obtain from your Infobip Calls configuration/backend administrator.
   static const String rtcCallsConfigurationId = ''; // NOT RTC push config ID
   static const String rtcIdentity = ''; // Empty uses registered installation ID
   static const bool enableAudioTesting = true;
@@ -74,5 +80,7 @@ abstract final class ExampleTestConfig {
   static const Map<String, dynamic> installationAttributes =
       <String, dynamic>{};
   // Huawei AppGallery App ID is DIFFERENT from Infobip Application Code/ID.
-  // Enter Huawei host values in android/app/agconnect-services.json, not here.
+  // Place downloaded JSON at example/android/app/agconnect-services.json.
+  // Also replace APP_ID in example/android/app/src/main/res/values/strings.xml
+  // with the numeric Huawei ID; JSON alone does not supply this resource.
 }

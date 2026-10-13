@@ -1,6 +1,20 @@
-# 1.0.0
+## 1.0.1
 
-First public release preparation. The development API defines the initial
+### Documentation
+
+- Added complete Huawei AppGallery Connect setup instructions.
+- Added Infobip Portal configuration instructions.
+- Added a configuration reference for required credentials.
+- Improved installation and initialization examples.
+- Improved Chat, Push, and RTC onboarding.
+- Updated documentation for the published package.
+
+This update changes documentation and the package version only. SDK dependencies,
+public APIs and runtime behavior are unchanged.
+
+## 1.0.0
+
+First public release. The development API defines the initial
 public API for version 1.0.0; earlier branch APIs were unpublished.
 
 - Added Huawei HMS Push registration and Infobip Mobile Messaging initialization.

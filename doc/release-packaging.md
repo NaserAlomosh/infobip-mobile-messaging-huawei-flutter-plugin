@@ -1,5 +1,11 @@
 # Phase 3.5.2 — release documentation and packaging
 
+> Historical assessment from 2026-10-12, retained as investigation evidence.
+> Its publication/version/licensing conclusions describe that checkout, not
+> the current package. Use the [current README](../README.md) for installation
+> and setup, and rerun release checks for the version being prepared.
+
+
 Date: 2026-10-12 (Asia/Amman). Assessment: **BLOCKED for publication**.
 Documentation and package preparation are complete within the authorized scope;
 this is not a release or security certification.

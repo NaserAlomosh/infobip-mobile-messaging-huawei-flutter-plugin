@@ -1,5 +1,11 @@
 # Phase 3.5.3 — final production validation and release certification
 
+> Historical assessment from 2026-10-12, retained as investigation evidence.
+> Its publication/version/licensing conclusions describe that checkout, not
+> the current package. Use the [current README](../README.md) for installation
+> and setup, and rerun release checks for the version being prepared.
+
+
 Audit date: 2026-10-12, Asia/Amman. Candidate: `fb359cb6f2c8609b03e2652b929a20020fcc8f21`.
 **Production certification: NO-GO. Package publication is assessed separately
 in [publication readiness](publication-readiness.md).**

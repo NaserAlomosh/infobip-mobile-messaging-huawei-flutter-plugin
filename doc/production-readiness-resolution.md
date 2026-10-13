@@ -1,5 +1,11 @@
 # Production-readiness resolution
 
+> Historical assessment from 2026-10-12, retained as investigation evidence.
+> Its publication/version/licensing conclusions describe that checkout, not
+> the current package. Use the [current README](../README.md) for installation
+> and setup, and rerun release checks for the version being prepared.
+
+
 ## Summary
 
 Audit baseline: `c13833fcf6adcda61a504cf01ecb856ec54e4a86` on `development`.
