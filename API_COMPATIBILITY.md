@@ -4,6 +4,23 @@ This document summarizes the public API coverage of
 `infobip_mobilemessaging_huawei` v1.0.0 against the Infobip Huawei
 Mobile Messaging Android SDK 8.14.0.
 
+## Initial public API for 1.0.0
+
+Version 1.0.0 is the first public release. This package has never been publicly
+released and has no consumers of the unpublished `main` API. The current
+`development` API defines the initial public contract. Differences from earlier
+branches are intentional pre-release evolution, not compatibility requirements.
+The comparisons below describe coverage of the referenced Infobip APIs; they
+do not promise source compatibility with earlier branches or other packages.
+
+Use `personalize(PersonalizeContext(...))`, `UserData`, `Message`,
+`InboxMessage`, and `FilterOptions` in new integrations. User birthdays are
+nullable `YYYY-MM-DD` strings; message timestamps are numeric epoch milliseconds.
+`UserData`, `UserIdentity`, `UserAttributes`, and `Installation` have non-const
+constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
+Historical audit reports excluded from the published package record their
+original verification snapshots, not the current release status.
+
 ## Huawei outgoing RTC extension (separate from official parity)
 
 [`HuaweiRtc`](doc/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
@@ -331,11 +348,10 @@ SDK-defined. Contextual data is opaque and forwarded byte-for-byte as a Dart
 `String`; empty or whitespace-only values continue to be rejected before the
 native call, preserving the package's existing contract.
 
-The existing `sendContextualData(String)` method remains source compatible and
-delegates to `ACTIVE`. Dart cannot overload that method with the official
-deprecated `sendContextualData(String, bool)` signature, so adding the boolean
-signature would break existing callers. `sendContextualDataWithStrategy` is the
-non-conflicting official-compatible API.
+`sendContextualData(String)` delegates to `ACTIVE`.
+`sendContextualDataWithStrategy` accepts the explicit strategy. The initial
+public API does not expose the official deprecated
+`sendContextualData(String, bool)` signature.
 
 ### Chat Draft Messages
 
@@ -425,7 +441,8 @@ supported Android versions and devices.
 include message presentation, timestamps, seen state, URL actions, custom
 payload, internal data, and Chat state. `originalPayload` remains nullable
 because Huawei 8.14.0 cannot provide the iOS-specific value.
-`PushMessage` is a deprecated source-compatible alias.
+`PushMessage` is a deprecated typedef for `Message`. This name does not imply
+source compatibility with unpublished model contracts.
 
 ### User
 
@@ -449,11 +466,16 @@ Only fields explicitly supported for modification by the plugin can be updated.
 ### Inbox
 
 - `Inbox`
-- `Message` (`InboxMessage` remains a deprecated alias)
+- `InboxMessage extends Message` (a concrete class, not an alias)
 - `FilterOptions` (`InboxFilterOptions` remains a deprecated alias)
 
 Supports server counters, Inbox messages, time filters, topic filters, and result
 limits.
+
+`Inbox.messages` is `List<InboxMessage>`. Each `InboxMessage` requires non-null
+`messageId`, `topic`, and `seen`, inherits the shared message fields, and adds
+numeric `sentTimestamp`. Its constructor uses `deeplink` and `silent`; it does
+not accept `deepLink` or `isSilent`. `customPayload` is nullable.
 
 ### Chat
 
@@ -532,7 +554,7 @@ Chat is exposed primarily as a native UI integration rather than a headless
 conversation API.
 ## Model Parity
 
-The audit is pinned to official Flutter commit
+The reference audit is pinned to official Flutter commit
 `8b630d0f736d400635317131d549c345349bd54d` and Huawei SDK 8.14.0
 (reference revision `83786a498f165386041bf75e71488f1635f8af94`).
 
@@ -543,92 +565,98 @@ native `Date` representation without exposing `DateTime` in Dart.
 
 `PushServiceType.APNS` is retained for official model parity but cannot be returned by the Huawei Android SDK. `PushServiceType.HMS` represents the Huawei transport and is never remapped to Firebase.
 
-| Model | Field | Official Flutter type | Huawei native type/source | Old plugin type | New plugin type | Status |
-| --- | --- | --- | --- | --- | --- | --- |
-| `Message` | `messageId` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `title` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `body` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `sound` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `icon` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `category` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `internalData` | `String?` | `Message.getInternalData()` | `String?` | `String?` | **EXACT** |
-| `Message` | `contentUrl` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `browserUrl` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `deeplink` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `webViewUrl` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `inAppOpenTitle` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `inAppDismissTitle` | `String?` | `Message / MessageJson` | `String?` | `String?` | **EXACT** |
-| `Message` | `vibrate` | `bool?` | `Message / MessageJson` | `bool?` | `bool?` | **EXACT** |
-| `Message` | `silent` | `bool?` | `Message / MessageJson` | `bool?` | `bool?` | **EXACT** |
-| `Message` | `seen` | `bool?` | `Message / MessageJson` | `bool?` | `bool?` | **EXACT** |
-| `Message` | `chat` | `bool?` | `Message / MessageJson` | `bool?` | `bool?` | **EXACT** |
-| `Message` | `customPayload` | `Map<String, dynamic>?` | `Message.customPayload (JSONObject)` | `Map<String, Object?>?` | `Map<String, dynamic>?` | **CONVERTED** |
-| `Message` | `originalPayload` | `Map<String, dynamic>?` | `Not available on Huawei Android` | `Map<String, Object?>?` | `Map<String, dynamic>?` | **NULL_ON_HUAWEI** |
-| `Message` | `receivedTimestamp` | `num?` | `MessageJson numeric epoch milliseconds` | `DateTime?` | `num?` | **CONVERTED** |
-| `Message` | `seenDate` | `num?` | `MessageJson numeric epoch milliseconds` | `DateTime?` | `num?` | **CONVERTED** |
-| `Message` | `topic` | `String?` | `InboxMessage.topic` | `String?` | `String?` | **HUAWEI_EXTENSION** |
-| `Installation` | `installationId` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `pushRegistrationId` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `pushServiceToken` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `sdkVersion` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `appVersion` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `os` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `osVersion` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `deviceManufacturer` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `deviceModel` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `language` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `deviceTimezoneOffset` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `applicationUserId` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `deviceName` | `String?` | `Installation / InstallationJson` | `String?` | `String?` | **EXACT** |
-| `Installation` | `pushServiceType` | `PushServiceType?` | `PushServiceType (HMS on Huawei)` | `PushServiceType? (FCM alias)` | `PushServiceType? (GCM, Firebase, APNS, HMS)` | **CONVERTED** |
-| `Installation` | `isPrimaryDevice` | `bool?` | `Installation / InstallationJson` | `bool?` | `bool?` | **EXACT** |
-| `Installation` | `isPushRegistrationEnabled` | `bool?` | `Installation / InstallationJson` | `bool?` | `bool?` | **EXACT** |
-| `Installation` | `notificationsEnabled` | `bool?` | `Installation / InstallationJson` | `bool?` | `bool?` | **EXACT** |
-| `Installation` | `deviceSecure` | `bool?` | `Installation / InstallationJson` | `bool?` | `bool?` | **EXACT** |
-| `Installation` | `customAttributes` | `Map<String, dynamic>?` | `Installation.customAttributes` | `Map<String, Object?>?` | `Map<String, dynamic>?` | **CONVERTED** |
-| `UserData` | `externalUserId` | `String?` | `User / UserJson` | `String? final` | `String? mutable` | **CONVERTED** |
-| `UserData` | `firstName` | `String?` | `User / UserJson` | `String? final` | `String? mutable` | **CONVERTED** |
-| `UserData` | `lastName` | `String?` | `User / UserJson` | `String? final` | `String? mutable` | **CONVERTED** |
-| `UserData` | `middleName` | `String?` | `User / UserJson` | `String? final` | `String? mutable` | **CONVERTED** |
-| `UserData` | `birthday` | `String?` | `Date? formatted by UserJson as yyyy-MM-dd` | `DateTime? final` | `String? mutable` | **CONVERTED** |
-| `UserData` | `gender` | `Gender?` | `UserAttributes.Gender` | `Gender? including unknown` | `Gender? (Male, Female)` | **CONVERTED** |
-| `UserData` | `type` | `Type?` | `User.Type` | `Type? with non-official names` | `Type? (LEAD, CUSTOMER)` | **CONVERTED** |
-| `UserData` | `phones` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | `List<String>?` | **EXACT** |
-| `UserData` | `emails` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | `List<String>?` | **EXACT** |
-| `UserData` | `tags` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | `List<String>?` | **EXACT** |
-| `UserData` | `customAttributes` | `Map<String, dynamic>?` | `Map<String, CustomAttributeValue>?` | `Map<String, Object?>?` | `Map<String, dynamic>?` | **CONVERTED** |
-| `UserData` | `installations` | `List<Installation>?` | `List<Installation>?` | `List<Installation>?` | `List<Installation>?` | **EXACT** |
-| `UserIdentity` | `externalUserId` | `String?` | `UserIdentity.externalUserId` | `String? final` | `String? mutable` | **CONVERTED** |
-| `UserIdentity` | `phones` | `List<String>?` | `Set<String>?` | `List<String>? final` | `List<String>? mutable` | **CONVERTED** |
-| `UserIdentity` | `emails` | `List<String>?` | `Set<String>?` | `List<String>? final` | `List<String>? mutable` | **CONVERTED** |
-| `UserAttributes` | `firstName` | `String?` | `UserAttributes; birthday is native Date` | `birthday was DateTime?; fields final` | `String? mutable` | **CONVERTED** |
-| `UserAttributes` | `lastName` | `String?` | `UserAttributes; birthday is native Date` | `birthday was DateTime?; fields final` | `String? mutable` | **CONVERTED** |
-| `UserAttributes` | `middleName` | `String?` | `UserAttributes; birthday is native Date` | `birthday was DateTime?; fields final` | `String? mutable` | **CONVERTED** |
-| `UserAttributes` | `birthday` | `String?` | `UserAttributes; birthday is native Date` | `birthday was DateTime?; fields final` | `String? mutable` | **CONVERTED** |
-| `UserAttributes` | `gender` | `Gender?` | `UserAttributes.Gender` | `Gender? final including unknown` | `Gender? mutable (Male, Female)` | **CONVERTED** |
-| `UserAttributes` | `tags` | `List<String>?` | `Set<String>?` | `List<String>? final` | `List<String>? mutable` | **CONVERTED** |
-| `UserAttributes` | `customAttributes` | `Map<String, dynamic>?` | `Map<String, CustomAttributeValue>?` | `Map<String, Object?>?` | `Map<String, dynamic>? mutable` | **CONVERTED** |
-| `PersonalizeContext` | `forceDepersonalize` | `bool` | `PersonalizeContext.forceDepersonalize` | `bool` | `bool` | **EXACT** |
-| `PersonalizeContext` | `userIdentity` | `UserIdentity` | `UserIdentity` | `UserIdentity` | `UserIdentity` | **EXACT** |
-| `PersonalizeContext` | `userAttributes` | `UserAttributes?` | `UserAttributes?` | `UserAttributes?` | `UserAttributes?` | **EXACT** |
-| `Inbox` | `countTotal` | `int` | `Inbox counters` | `int` | `int` | **EXACT** |
-| `Inbox` | `countUnread` | `int` | `Inbox counters` | `int` | `int` | **EXACT** |
-| `Inbox` | `countTotalFiltered` | `int` | `Inbox counters` | `int` | `int` | **EXACT** |
-| `Inbox` | `countUnreadFiltered` | `int` | `Inbox counters` | `int` | `int` | **EXACT** |
-| `Inbox` | `messages` | `List<Message>` | `List<InboxMessage> mapped to Message JSON` | `List<Message>` | `List<Message>` | **EXACT** |
-| `FilterOptions` | `fromDateTime` | `DateTime?` | `MobileInboxFilterOptions Date?` | `DateTime?` | `DateTime?` | **EXACT** |
-| `FilterOptions` | `toDateTime` | `DateTime?` | `MobileInboxFilterOptions Date?` | `DateTime?` | `DateTime?` | **EXACT** |
-| `FilterOptions` | `topic` | `String?` | `MobileInboxFilterOptions topic` | `String?` | `String?` | **EXACT** |
-| `FilterOptions` | `limit` | `int?` | `MobileInboxFilterOptions limit` | `int?` | `int?` | **EXACT** |
-| `FilterOptions` | `topics` | `Not in official API` | `Huawei list-topic constructor` | `List<String>?` | `List<String>?` | **HUAWEI_EXTENSION** |
+| Model | Field | Official Flutter type | Huawei native type/source | Initial 1.0.0 plugin type | Status |
+| --- | --- | --- | --- | --- | --- |
+| `Message` | `messageId` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `title` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `body` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `sound` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `icon` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `category` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `internalData` | `String?` | `Message.getInternalData()` | `String?` | **EXACT** |
+| `Message` | `contentUrl` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `browserUrl` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `deeplink` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `webViewUrl` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `inAppOpenTitle` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `inAppDismissTitle` | `String?` | `Message / MessageJson` | `String?` | **EXACT** |
+| `Message` | `vibrate` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `silent` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `seen` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `chat` | `bool?` | `Message / MessageJson` | `bool?` | **EXACT** |
+| `Message` | `customPayload` | `Map<String, dynamic>?` | `Message.customPayload (JSONObject)` | `Map<String, dynamic>?` | **CONVERTED** |
+| `Message` | `originalPayload` | `Map<String, dynamic>?` | `Not available on Huawei Android` | `Map<String, dynamic>?` | **NULL_ON_HUAWEI** |
+| `Message` | `receivedTimestamp` | `num?` | `MessageJson numeric epoch milliseconds` | `num?` | **CONVERTED** |
+| `Message` | `seenDate` | `num?` | `MessageJson numeric epoch milliseconds` | `num?` | **CONVERTED** |
+| `Message` | `topic` | `String?` | `InboxMessage.topic` | `String?` | **HUAWEI_EXTENSION** |
+| `Installation` | `installationId` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `pushRegistrationId` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `pushServiceToken` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `sdkVersion` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `appVersion` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `os` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `osVersion` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceManufacturer` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceModel` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `language` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceTimezoneOffset` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `applicationUserId` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `deviceName` | `String?` | `Installation / InstallationJson` | `String?` | **EXACT** |
+| `Installation` | `pushServiceType` | `PushServiceType?` | `PushServiceType (HMS on Huawei)` | `PushServiceType? (GCM, Firebase, APNS, HMS)` | **CONVERTED** |
+| `Installation` | `isPrimaryDevice` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `isPushRegistrationEnabled` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `notificationsEnabled` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `deviceSecure` | `bool?` | `Installation / InstallationJson` | `bool?` | **EXACT** |
+| `Installation` | `customAttributes` | `Map<String, dynamic>?` | `Installation.customAttributes` | `Map<String, dynamic>?` | **CONVERTED** |
+| `UserData` | `externalUserId` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `firstName` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `lastName` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `middleName` | `String?` | `User / UserJson` | `String? mutable` | **CONVERTED** |
+| `UserData` | `birthday` | `String?` | `Date? formatted by UserJson as yyyy-MM-dd` | `String? mutable` | **CONVERTED** |
+| `UserData` | `gender` | `Gender?` | `UserAttributes.Gender` | `Gender? (Male, Female)` | **CONVERTED** |
+| `UserData` | `type` | `Type?` | `User.Type` | `Type? (LEAD, CUSTOMER)` | **CONVERTED** |
+| `UserData` | `phones` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | **EXACT** |
+| `UserData` | `emails` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | **EXACT** |
+| `UserData` | `tags` | `List<String>?` | `Set<String>? serialized by UserJson` | `List<String>?` | **EXACT** |
+| `UserData` | `customAttributes` | `Map<String, dynamic>?` | `Map<String, CustomAttributeValue>?` | `Map<String, dynamic>?` | **CONVERTED** |
+| `UserData` | `installations` | `List<Installation>?` | `List<Installation>?` | `List<Installation>?` | **EXACT** |
+| `UserIdentity` | `externalUserId` | `String?` | `UserIdentity.externalUserId` | `String? mutable` | **CONVERTED** |
+| `UserIdentity` | `phones` | `List<String>?` | `Set<String>?` | `List<String>? mutable` | **CONVERTED** |
+| `UserIdentity` | `emails` | `List<String>?` | `Set<String>?` | `List<String>? mutable` | **CONVERTED** |
+| `UserAttributes` | `firstName` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `lastName` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `middleName` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `birthday` | `String?` | `UserAttributes; birthday is native Date` | `String? mutable` | **CONVERTED** |
+| `UserAttributes` | `gender` | `Gender?` | `UserAttributes.Gender` | `Gender? mutable (Male, Female)` | **CONVERTED** |
+| `UserAttributes` | `tags` | `List<String>?` | `Set<String>?` | `List<String>? mutable` | **CONVERTED** |
+| `UserAttributes` | `customAttributes` | `Map<String, dynamic>?` | `Map<String, CustomAttributeValue>?` | `Map<String, dynamic>? mutable` | **CONVERTED** |
+| `PersonalizeContext` | `forceDepersonalize` | `bool` | `PersonalizeContext.forceDepersonalize` | `bool` | **EXACT** |
+| `PersonalizeContext` | `userIdentity` | `UserIdentity` | `UserIdentity` | `UserIdentity` | **EXACT** |
+| `PersonalizeContext` | `userAttributes` | `UserAttributes?` | `UserAttributes?` | `UserAttributes?` | **EXACT** |
+| `Inbox` | `countTotal` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `countUnread` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `countTotalFiltered` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `countUnreadFiltered` | `int` | `Inbox counters` | `int` | **EXACT** |
+| `Inbox` | `messages` | `List<Message>` | `List<InboxMessage> mapped to Message JSON` | `List<InboxMessage>` | **HUAWEI_EXTENSION** |
+| `FilterOptions` | `fromDateTime` | `DateTime?` | `MobileInboxFilterOptions Date?` | `DateTime?` | **EXACT** |
+| `FilterOptions` | `toDateTime` | `DateTime?` | `MobileInboxFilterOptions Date?` | `DateTime?` | **EXACT** |
+| `FilterOptions` | `topic` | `String?` | `MobileInboxFilterOptions topic` | `String?` | **EXACT** |
+| `FilterOptions` | `limit` | `int?` | `MobileInboxFilterOptions limit` | `int?` | **EXACT** |
+| `FilterOptions` | `topics` | `Not in official API` | `Huawei list-topic constructor` | `List<String>?` | **HUAWEI_EXTENSION** |
 
-### Compatibility aliases
+### Deprecated names in the initial API
 
-Deprecated aliases preserve pre-v1 source compatibility for `PushMessage`,
-`User`, `InboxMessage`, `InboxFilterOptions`, `deepLink`, `isSilent`,
+The existing typedefs are `PushMessage = Message`, `User = UserData`, and
+`InboxFilterOptions = FilterOptions`. `InboxMessage` is not a typedef.
+`Message` exposes deprecated `deepLink` and `isSilent` getters, and its
+constructor accepts those alternate names. `Installation` exposes deprecated
 `pushRegistrationEnabled`, `applicationVersion`, `operatingSystem`,
-`operatingSystemVersion`, `deviceTimezoneId`, and `appUserId`. Canonical code
-should use the official-style names.
+`operatingSystemVersion`, `deviceTimezoneId`, and `appUserId` names.
+`FilterOptions` exposes deprecated `from` and `to` getters and constructor names.
+Enum alternate names and the `personalizeUser` helper also remain in the
+current implementation. These existing names are not a guarantee that
+unpublished callers compile unchanged. New integrations should use the canonical
+names documented above; no additional compatibility layer is required for 1.0.0.
 
 ## Chat Customization
 
@@ -707,7 +735,7 @@ embedded view and use the existing buffered `chatOnRuntimeEvent` channel path.
 
 | Official Flutter event | Huawei 8.14 callback | Our public event | Classification | Notes |
 | --- | --- | --- | --- | --- |
-| `chatLoaded` | `onChatLoadingFinished(result)` | `InfobipHuaweiChatLoadedEvent(success)` | **EXACT** | Emitted for success and failure; the boolean is `result.isSuccess()`. Loading failure also retains the existing error callback. The required `success` constructor argument is a source-breaking change only for callers that directly construct this event. |
+| `chatLoaded` | `onChatLoadingFinished(result)` | `InfobipHuaweiChatLoadedEvent(success)` | **EXACT** | Emitted for success and failure; the boolean is `result.isSuccess()`. Loading failure also retains the existing error callback. The initial public constructor requires the named `success` argument. |
 | `chatDisconnected` | `onChatConnectionPaused(result)` | `InfobipHuaweiChatConnectionChangedEvent(disconnected)` | **MAPPABLE** | Existing typed connection abstraction is retained and is emitted on successful callback results. |
 | `chatReconnected` | `onChatConnectionResumed(result)` | `InfobipHuaweiChatConnectionChangedEvent(connected)` | **MAPPABLE** | Existing typed connection abstraction is retained and is emitted on successful callback results. |
 | `exitChatPressed` | `onExitChatPressed()` | `InfobipHuaweiChatExitPressedEvent` | **EXACT** | Observational only; Flutter navigation is not changed. |

@@ -1,6 +1,7 @@
 # 1.0.0
 
-First stable release preparation; publication is pending release gates.
+First public release preparation. The development API defines the initial
+public API for version 1.0.0; earlier branch APIs were unpublished.
 
 - Added Huawei HMS Push registration and Infobip Mobile Messaging initialization.
 - Added message, notification tap/action, registration, installation and user events.
@@ -35,8 +36,9 @@ First stable release preparation; publication is pending release gates.
   FilterOptions names with the official Flutter models; retained deprecated aliases.
 - Added release integration/security guides and explicit package exclusions.
 
-Publication blocker: missing owner-authorized root LICENSE and confirmed
-redistribution rights; the final package dry-run must be rechecked after resolution.
+The root MIT LICENSE and third-party notices are included. Owner-controlled
+provenance and redistribution confirmations remain separate from technical
+merge readiness. Publication requires explicit owner authorization.
 Known unresolved risks: Huawei Mobile Messaging 8.14.0 authorization-header logging
 and RTC 2.5.28 signaling logging that may expose temporary TURN credentials.
 SEC-01 remains PARTIALLY MITIGATED; the optional host Release R8 workaround does

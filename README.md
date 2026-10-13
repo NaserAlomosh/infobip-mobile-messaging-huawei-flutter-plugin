@@ -2,7 +2,8 @@
 
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
-package. Version **1.0.0** is being prepared for publication.
+package. Version **1.0.0** is being prepared as the first public release.
+The development API is the initial public API; earlier branch APIs were unpublished.
 
 ## Features
 

@@ -1,5 +1,5 @@
 # Verified against Huawei 8.14's resolved artifacts; rationale and coordinates:
-# docs/android-release-verification.md. Do not widen these to package wildcards.
+# doc/android-release-verification.md. Do not widen these to package wildcards.
 
 # OEM-only extensions, guarded by ReflectionUtils.checkCompatible / linkage catches.
 -dontwarn com.huawei.android.os.BuildEx$VERSION
