@@ -74,7 +74,7 @@ Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpe
 
 **Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, multiparty video gallery, a separate screen-share track and configurable screen encoding resolution. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; screen navigation alone does not hang up.
 
-See the existing [RTC scope](../docs/huawei-rtc-outgoing.md), [verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md), [device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md), [WebRTC safeguards](../docs/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
+See the existing [RTC scope](../doc/huawei-rtc-outgoing.md), [verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md), [device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md), [WebRTC safeguards](../doc/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
 
 ## Validation
 
@@ -124,7 +124,7 @@ not the current support classification. Runtime UI edits are outside this task.
    state, retry Stop or use Android capture controls, and record actual results.
    Native Stop has a 3-second deadline; the Dart fallback is 5 seconds.
 9. Hang up and wait for `finished` before MM cleanup/account changes. Export only
-   sanitized evidence. See [screen-sharing guide](../docs/screen-sharing.md).
+   sanitized evidence. See [screen-sharing guide](../doc/screen-sharing.md).
 
 There are no production RTC token/signing secrets to fill in Dart. The native
 provider asks the backend for a token through initialized MM. Local Chat/MM signing

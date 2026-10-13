@@ -112,7 +112,7 @@ capture private content outside the app. Keep consent one-shot, respect secure
 content, and never imply invisible capture. Verify `projectionTerminated` and
 `resourcesReleased` after Stop. On uncertain shutdown, inspect state/retry or use
 system capture controls. `cameraOutputRestored` does not acknowledge remote display.
-See [screen sharing](docs/screen-sharing.md) for background/resize behavior.
+See [screen sharing](doc/screen-sharing.md) for background/resize behavior.
 
 ## Reporting
 

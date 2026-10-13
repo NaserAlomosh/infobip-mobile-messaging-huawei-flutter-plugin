@@ -96,7 +96,7 @@ one second and retry with the **same** application code. A concurrent/cooldown
 retry returns `chat_activation_busy`. Bound retries in your application.
 
 The default message store is enabled. MM `setJwt` authorization is separate from
-Chat JWT authentication. See [messaging and Chat integration](docs/messaging-chat.md)
+Chat JWT authentication. See [messaging and Chat integration](doc/messaging-chat.md)
 for storage settings, user/installation examples, Inbox, JWTs and cleanup.
 
 ## Push Notifications
@@ -115,7 +115,7 @@ Future<StreamSubscription<Message>> registerPush() async {
 Cancel subscriptions when their owner is disposed. HMS token acquisition/refresh
 belongs to the native SDK. A pending notification tap can replay once on subscription;
 other MM events do not replay. Treat payloads and deep links as untrusted input.
-See [notification event examples](docs/messaging-chat.md#hms-push-and-notification-events).
+See [notification event examples](doc/messaging-chat.md#hms-push-and-notification-events).
 
 ## Chat Integration
 
@@ -133,7 +133,7 @@ programmatic sending is text-only. Unread updates do not replay: query the curre
 Use `setChatJwtProvider` to retrieve fresh backend-issued widget/identity tokens.
 MM/Inbox JWTs use separate contracts. Provider requests expire after 25 seconds in
 Dart and 30 seconds natively, with 32 pending requests per side. Bound your backend
-network work too. See [Chat examples and authentication](docs/messaging-chat.md#native-and-embedded-chat)
+network work too. See [Chat examples and authentication](doc/messaging-chat.md#native-and-embedded-chat)
 and the [API compatibility reference](API_COMPATIBILITY.md).
 
 ## RTC Audio / Video Calls
@@ -168,7 +168,7 @@ for mute, speaker/audio routes and camera enable/switch. Mutations require the
 current ID and an established foreground call. Handle `returnToCall` and consume
 `takeNotificationCall()` on attachment/resume to restore your existing call screen.
 Navigation away does not hang up. Hang up and await `finished` before MM cleanup
-or account changes. See the [RTC integration guide](docs/huawei-rtc-outgoing.md)
+or account changes. See the [RTC integration guide](doc/huawei-rtc-outgoing.md)
 for rendering, controls, notifications, events and errors.
 
 ## Screen Sharing
@@ -194,13 +194,13 @@ Camera switching/toggling is locked during capture/shutdown. Confirm
 `projectionTerminated` and `resourcesReleased` after Stop. On
 `screen_stop_uncertain`, query state and retry Stop or use Android capture controls.
 `cameraOutputRestored` confirms local submission, not remote display.
-See the [screen-sharing guide](docs/screen-sharing.md) for states, privacy and device checks.
+See the [screen-sharing guide](doc/screen-sharing.md) for states, privacy and device checks.
 
 ## Known Limitations
 
 - Android only; no iOS, web, desktop, FCM push transport or Dart background isolate.
 - Incoming HMS RTC and official `enableCalls`/`enableChatCalls` parity are unsupported.
-  `infobipWebRtcEnabled=true` is rejected; see [WebRTC safeguards](docs/webrtc-configuration.md).
+  `infobipWebRtcEnabled=true` is rejected; see [WebRTC safeguards](doc/webrtc-configuration.md).
 - RTC Core retains Firebase/GMS transitive dependencies; Google-free operation is not certified.
 - No multiparty gallery, separate screen track, screen-resolution setting or seamless resize.
 - Chat thread management and composer draft setters are unavailable.

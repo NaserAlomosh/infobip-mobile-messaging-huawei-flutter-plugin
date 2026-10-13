@@ -6,7 +6,7 @@ Mobile Messaging Android SDK 8.14.0.
 
 ## Huawei outgoing RTC extension (separate from official parity)
 
-[`HuaweiRtc`](docs/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
+[`HuaweiRtc`](doc/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
 hangup, native call snapshots and typed events via RTC Core 2.5.28. Tokens are acquired
 internally through Huawei MM. `callsConfigurationId` is explicitly separate from the
 WebRTCUI push configuration. This is a Huawei/plugin extension, not an official
@@ -814,7 +814,7 @@ extension. The current exported `HuaweiRtc`, `HuaweiRtcCallRequest`,
 outgoing audio/video application calls, local/remote camera rendering, current-call
 controls, call notification return and Android 10+ screen sharing through camera
 substitution. No incoming HMS signaling or separate screen-sharing track is added.
-See the [current README](README.md) and [screen-sharing guide](docs/screen-sharing.md).
+See the [current README](README.md) and [screen-sharing guide](doc/screen-sharing.md).
 
 Chat initialization includes retryable activation (one-second cooldown); JWT
 provider requests have 25-second Dart and 30-second native deadlines, each with

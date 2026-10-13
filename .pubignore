@@ -50,10 +50,10 @@ Thumbs.db
 **/reports/
 
 # Consumer guides are shipped; internal audits and SDK inspection evidence stay in Git.
-/docs/*
-!/docs/messaging-chat.md
-!/docs/huawei-rtc-outgoing.md
-!/docs/screen-sharing.md
-!/docs/webrtc-configuration.md
+/doc/*
+!/doc/messaging-chat.md
+!/doc/huawei-rtc-outgoing.md
+!/doc/screen-sharing.md
+!/doc/webrtc-configuration.md
 /example/CONFIG_AUTH_AUDIT.md
 /example/VALIDATION.md

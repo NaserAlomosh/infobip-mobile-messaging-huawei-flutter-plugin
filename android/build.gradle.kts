@@ -82,7 +82,7 @@ dependencies {
         error(
             "RTC UI 15.1.0 is unsupported for Huawei-only production use: it references " +
                 "MobileMessagingFirebaseService from the conflicting standard MM core. " +
-                "Keep infobipWebRtcEnabled=false. See docs/webrtc-configuration.md.",
+                "Keep infobipWebRtcEnabled=false. See doc/webrtc-configuration.md.",
         )
     }
 }
