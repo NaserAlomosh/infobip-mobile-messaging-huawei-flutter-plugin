@@ -1,6 +1,27 @@
 # Huawei SDK Test Center
 
-A manual integration test application for a **physical Huawei device**, using the plugin on `release/rtc-production-certification`. All runtime results come from public SDK APIs, real events, or explicit tester confirmation. No physical-device test has been performed by this refactor.
+A manual integration test application for a **physical Huawei device**, using this checkout of the plugin via the example's local path dependency. All runtime results come from public SDK APIs, real events, or explicit tester confirmation. Automated tests do not establish Huawei device or Infobip backend acceptance.
+
+## Start with the required values
+
+Use the [main Getting Started guide](../README.md#quick-start) to create your
+Huawei and Infobip applications before running the test center. Start with push;
+Chat and RTC require separate optional service setup.
+
+| To test | Minimum setup / where to obtain values |
+| --- | --- |
+| Initialize and Push | Huawei AGC app matching the installed package/certificate; Push Kit enabled; downloaded JSON and numeric `app_id`; Infobip Huawei profile configured with App ID/App Secret; profile's Application Code in `infobipApplicationCode` |
+| Installation Chat | Registered installation; Live Chat widget linked to that Infobip profile, matching installation security mode and a reachable agent |
+| JWT Chat | Above plus authenticated backend widget token in `chatJwtToken`, matching `externalUserId`, and `chatAuthMode = 'jwt'`; tokens must be replaced when expired/consumed |
+| Mobile Inbox / protected user APIs | Test `externalUserId`; backend MM/Inbox JWT in `jwtToken` when profile policy requires it (Production Inbox requires JWT) |
+| Outgoing RTC | Web and In-app Calls enabled; backend administrator supplies `rtcCallsConfigurationId` with working routing/receiver; optional authorized `rtcIdentity`, or wait for registered installation identity |
+
+The preferred test path is supplied backend tokens. This example also contains
+local signing helpers for isolated tests only; they are not a production pattern.
+Keep generated APKs private if you use those helpers, and never commit keys.
+The [configuration reference](../README.md#configuration-reference) explains ID,
+token and signing-key ownership. App Key, Application ID and a base URL are not
+initialization inputs for this plugin.
 
 ## One editable Dart configuration
 
@@ -17,7 +38,7 @@ Edit **`example/lib/config/example_test_config.dart`**. It is Git-ignored. The l
 flutter run -t lib/main_local.dart -d YOUR_HUAWEI_DEVICE_ID
 ```
 
-Use `flutter devices` to get the ID. No Dart defines or JSON test-data file is needed. Restart/rebuild after changing static fields. `lib/main.dart` uses the tracked empty template, so a clean checkout compiles and reports missing prerequisites. `main_local.dart` is an ignored entry point using the same mapping with the local file instead. All feature controllers receive that one configuration object. Running plain `flutter run` intentionally uses empty template values; use the command above for your device session. The old JSON template is retained only as historical reference and is no longer read.
+Use `flutter devices` to get the ID. No Dart defines or JSON test-data file is needed. Restart/rebuild after changing static fields. `lib/main.dart` uses the tracked empty template, so a clean checkout compiles and reports missing prerequisites. `main_local.dart` is an ignored entry point using the same mapping with the local file instead. This keeps the tracked template empty and preserves your private values. All feature controllers receive that one configuration object. Running plain `flutter run` intentionally uses empty template values; use the command above for your device session. The old JSON template is retained only as historical reference and is no longer read.
 
 Use controlled test credentials and decrypted values only. Signing secrets are extractable from test APKs; keep those APKs private. Production JWTs belong on a trusted backend. Never use the banking AppKey as a signing key. No decryption or banking encryption exists here.
 
@@ -26,7 +47,7 @@ Use controlled test credentials and decrypted values only. Signing secrets are e
 | Section | Fields to fill / choose | Contract |
 | --- | --- | --- |
 | Application | `infobipApplicationCode` | Required for SDK initialization. Backend `ApplicationCode` → `INFOBIP_APPLICATION_CODE`. |
-| Mobile Messaging JWT | `jwtToken` **or** `jwtKid`, `jwtSecretKey`, `jwtTtlSeconds` | Optional outside JWT Inbox tests. Signing secret is hex, at least 32 decoded bytes; TTL 1–300 seconds. Fresh locally generated token per Inbox request. A supplied token is reused only while valid: replace/rebuild when expired. Signature acceptance is determined by the backend, not local validation. |
+| Mobile Messaging JWT | `jwtToken` **or** `jwtKid`, `jwtSecretKey`, `jwtTtlSeconds` | Required for Production Inbox and profile-protected MM requests; optional only when the profile policy allows Application Code. Signing secret is hex, at least 32 decoded bytes; TTL 1–300 seconds. Fresh locally generated token per Inbox request. A supplied token is reused only while valid: replace/rebuild when expired. Signature acceptance is determined by the backend, not local validation. |
 | Chat authentication | `chatAuthMode` | `installation` or `jwt`, matching Portal widget security. Application Code still initializes the SDK. |
 | Chat JWT | `chatJwtToken` **or** `chatWidgetId`, `chatKeyId`, `chatSecretKey`, `chatJwtTtlSeconds` | Separate widget token/provider. Signing secret is Base64, at least 32 decoded bytes; TTL 15–300 seconds. Matching personalized `externalUserId` required. Generated provider signs on every callback. Supplied tokens cannot be automatically renewed. Restart when changing authentication mode; no public provider-clear API is invented. |
 | Chat controls | `chatMessage`, `chatContextualData`, `chatTheme` | Optional initial text for existing controls; use test-only content and an existing widget theme. Language buttons retain English/Arabic tests. |
@@ -42,9 +63,9 @@ Use controlled test credentials and decrypted values only. Signing secrets are e
 
 1. In AppGallery Connect create/select your Android application. Its package must match `example/android/app/build.gradle.kts`: `com.infobip.mobilemessaging.huawei.example`, or change that `applicationId` to your registered test package.
 2. Register the SHA-256 fingerprint of the certificate actually signing your installed debug APK. Use `cd android && ./gradlew :app:signingReport` to inspect it; do not assume a release fingerprint covers debug builds.
-3. Enable HMS Push Kit and configure the matching Huawei credentials in the Infobip Mobile Messaging App Profile. Match the Infobip Application Code to that profile.
-4. Download the real **`agconnect-services.json`** into **`example/android/app/agconnect-services.json`**. Git ignores it. Do not create a fake file. The AppGallery App ID comes from its `client.app_id`; The current app Gradle file reads this value into manifest metadata and `example_huawei_app_id`; it does **not** populate the required `app_id` resource. Replace the literal `APP_ID` in `android/app/src/main/res/values/strings.xml` with your numeric, nonzero Huawei App ID. The plugin validates this resource before initialization. Keep it consistent with the downloaded file. Empty checkouts compile but initialization fails with `hms_configuration_missing` until this is configured.
-5. Huawei Maven repositories are configured in `example/android/settings.gradle.kts`; AGConnect `1.9.1.301` is declared with `apply false` in settings. The current app module does **not** apply it, conditionally or otherwise. Add `id("com.huawei.agconnect")` to your private host app module setup if required for your Huawei integration. Do not assume downloading JSON applies AGConnect. No host setup changes are made by this documentation task.
+3. Enable HMS Push Kit and configure the matching Huawei App ID and App Secret in the Infobip Mobile Messaging App Profile. Match the Infobip Application Code to that profile.
+4. Download the real **`agconnect-services.json`** into **`example/android/app/agconnect-services.json`**. Git ignores it. Do not create a fake file. The AppGallery App ID comes from its `client.app_id`; The current app Gradle file reads this value into manifest metadata and `example_huawei_app_id`; it does **not** populate the required `app_id` resource. Replace the literal `APP_ID` in `example/android/app/src/main/res/values/strings.xml` (or `android/app/src/main/res/values/strings.xml` when working inside `example/`) with your numeric, nonzero Huawei App ID. The plugin validates this resource before initialization. Keep it consistent with the downloaded file. Empty checkouts compile but initialization fails with `hms_configuration_missing` until this is configured.
+5. Huawei Maven repositories are configured in `example/android/settings.gradle.kts`; AGConnect `1.9.1.301` is declared with `apply false` in settings. The current app module does **not** apply it, conditionally or otherwise. For the documented AGConnect setup, add `id("com.huawei.agconnect")` to the existing plugins block in `example/android/app/build.gradle.kts` as a private host configuration change. Do not assume downloading JSON applies AGConnect. The tracked example remains unchanged; follow the [Gradle snippets](../README.md#gradle-kotlin-dsl) for your private setup.
 6. The host already extends **FlutterFragmentActivity** and requests runtime permissions through its example-only channel. Manifest permissions cover notifications (Android 13+), microphone, camera, and Nearby devices/Bluetooth connect (Android 12+). Grant notifications during Push registration and call permissions in Setup. Verify notification channels, Huawei battery/background settings and HMS Core availability on the device.
 7. The main screen reports host App ID resource presence only, not credential correctness or device readiness. A real installation ID/HMS token and Portal delivery are required to confirm setup.
 
