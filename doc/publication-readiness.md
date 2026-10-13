@@ -1,5 +1,11 @@
 # pub.dev publication readiness — v1.0.0
 
+> Historical assessment from 2026-10-12, retained as investigation evidence.
+> Its publication/version/licensing conclusions describe that checkout, not
+> the current package. Use the [current README](../README.md) for installation
+> and setup, and rerun release checks for the version being prepared.
+
+
 Reviewed 2026-10-12 (Asia/Amman) on `release/rtc-production-certification`.
 Candidate HEAD before documentation edits: `68e96ee0850124b1d5f88dcfe18e1acd94ef6515`.
 Initial working tree was clean; preserve all subsequent changes. This review
