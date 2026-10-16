@@ -1,3 +1,22 @@
+## Unreleased — future major release
+
+- Upgrade Huawei Mobile Messaging Core, Chat and Inbox from 8.14.0 to 9.1.0,
+  and RTC Core from 2.5.28 to 2.5.41 (WebRTC 1.0.47976t).
+- Require compileSdk 37, AGP 9.1.1 and Gradle 9.3.1; migrate Android builds
+  to built-in Kotlin with compiler runtime 2.2.20. Enable existing generated resource
+  values and retain both native unit-test variants under AGP 9. Preserve Java
+  target 17, minSdk 26 and example targetSdk 36.
+- **Build compatibility change:** require Flutter >=3.47.0 and Dart ^3.13.0 for
+  the built-in Kotlin configuration. Remove the separate Kotlin Android plugin
+  from host builds and enable `android.builtInKotlin=true`; retain Flutter's
+  documented `android.newDsl=false` setting.
+- Adapt the native WidgetInfo test fixture to shared API 16.1.0's additional
+  `useNewDesign` argument; retain existing Dart APIs and channel payloads.
+- Preserve RTC screen conversion compensation after comparing the shipped
+  bitmap/YUV converter bytecode. Physical Huawei runtime acceptance is pending.
+- See [upgrade validation and manual testing](doc/infobip-9-upgrade.md).
+  Package version remains 1.0.1; this section is not a published release.
+
 ## 1.0.1
 
 ### Documentation

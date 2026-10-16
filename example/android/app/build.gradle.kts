@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -13,7 +12,12 @@ val huaweiAppId = if (agcFile.exists()) {
 
 android {
     namespace = "com.infobip.mobilemessaging.huawei.example"
-    compileSdk = 36
+    compileSdk = 37
+
+    buildFeatures {
+        // AGP 9 disables generated resValue resources by default.
+        resValues = true
+    }
 
     defaultConfig {
         applicationId = "com.infobip.mobilemessaging.huawei.example"
@@ -31,10 +35,6 @@ android {
 
         isCoreLibraryDesugaringEnabled = true
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }
 
 dependencies {
@@ -45,4 +45,10 @@ dependencies {
 
 flutter {
     source = "../.."
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }

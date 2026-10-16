@@ -1,9 +1,10 @@
 # Infobip Mobile Messaging Huawei for Flutter
 
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
-8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
+9.1.0 and RTC Core 2.5.41. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This README documents release **1.0.1**.
+This checkout prepares a future major release; the package version remains **1.0.1**.
+The requirements below describe this unreleased checkout, not the published 1.0.1 package.
 
 ## Features
 
@@ -23,20 +24,32 @@ dependencies; Google-free operation is not certified.
 
 | Component | Requirement |
 | --- | --- |
-| Dart / Flutter | `^3.9.0` / `>=3.35.7` |
-| Android | minSdk 26; compileSdk 36; example targetSdk 36 |
+| Dart / Flutter | `^3.13.0` / `>=3.47.0` |
+| Android | minSdk 26; compileSdk 37; example targetSdk 36 |
 | Screen sharing | Android 10 / API 29+ |
 | Java compilation | 17 |
-| Example tooling | AGP 8.13.0, Kotlin 2.2.20, Gradle 8.14 |
-| Infobip Huawei MM / Inbox / Chat | 8.14.0 |
-| Infobip RTC Core | 2.5.28 |
+| Example tooling | AGP 9.1.1, built-in Kotlin 2.2.20, Gradle 9.3.1 |
+| Infobip Huawei MM / Inbox / Chat | 9.1.0 |
+| Infobip RTC Core | 2.5.41 |
 
-Build and test validation covers Flutter 3.35.7 / Dart 3.9.2 and
-Flutter 3.47.7 / Dart 3.13.5. Flutter 3.35.7 root analysis retains 21 existing
-deprecated-alias informational diagnostics; example analysis is clean on both SDKs.
+Validation uses FVM-installed Flutter 3.47.7 / Dart 3.13.5. The Android
+migration enables built-in Kotlin and removes application of the separate Kotlin
+Android plugin. This requires Flutter 3.47 or newer; older host projects must
+migrate their Android build configuration. Java bytecode remains targeted at 17.
+Flutter currently requires `android.newDsl=false`; this is its documented AGP DSL
+migration setting, not a disabled dependency compatibility check.
 
-HMS Push requires a compatible Huawei Mobile Services environment. Validate your
-integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
+Install Android SDK Platform 37 explicitly before building. The example disables
+SDK auto-download so missing components fail visibly. AGP 9.1.1 requires Gradle
+9.3.1 and JDK 17 or newer; use JDK 21 for the existing API 36 Robolectric tests.
+HMS Push remains SDK-selected (6.7.0.300); AGConnect remains 1.9.1.301.
+RTC selects WebRTC 1.0.47976t and retains its Firebase/GMS dependencies.
+
+Root and example Flutter checks pass on the preferred toolchain. Android and
+physical Huawei acceptance remain separate gates. See the
+[upgrade report and manual checklist](doc/infobip-9-upgrade.md) for exact results,
+compatibility changes, blockers, and commands to rerun. Successful static checks
+do not certify push delivery, Chat, Inbox, RTC, or screen sharing on hardware.
 
 ## Installation
 
@@ -224,7 +237,8 @@ JSON itself, but still requires a separately configured `app_id` string.
 ### Gradle (Kotlin DSL)
 
 Merge these entries into existing files; keep Flutter's plugin loader,
-`includeBuild`, Android/Kotlin plugins and repository setup. This matches the
+`includeBuild`, and repository setup. Migrate module Kotlin application to built-in
+Kotlin as shown below. This matches the
 repository's AGConnect declaration **1.9.1.301**; it is not a claim that this is
 Huawei's latest release. Do not add the standard Infobip Android core or RTC UI
 alongside this Huawei plugin.
@@ -250,6 +264,9 @@ repositories {
 In the existing settings `plugins` block:
 
 ```kotlin
+id("com.android.application") version "9.1.1" apply false
+// Compiler runtime selection only: do not apply this plugin to modules.
+id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 id("com.huawei.agconnect") version "1.9.1.301" apply false
 ```
 
@@ -278,12 +295,11 @@ and set Android levels in the existing Android block:
 ```kotlin
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.huawei.agconnect")
 }
 android {
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 26
         targetSdk = 36 // example host target; follow your release target policy
@@ -292,9 +308,18 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+}
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }
 ```
+
+Use Gradle 9.3.1 in the host wrapper. In `android/gradle.properties`, set
+`android.builtInKotlin=true` and `android.newDsl=false`. If the host uses
+`resValue`, enable `android.buildFeatures.resValues = true` in its Gradle DSL.
+Keep dependency compatibility checks enabled.
 
 For Groovy hosts, use `maven { url 'https://developer.huawei.com/repo/' }` and
 `id 'com.huawei.agconnect'` with the equivalent declaration in settings. Follow
@@ -677,9 +702,10 @@ Historical audit reports remain in Git and are excluded from the pub.dev package
 ## Security
 
 **SEC-01 remains PARTIALLY MITIGATED; this package is not security-certified.**
-Huawei MM 8.14.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
-messages that may expose temporary TURN credentials; setting its logger to OFF
-does not disable direct stdout calls.
+Audits of Huawei MM 8.14.0 found upstream authorization-header logging; RTC
+2.5.28 logged signaling messages that may expose temporary TURN credentials,
+including stdout output unaffected by its logger setting. The upgraded SDKs
+have not been recertified for these findings; this upgrade does not close SEC-01.
 
 The optional host Release R8 workaround removes matching `print/println` calls
 **application-wide**, including functional stream/file output. It requires R8

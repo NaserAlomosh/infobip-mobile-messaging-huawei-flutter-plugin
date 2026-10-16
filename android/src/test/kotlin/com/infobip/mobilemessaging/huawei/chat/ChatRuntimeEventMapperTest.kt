@@ -52,7 +52,7 @@ class ChatRuntimeEventMapperTest {
     @Test
     fun `widget info uses exact Huawei fields and channel compatible extensions`() {
         val widget = org.infobip.mobile.messaging.api.chat.WidgetInfo(
-            "id", "title", "#111111", "#222222", "#333333", true, false, true,
+            "id", "title", "#111111", "#222222", "#333333", true, false, true, false,
             listOf("dark"), org.infobip.mobile.messaging.api.chat.WidgetAttachmentConfig(2048L, true, linkedSetOf("pdf", "png")),
         )
         assertEquals(

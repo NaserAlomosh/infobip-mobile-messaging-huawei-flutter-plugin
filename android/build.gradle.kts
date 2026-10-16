@@ -1,6 +1,5 @@
 plugins {
     id("com.android.library")
-    id("org.jetbrains.kotlin.android")
 }
 
 group = "com.infobip.mobilemessaging.huawei"
@@ -14,7 +13,7 @@ val rtcContractAar = configurations.create("rtcContractAar") {
 
 android {
     namespace = "com.infobip.mobilemessaging.huawei"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26
@@ -24,10 +23,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     testOptions {
@@ -65,13 +60,13 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.20.0")
     testImplementation("org.ow2.asm:asm-tree:9.8")
     testImplementation("org.robolectric:robolectric:4.16")
-    implementation("com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0@aar") {
+    implementation("com.infobip:infobip-mobile-messaging-huawei-sdk:9.1.0@aar") {
         isTransitive = true
     }
-    implementation("com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0")
-    implementation("com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0")
+    implementation("com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:9.1.0")
+    implementation("com.infobip:infobip-mobile-messaging-huawei-chat-sdk:9.1.0")
     // Outgoing Huawei extension only. Keep Core's legitimate Firebase/GMS transitives.
-    implementation("com.infobip:infobip-rtc:2.5.28")
+    implementation("com.infobip:infobip-rtc:2.5.41")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.localbroadcastmanager:localbroadcastmanager:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.8.9")
@@ -84,5 +79,11 @@ dependencies {
                 "MobileMessagingFirebaseService from the conflicting standard MM core. " +
                 "Keep infobipWebRtcEnabled=false. See doc/webrtc-configuration.md.",
         )
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
