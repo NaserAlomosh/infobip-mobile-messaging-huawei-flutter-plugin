@@ -27,9 +27,13 @@ dependencies; Google-free operation is not certified.
 | Android | minSdk 26; compileSdk 36; example targetSdk 36 |
 | Screen sharing | Android 10 / API 29+ |
 | Java compilation | 17 |
-| Example tooling | AGP 8.13.0, Kotlin 2.1.0, Gradle 8.13 |
+| Example tooling | AGP 8.13.0, Kotlin 2.2.20, Gradle 8.14 |
 | Infobip Huawei MM / Inbox / Chat | 8.14.0 |
 | Infobip RTC Core | 2.5.28 |
+
+Build and test validation covers Flutter 3.35.7 / Dart 3.9.2 and
+Flutter 3.47.7 / Dart 3.13.5. Flutter 3.35.7 root analysis retains 21 existing
+deprecated-alias informational diagnostics; example analysis is clean on both SDKs.
 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
 integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
