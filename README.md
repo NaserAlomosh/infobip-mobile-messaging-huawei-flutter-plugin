@@ -731,6 +731,14 @@ The guides describe this package's API. Upstream examples may use different
 Flutter/native APIs or newer SDK versions; do not copy their initialization
 flags, dependencies or incoming-call methods into this integration.
 
+## Support This Project
+
+This plugin is independently developed and maintained as an open-source project.
+
+If you find it useful, consider supporting its continued development, maintenance, and improvements.
+
+[Sponsor on GitHub](https://github.com/sponsors/NaserAlomosh)
+
 ## License
 
 The [MIT License](LICENSE), copyright (c) 2026 Naser Alomosh, applies to code and

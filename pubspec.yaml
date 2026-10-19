@@ -3,6 +3,8 @@ description: Android Flutter plugin for Infobip Huawei Mobile Messaging with HMS
 version: 1.0.1
 repository: https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin
 issue_tracker: https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/issues
+funding:
+  - https://github.com/sponsors/NaserAlomosh
 topics:
   - flutter
   - huawei
