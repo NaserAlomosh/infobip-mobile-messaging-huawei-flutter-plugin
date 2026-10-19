@@ -32,18 +32,46 @@ enum HuaweiRtcEventType {
   returnToCall,
 }
 
+/// Opt-in customer identity for the exact configured Live Chat widget.
+/// Resolution and token acquisition stay native, scoped to a single call.
+/// Requires completed personalization as [expectedExternalUserId].
+final class HuaweiRtcLiveChatIdentity {
+  HuaweiRtcLiveChatIdentity({
+    required this.widgetId,
+    required this.expectedExternalUserId,
+  }) {
+    if (widgetId.trim().isEmpty || expectedExternalUserId.trim().isEmpty) {
+      throw ArgumentError(
+        'A Chat widget ID and expected external user are required',
+      );
+    }
+  }
+
+  final String widgetId;
+  final String expectedExternalUserId;
+
+  Map<String, String> _encode() => {
+    'widgetId': widgetId,
+    'expectedExternalUserId': expectedExternalUserId,
+  };
+}
+
 /// Input for this plugin's outgoing extension, separate from WebRTCUI.
 ///
 /// The Calls configuration routes an application call in the Infobip backend.
 /// It is NOT the RTC push configuration ID from WebRTCUI.
-/// When [identity] is omitted, the registered MM installation's push registration
-/// ID is used as the token subject. Tokens never cross the Flutter channel.
+/// Unless [liveChatIdentity] is selected, omitting [identity] uses the registered
+/// MM installation's push registration ID as the token subject. Tokens never cross the Flutter channel.
 final class HuaweiRtcCallRequest {
   HuaweiRtcCallRequest({
     required this.callsConfigurationId,
     required this.type,
     this.identity,
+    this.liveChatIdentity,
   }) {
+    if (identity != null && liveChatIdentity != null) {
+      throw ArgumentError('Choose explicit identity or Live Chat identity');
+    }
     if (callsConfigurationId.trim().isEmpty) {
       throw ArgumentError('callsConfigurationId must not be blank');
     }
@@ -56,10 +84,17 @@ final class HuaweiRtcCallRequest {
   final HuaweiRtcCallType type;
   final String? identity;
 
+  /// Resolves a fresh registration for this widget, with no identity fallback.
+  /// Cannot be combined with [identity]. Account changes before native call
+  /// submission fail the request. Does not guarantee Conversation reuse.
+  final HuaweiRtcLiveChatIdentity? liveChatIdentity;
+
   Map<String, Object> _encode() => {
     'callsConfigurationId': callsConfigurationId,
     'type': type.name,
     if (identity != null) 'identity': identity!,
+    if (liveChatIdentity != null)
+      'liveChatIdentity': liveChatIdentity!._encode(),
   };
 }
 
@@ -229,6 +264,8 @@ final class HuaweiRtcException implements Exception {
     'rtc_call_already_active': 'Another RTC call or call request is active.',
     'rtc_no_active_call': 'There is no active RTC call.',
     'rtc_token_failed': 'RTC access token acquisition failed.',
+    'rtc_identity_unavailable':
+        'Chat identity unavailable. Check connectivity, widget configuration and Chat registration.',
     'rtc_call_failed': 'RTC could not perform the call operation.',
     'rtc_foreground_service_failed':
         'RTC foreground service could not start. Return to the app and check permissions.',

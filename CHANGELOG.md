@@ -1,3 +1,13 @@
+## Unreleased
+
+- Added opt-in `HuaweiRtcCallRequest.liveChatIdentity` with
+  `HuaweiRtcLiveChatIdentity` for outgoing customer audio/video calls. Resolves
+  the exact Chat widget registration natively with account/lifecycle validation,
+  bounded preparation and no identity fallback or registration-ID exposure.
+- Preserved explicit RTC identity and installation fallback behavior. Conversation
+  reuse remains unverified/unsupported; agent-initiated incoming calls are not
+  implemented. Huawei 8.14.0 and RTC Core 2.5.28 dependencies are unchanged.
+
 ## 1.0.1
 
 ### Documentation

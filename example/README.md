@@ -151,3 +151,17 @@ There are no production RTC token/signing secrets to fill in Dart. The native
 provider asks the backend for a token through initialized MM. Local Chat/MM signing
 helpers are controlled-test conveniences only; production issuance belongs on a
 trusted backend. This run does not supply credentials or claim physical testing.
+
+## Live Chat identity for outgoing RTC
+
+The audio/video screen keeps the configured `rtcIdentity` (or installation
+fallback) by default. Enable **Use Live Chat customer identity** to demonstrate
+the production opt-in `liveChatIdentity` request. Configure `chatWidgetId` to match
+the Chat widget exactly and complete personalization as `externalUserId` first.
+The native call flow resolves the registration; the example never handles or
+displays it. Failures are sanitized and do not fall back to another identity.
+See [Dart usage, failures and SDK compatibility](../doc/huawei-rtc-customer-identity.md).
+Correct customer name/email was observed on Huawei devices; internal People
+Person ID equality is not established. Every outgoing call may create a new
+Conversation; no supported way to force reuse is verified. Agent-initiated
+incoming calls are not implemented.

@@ -33,6 +33,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
   bool get _cameraLocked => _captureStarting || _capture?.busy == true;
   bool _captureActionBusy = false;
   bool _starting = false;
+  bool _useLiveChatIdentity = false;
   bool _controlBusy = false;
   bool _polling = false;
   int _revision = 0;
@@ -106,13 +107,25 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
     }
     setState(() => _starting = true);
     try {
+      if (_useLiveChatIdentity && !c.personalized) {
+        setState(
+          () => _result = 'Personalize the configured user before calling.',
+        );
+        return;
+      }
       final call = await HuaweiRtc.callApplication(
         HuaweiRtcCallRequest(
           callsConfigurationId: c.config.rtcCallsConfigurationId.trim(),
           type: type,
-          identity: c.config.rtcIdentity.trim().isEmpty
+          identity: _useLiveChatIdentity || c.config.rtcIdentity.trim().isEmpty
               ? null
               : c.config.rtcIdentity.trim(),
+          liveChatIdentity: _useLiveChatIdentity
+              ? HuaweiRtcLiveChatIdentity(
+                  widgetId: c.config.chatWidgetId,
+                  expectedExternalUserId: c.config.externalUserId,
+                )
+              : null,
         ),
       );
       if (mounted) {
@@ -128,7 +141,12 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
         setState(() => _result = safeFailure('RTC operation', error));
       }
     } on ArgumentError {
-      if (mounted) setState(() => _result = 'Enter a Calls configuration ID.');
+      if (mounted) {
+        setState(
+          () => _result =
+              'Check the Calls configuration, Chat widget and expected user.',
+        );
+      }
     } catch (_) {
       if (mounted) setState(() => _result = 'RTC operation unavailable.');
     } finally {
@@ -512,7 +530,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
               'Calls configuration: ${masked(c.config.rtcCallsConfigurationId)}',
             ),
             Text(
-              'Identity: ${c.config.rtcIdentity.trim().isEmpty ? 'registered installation' : masked(c.config.rtcIdentity)}',
+              'Default identity: ${c.config.rtcIdentity.trim().isEmpty ? 'registered installation' : masked(c.config.rtcIdentity)}',
             ),
             ...c
                 .readiness(
@@ -523,6 +541,18 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
                 .missing
                 .map((r) => Text('Missing: ${r.title}')),
             const SizedBox(height: 12),
+            SwitchListTile(
+              key: const ValueKey('rtc-live-chat-identity'),
+              title: const Text('Use Live Chat customer identity'),
+              subtitle: const Text(
+                'Requires personalization and the configured Chat widget. '
+                'Each outgoing call may create a new Conversation.',
+              ),
+              value: _useLiveChatIdentity,
+              onChanged: _starting || _active
+                  ? null
+                  : (value) => setState(() => _useLiveChatIdentity = value),
+            ),
             Wrap(
               spacing: 8,
               children: [

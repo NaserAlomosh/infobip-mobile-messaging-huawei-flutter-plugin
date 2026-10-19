@@ -250,6 +250,39 @@ class InfobipMobileMessagingHuaweiPlugin :
         call: MethodCall,
         result: MethodChannel.Result,
     ) {
+        // Invalidate pending Chat-associated RTC calls before account operations begin.
+        val identityChange = call.method in setOf(
+            ChannelContract.INITIALIZE, ChannelContract.CLEANUP, ChannelContract.SAVE_USER,
+            ChannelContract.PERSONALIZE, ChannelContract.DEPERSONALIZE,
+            ChannelContract.DEPERSONALIZE_INSTALLATION,
+        )
+        val rtc = huaweiRtcManager
+        if (!identityChange || rtc == null) {
+            dispatchMethodCall(call, result)
+            return
+        }
+        rtc.beginIdentityMutation()
+        var completed = false
+        fun finish() {
+            if (!completed) {
+                completed = true
+                rtc.endIdentityMutation()
+            }
+        }
+        val guarded = object : MethodChannel.Result {
+            override fun success(value: Any?) { finish(); result.success(value) }
+            override fun error(code: String, message: String?, details: Any?) {
+                finish(); result.error(code, message, details)
+            }
+            override fun notImplemented() { finish(); result.notImplemented() }
+        }
+        try { dispatchMethodCall(call, guarded) } catch (error: Throwable) {
+            finish()
+            throw error
+        }
+    }
+
+    private fun dispatchMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             ChannelContract.INITIALIZE -> {
                 initialize(call, result)

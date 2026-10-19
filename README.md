@@ -494,6 +494,19 @@ tokens through initialized MM; your backend must authorize the identity and rout
 Calls configuration ID is distinct from RTC push configuration ID. Routing selects
 the peer; there is no callee argument.
 
+For Chat-associated customer identity, opt in with
+`HuaweiRtcCallRequest(liveChatIdentity: HuaweiRtcLiveChatIdentity(widgetId: configuredChatWidgetId,
+expectedExternalUserId: personalizedExternalUserId), ...)`. Resolution uses exactly
+that widget and the current personalized installation, stays native, and fails
+without fallback if lookup or account validation fails. Existing explicit
+`identity` and omitted-identity behavior are unchanged. See the
+[customer identity guide](doc/huawei-rtc-customer-identity.md) for complete Dart
+usage, lifecycle failures and pinned SDK compatibility. The supplied Huawei tests
+confirmed correct customer name/email for this outgoing flow; internal People
+Person ID equality is not guaranteed. Each call may create a new Conversation;
+there is no verified supported way to force reuse. Agent-initiated incoming calls
+are not implemented.
+
 Subscribe before starting and grant the host permissions described above.
 Use the Calls Configuration ID supplied by your backend/account administrator:
 
