@@ -67,6 +67,12 @@ internal class RtcCallSlot {
         owner = candidate
         return true
     }
+    /** Atomic main-thread handoff from a pending incoming invitation to the existing media owner. */
+    fun transfer(candidate: Any, next: Any): Boolean {
+        if (owner !== candidate) return false
+        owner = next
+        return true
+    }
     fun release(candidate: Any) {
         if (owner === candidate) owner = null
     }

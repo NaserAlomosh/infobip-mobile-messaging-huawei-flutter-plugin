@@ -1,5 +1,7 @@
 package com.infobip.mobilemessaging.huawei
 
+import android.app.Application
+import android.os.Bundle
 import android.app.Activity
 import android.content.Context
 import android.graphics.drawable.Drawable
@@ -55,12 +57,25 @@ class InfobipMobileMessagingHuaweiPlugin :
     private var huaweiRtcChannel: MethodChannel? = null
     private var huaweiRtcEvents: EventChannel? = null
     private var screenCaptureEvents: EventChannel? = null
+    private var incomingExperimentEvents: EventChannel? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val pendingInitializations = mutableSetOf<MethodChannel.Result>()
     private var lifecycleGeneration = 0L
     private var cleanupInProgress = false
     private var activity: Activity? = null
     private var rtcActivityBinding: ActivityPluginBinding? = null
+    private val ringtoneLifecycle = object : Application.ActivityLifecycleCallbacks {
+        private fun silence(value: Activity) {
+            if (activity === value) huaweiRtcManager?.incomingExperiment?.stopRinging()
+        }
+        override fun onActivityPaused(value: Activity) = silence(value)
+        override fun onActivityStopped(value: Activity) = silence(value)
+        override fun onActivityDestroyed(value: Activity) = silence(value)
+        override fun onActivityCreated(value: Activity, state: Bundle?) { }
+        override fun onActivityStarted(value: Activity) { }
+        override fun onActivityResumed(value: Activity) { }
+        override fun onActivitySaveInstanceState(value: Activity, state: Bundle) { }
+    }
     private val rtcIntentListener = PluginRegistry.NewIntentListener { intent ->
         huaweiRtcManager?.handleNotificationIntent(intent)
         false
@@ -69,15 +84,19 @@ class InfobipMobileMessagingHuaweiPlugin :
         huaweiRtcManager?.screenCapture?.permission(request, result, data) ?: false
     }
     private fun attachRtcActivity(binding: ActivityPluginBinding) {
+        activity?.application?.unregisterActivityLifecycleCallbacks(ringtoneLifecycle)
         rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
         rtcActivityBinding = binding
         binding.addOnNewIntentListener(rtcIntentListener)
         binding.addActivityResultListener(captureResultListener)
         activity = binding.activity
+        binding.activity.application?.registerActivityLifecycleCallbacks(ringtoneLifecycle)
         huaweiRtcManager?.screenCapture?.attach(binding.activity)
         binding.activity.intent?.let { huaweiRtcManager?.handleNotificationIntent(it) }
     }
     private fun detachRtcActivity() {
+        huaweiRtcManager?.incomingExperiment?.stopRinging()
+        activity?.application?.unregisterActivityLifecycleCallbacks(ringtoneLifecycle)
         huaweiRtcManager?.screenCapture?.detach()
         rtcActivityBinding?.removeActivityResultListener(captureResultListener)
         rtcActivityBinding?.removeOnNewIntentListener(rtcIntentListener)
@@ -108,6 +127,10 @@ class InfobipMobileMessagingHuaweiPlugin :
         )
         huaweiRtcChannel = MethodChannel(binding.binaryMessenger, HuaweiRtcManager.METHOD_CHANNEL).also {
             it.setMethodCallHandler(huaweiRtcManager)
+        }
+        incomingExperimentEvents = EventChannel(binding.binaryMessenger,
+            com.infobip.mobilemessaging.huawei.rtc.ForegroundIncomingExperiment.EVENTS).also {
+            it.setStreamHandler(huaweiRtcManager?.incomingExperiment)
         }
         huaweiRtcManager?.configureScreenCapture(binding.applicationContext)
         screenCaptureEvents = EventChannel(binding.binaryMessenger,
@@ -204,6 +227,8 @@ class InfobipMobileMessagingHuaweiPlugin :
         huaweiRtcEvents?.setStreamHandler(null)
         screenCaptureEvents?.setStreamHandler(null)
         screenCaptureEvents = null
+        incomingExperimentEvents?.setStreamHandler(null)
+        incomingExperimentEvents = null
         huaweiRtcManager = null
         huaweiRtcChannel = null
         huaweiRtcEvents = null

@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.infobip.webrtc.sdk.api.call.ApplicationCall
+import com.infobip.webrtc.sdk.api.call.IncomingApplicationCall
 import com.infobip.webrtc.sdk.api.model.CallStatus
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
@@ -27,6 +28,7 @@ internal class HuaweiRtcManager(
     private val slot: RtcCallSlot = RtcCallSlot.process,
     private val notification: RtcCallNotification? = null,
     private val chatIdentities: LiveChatIdentityResolver? = null,
+    internal val incomingExperiment: ForegroundIncomingExperiment? = null,
 ) : MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
     constructor(context: Context, initialized: () -> Boolean, canStartCall: () -> Boolean) : this(
         initialized, canStartCall,
@@ -34,9 +36,43 @@ internal class HuaweiRtcManager(
         HuaweiRtcTokenProvider(context.applicationContext), HuaweiRtcBackend(context.applicationContext),
         notification = HuaweiRtcCallNotification(context),
         chatIdentities = NativeLiveChatIdentityResolver(context.applicationContext),
+        incomingExperiment = ForegroundIncomingExperiment.process(context.applicationContext),
     )
 
+    init {
+        incomingExperiment?.attach(object : ForegroundIncomingExperiment.Host {
+            override fun ready() = !disposed && !cleaning && initialized() && canStartCall()
+            override fun reap(call: IncomingApplicationCall) {
+                session?.takeIf { it.call === call && call.status() == CallStatus.FINISHED }?.let { finish(it) }
+            }
+            override fun adopt(call: IncomingApplicationCall, video: Boolean, reservation: Any): Map<String, Any?> {
+                checkReady(RtcInput("", if (video) "video" else "audio", null))
+                if (session != null || !slot.transfer(reservation, this@HuaweiRtcManager))
+                    throw RtcFailure("rtc_call_already_active", "Another RTC operation owns the call slot")
+                val current = Session(RtcInput("", if (video) "video" else "audio", null), null)
+                current.call = call
+                session = current
+                val listener = RtcListener { type, reason -> main.post { nativeEvent(current, type, reason) } }
+                current.listener = listener
+                listener.cameraChanged = { local -> main.post { refreshVideo(current, local) } }
+                try {
+                    call.setEventListener(listener)
+                } catch (failure: Exception) {
+                    // Listener setup has not accepted media. Restore the pending reservation.
+                    session = null
+                    listener.detach()
+                    slot.transfer(this@HuaweiRtcManager, reservation)
+                    throw failure
+                }
+                val value = requireNotNull(snapshot(current))
+                emit("state", value)
+                return value
+            }
+        })
+    }
+
     fun beginIdentityMutation() {
+        incomingExperiment?.invalidate("identity_changed")
         RtcIdentityLifecycle.begin()
         session?.takeIf { it.input.chatWidgetId != null && it.call == null }?.let {
             failPending(it, RtcFailure("rtc_invalid_state", "Messaging identity changed before call submission"))
@@ -127,6 +163,29 @@ internal class HuaweiRtcManager(
                         else -> result.success(capture.snapshot(id))
                     }
                 }
+                "startForegroundIncomingExperiment" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val widget = args?.get("widgetId") as? String
+                    val user = args?.get("expectedExternalUserId") as? String
+                    if (widget == null || user == null) throw RtcFailure("rtc_invalid_argument", "Provide a Live Chat identity")
+                    result.success(requireIncoming().start(widget, user))
+                }
+                "acceptExperimentalIncomingCall" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val handle = args?.get("handle") as? String
+                        ?: throw RtcFailure("rtc_invalid_argument", "Provide an invitation handle")
+                    result.success(requireIncoming().accept(handle, args["video"] == true))
+                }
+                "declineExperimentalIncomingCall" -> {
+                    val handle = (call.arguments as? Map<*, *>)?.get("handle") as? String
+                        ?: throw RtcFailure("rtc_invalid_argument", "Provide an invitation handle")
+                    requireIncoming().decline(handle)
+                    result.success(null)
+                }
+                "closeForegroundIncomingExperimentScreen" -> {
+                    requireIncoming().closeScreen()
+                    result.success(null)
+                }
                 "callApplication" -> start(RtcInput.decode(call.arguments), result)
                 "hangup" -> {
                     val active = session?.call ?: throw RtcFailure("rtc_no_active_call", "There is no active RTC call")
@@ -181,6 +240,9 @@ internal class HuaweiRtcManager(
             replyError(result, RtcFailure.native(error))
         }
     }
+
+    private fun requireIncoming() = incomingExperiment
+        ?: throw RtcFailure("rtc_invalid_state", "Incoming experiment is unavailable")
 
     private fun start(input: RtcInput, result: MethodChannel.Result) {
         checkReady(input)
@@ -374,6 +436,7 @@ internal class HuaweiRtcManager(
 
     private fun nativeEvent(current: Session, type: String, reason: Int?) {
         if (disposed || session !== current || current.call == null) return
+        (current.call as? IncomingApplicationCall)?.let { incomingExperiment?.callEvent(it, type, reason) }
         if (type == "finished") finish(current, reason)
         else {
             // Callback kind is authoritative; status is a contemporaneous SDK snapshot and may
@@ -471,6 +534,7 @@ internal class HuaweiRtcManager(
     fun dispose() {
         check(Looper.myLooper() == main.looper)
         if (disposed) return
+        incomingExperiment?.detach()
         disposed = true
         detachVideoViews()
         sink = null
@@ -479,7 +543,9 @@ internal class HuaweiRtcManager(
             try { current.call?.hangup() } catch (_: Exception) {
                 Log.e(TAG, "Unable to hang up RTC call during engine disposal")
             }
+            val incoming = current.call as? IncomingApplicationCall
             failPending(current, RtcFailure("rtc_invalid_state", "RTC engine was disposed"))
+            if (incoming != null) incomingExperiment?.retainAfterEngineDetach(incoming)
         }
         completeCleanup()
         executor.shutdownNow()

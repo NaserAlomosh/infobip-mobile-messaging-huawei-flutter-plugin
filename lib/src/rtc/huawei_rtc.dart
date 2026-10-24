@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Media requested when starting a Huawei RTC Core application call.
@@ -277,6 +278,137 @@ final class HuaweiRtcException implements Exception {
   String toString() => 'HuaweiRtcException($code): $message';
 }
 
+/// Debug-only, allowlisted diagnostic. Never contains SDK payloads or identities.
+final class HuaweiRtcIncomingDiagnostic {
+  const HuaweiRtcIncomingDiagnostic._(
+    this.sequence,
+    this.timestampMillis,
+    this.event,
+    this.errorCode,
+  );
+  final int sequence;
+  final int timestampMillis;
+  final String event;
+  final int? errorCode;
+
+  static const _events = {
+    'start_received',
+    'start_rejected_arguments',
+    'start_rejected_foreground',
+    'start_rejected_busy',
+    'start_reused',
+    'identity_resolution_started',
+    'identity_resolution_returned',
+    'identity_resolution_failed',
+    'token_request_started',
+    'token_request_returned',
+    'token_request_failed',
+    'preparation_result_discarded',
+    'registration_preflight',
+    'singleton_mode_unobservable',
+    'singleton_reference_changed',
+    'singleton_reference_unchanged_prior_registration_possible',
+    'singleton_observation_failed',
+    'registration_invoked',
+    'registration_returned_readiness_unconfirmed',
+    'registration_threw',
+    'idle_connection_authentication_unobservable',
+    'peer_family_unobserved',
+    'invitation_callback',
+    'duplicate_invitation_ignored',
+    'rejected_invalidated',
+    'rejected_not_started',
+    'rejected_screen_hidden',
+    'rejected_host_unready',
+    'rejected_pending_invitation',
+    'rejected_call_slot_busy',
+    'rejection_decline_returned',
+    'rejection_decline_failed',
+    'invitation_published',
+    'invitation_listener_failed',
+    'accept_requested',
+    'accept_adoption_failed',
+    'accept_returned',
+    'accept_failed',
+    'decline_requested',
+    'decline_returned',
+    'decline_failed',
+    'call_error',
+    'call_reconnecting',
+    'call_reconnected',
+    'call_established',
+    'call_finished',
+    'experiment_invalidated',
+    'screen_closed',
+    'event_sink_attached',
+    'event_sink_detached',
+    'event_sink_write_returned',
+    'event_sink_write_failed',
+  };
+  static HuaweiRtcIncomingDiagnostic? _decode(Object? value) {
+    if (value is! Map ||
+        value['sequence'] is! int ||
+        (value['sequence'] as int) <= 0 ||
+        value['timestampMillis'] is! int ||
+        (value['timestampMillis'] as int) < 0 ||
+        (value['timestampMillis'] as int) > 8640000000000000 ||
+        !_events.contains(value['event']) ||
+        (value['errorCode'] != null && value['errorCode'] is! int)) {
+      return null;
+    }
+    return HuaweiRtcIncomingDiagnostic._(
+      value['sequence'] as int,
+      value['timestampMillis'] as int,
+      value['event'] as String,
+      value['errorCode'] as int?,
+    );
+  }
+}
+
+/// EXPERIMENTAL — NOT PRODUCTION READY. Safe application-call invitation state.
+/// No caller identifiers, registration IDs, custom data, or tokens are retained.
+final class HuaweiRtcIncomingExperimentEvent {
+  HuaweiRtcIncomingExperimentEvent._(Map payload)
+    : state = payload['state'] as String,
+      handle = payload['handle'] as String?,
+      family = payload['family'] as String,
+      audioSupported = payload['audioSupported'] as bool,
+      videoSupported = payload['videoSupported'] as bool,
+      registrationAttempted = payload['registrationAttempted'] as bool,
+      reason = payload['reason'] as String?,
+      diagnostics = List.unmodifiable(
+        kDebugMode && payload['diagnostics'] is List
+            ? (payload['diagnostics'] as List)
+                  .take(100)
+                  .map(HuaweiRtcIncomingDiagnostic._decode)
+                  .whereType<HuaweiRtcIncomingDiagnostic>()
+            : <HuaweiRtcIncomingDiagnostic>[],
+      );
+
+  final String state;
+  final String? handle;
+  final String family;
+  final bool audioSupported;
+  final bool videoSupported;
+  final bool registrationAttempted;
+  final String? reason;
+  final List<HuaweiRtcIncomingDiagnostic> diagnostics;
+
+  static HuaweiRtcIncomingExperimentEvent _decode(Object? value) {
+    if (value is! Map ||
+        value['state'] is! String ||
+        value['family'] != 'application' ||
+        value['audioSupported'] is! bool ||
+        value['videoSupported'] is! bool ||
+        value['registrationAttempted'] is! bool ||
+        (value['handle'] != null && value['handle'] is! String) ||
+        (value['reason'] != null && value['reason'] is! String)) {
+      throw const FormatException('Invalid incoming experiment event');
+    }
+    return HuaweiRtcIncomingExperimentEvent._(value);
+  }
+}
+
 /// Huawei/plugin extension for outgoing application audio/video calls on Android.
 ///
 /// Initialize Huawei Mobile Messaging first. Start calls with a resumed Flutter
@@ -307,6 +439,51 @@ abstract final class HuaweiRtc {
         if (error is PlatformException) throw HuaweiRtcException._(error);
         throw error;
       });
+
+  /// EXPERIMENTAL — NOT PRODUCTION READY. Replays the current invitation when
+  /// a listener attaches. Registration requested does not establish readiness.
+  static final Stream<HuaweiRtcIncomingExperimentEvent>
+  incomingExperimentEvents =
+      const EventChannel(
+            'infobip_mobilemessaging_huawei/huawei_rtc/incoming_experiment',
+          )
+          .receiveBroadcastStream()
+          .map(HuaweiRtcIncomingExperimentEvent._decode)
+          .handleError((Object error) {
+            if (error is PlatformException) throw HuaweiRtcException._(error);
+            throw error;
+          });
+
+  /// Explicit foreground opt-in. Exactly one fixed identity and registration
+  /// attempt per process. Identity mutation or engine detach requires process
+  /// termination; Core 2.5.28 has no supported active-connection unregister API.
+  static Future<HuaweiRtcIncomingExperimentEvent>
+  startForegroundIncomingExperiment(HuaweiRtcLiveChatIdentity identity) async =>
+      HuaweiRtcIncomingExperimentEvent._decode(
+        await _invoke('startForegroundIncomingExperiment', identity._encode()),
+      );
+
+  /// Accepts the current opaque invitation; media uses existing events/controls.
+  /// Video may only be requested when the invitation offers video.
+  static Future<HuaweiRtcCall> acceptExperimentalIncomingCall({
+    required String handle,
+    bool video = false,
+  }) async => HuaweiRtcCall._decode(
+    await _invoke('acceptExperimentalIncomingCall', {
+      'handle': handle,
+      'video': video,
+    }),
+  );
+
+  static Future<void> declineExperimentalIncomingCall({
+    required String handle,
+  }) async => _invoke('declineExperimentalIncomingCall', {'handle': handle});
+
+  /// Hide invitations and request termination of experiment calls on screen
+  /// disposal. This does not unregister signaling. Start again to reopen the
+  /// same experiment; changing identity requires a fresh application process.
+  static Future<void> closeForegroundIncomingExperimentScreen() async =>
+      _invoke('closeForegroundIncomingExperimentScreen');
 
   /// Resolves when Core creates the native call, not when media is established.
   static Future<HuaweiRtcCall> callApplication(

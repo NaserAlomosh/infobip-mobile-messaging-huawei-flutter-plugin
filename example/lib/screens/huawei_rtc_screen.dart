@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
 
 import '../setup/example_controller.dart';
@@ -32,6 +33,49 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
   String? _captureError;
   bool get _cameraLocked => _captureStarting || _capture?.busy == true;
   bool _captureActionBusy = false;
+  bool _incomingBusy = false;
+  HuaweiRtcIncomingExperimentEvent? _incoming;
+  StreamSubscription<HuaweiRtcIncomingExperimentEvent>? _incomingSubscription;
+  String? _incomingError;
+  final List<String> _incomingDiagnostics = [];
+  int _lastDiagnosticSequence = 0;
+  String? _lastIncomingReceipt;
+
+  void _debugIncoming(String event, {int? timestampMillis}) {
+    if (!kDebugMode) return;
+    final time = timestampMillis == null
+        ? DateTime.now()
+        : DateTime.fromMillisecondsSinceEpoch(timestampMillis);
+    _incomingDiagnostics.add('${time.toUtc().toIso8601String()} $event');
+    if (_incomingDiagnostics.length > 100) _incomingDiagnostics.removeAt(0);
+  }
+
+  void _receiveIncoming(
+    HuaweiRtcIncomingExperimentEvent event, {
+    required bool fromStream,
+  }) {
+    if (kDebugMode) {
+      for (final diagnostic in event.diagnostics) {
+        if (diagnostic.sequence <= _lastDiagnosticSequence) continue;
+        _lastDiagnosticSequence = diagnostic.sequence;
+        _debugIncoming(
+          'native #${diagnostic.sequence} ${diagnostic.event}'
+          '${diagnostic.errorCode == null ? '' : ' code=${diagnostic.errorCode}'}',
+          timestampMillis: diagnostic.timestampMillis,
+        );
+      }
+      final receipt = '${event.state}:$_lastDiagnosticSequence';
+      if (fromStream && receipt != _lastIncomingReceipt) {
+        _lastIncomingReceipt = receipt;
+        _debugIncoming(
+          'flutter_event_received native_sequence=$_lastDiagnosticSequence',
+        );
+      }
+      if (!fromStream) _debugIncoming('flutter_start_returned');
+    }
+    _incoming = event;
+  }
+
   bool _starting = false;
   bool _useLiveChatIdentity = false;
   bool _controlBusy = false;
@@ -55,6 +99,19 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
       onError: (Object _) {
         if (mounted) {
           setState(() => _captureError = 'Capture state stream unavailable.');
+        }
+      },
+    );
+    _incomingSubscription = HuaweiRtc.incomingExperimentEvents.listen(
+      (event) {
+        if (mounted) setState(() => _receiveIncoming(event, fromStream: true));
+      },
+      onError: (Object _) {
+        if (mounted) {
+          setState(() {
+            _debugIncoming('flutter_event_decode_or_channel_error');
+            _incomingError = 'Incoming state unavailable.';
+          });
         }
       },
     );
@@ -90,6 +147,122 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
       },
     );
   }
+
+  Future<void> _incomingAction(String action, {bool video = false}) async {
+    if (_incomingBusy) return;
+    setState(() {
+      _incomingBusy = true;
+      _incomingError = null;
+    });
+    try {
+      if (action == 'start') {
+        setState(() => _debugIncoming('flutter_start_requested'));
+        await c.refresh();
+        if (!c.personalized) {
+          throw StateError('Personalization required');
+        }
+        final state = await HuaweiRtc.startForegroundIncomingExperiment(
+          HuaweiRtcLiveChatIdentity(
+            widgetId: c.config.chatWidgetId,
+            expectedExternalUserId: c.config.externalUserId,
+          ),
+        );
+        if (mounted) setState(() => _receiveIncoming(state, fromStream: false));
+      } else {
+        final handle = _incoming?.handle;
+        if (handle == null) return;
+        if (action == 'decline') {
+          await HuaweiRtc.declineExperimentalIncomingCall(handle: handle);
+        } else {
+          final call = await HuaweiRtc.acceptExperimentalIncomingCall(
+            handle: handle,
+            video: video,
+          );
+          if (mounted) {
+            setState(() {
+              _activeCall = call;
+              _active = call.status != HuaweiRtcCallStatus.finished;
+            });
+          }
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _debugIncoming('flutter_operation_failed');
+          _incomingError =
+              'Incoming operation unavailable. Check personalization, permissions and invitation state. '
+              'An invalidated experiment requires a fresh application process.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _incomingBusy = false);
+    }
+  }
+
+  Widget _incomingSection() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Divider(),
+      const Text('Incoming RTC — Experimental'),
+      const Text(
+        'EXPERIMENTAL — NOT PRODUCTION READY. Foreground only. '
+        'One fixed personalized customer per process. No push delivery. '
+        'Leaving this screen ends incoming experiment calls. '
+        'Terminate the app process before testing another identity.',
+      ),
+      Text(switch (_incoming?.state) {
+        'registrationRequested' =>
+          'Registration requested / waiting for incoming signaling. Readiness unconfirmed.',
+        'preparing' => 'Resolving identity / requesting access token.',
+        'invitation' => 'Incoming application call invitation',
+        'connecting' => 'Connecting',
+        'connected' => 'Connected',
+        'ended' => 'Ended — waiting for another invitation',
+        'failed' => 'Failed — termination may still be pending',
+        'invalidated' => 'Invalidated — terminate the app process to reset',
+        'declining' => 'Decline requested — waiting for termination',
+        'ending' => 'Ending — waiting for termination',
+        'paused' => 'Presentation paused — signaling is not unregistered',
+        'reconnecting' => 'Connection interrupted',
+        _ => 'Not started',
+      }),
+      if (_incoming?.reason != null)
+        Text('Incoming detail: ${_incoming!.reason}'),
+      if (_incomingError != null) Text(_incomingError!),
+      Wrap(
+        spacing: 8,
+        children: [
+          OutlinedButton(
+            onPressed: _incomingBusy || _active
+                ? null
+                : () => _incomingAction('start'),
+            child: const Text('Start foreground incoming experiment'),
+          ),
+          if (_incoming?.handle != null) ...[
+            OutlinedButton(
+              onPressed: _incomingBusy ? null : () => _incomingAction('accept'),
+              child: const Text('Accept Audio'),
+            ),
+            if (_incoming?.videoSupported == true)
+              OutlinedButton(
+                onPressed: _incomingBusy
+                    ? null
+                    : () => _incomingAction('accept', video: true),
+                child: const Text('Accept Video'),
+              ),
+            OutlinedButton(
+              onPressed: _incomingBusy
+                  ? null
+                  : () => _incomingAction('decline'),
+              child: const Text('Decline'),
+            ),
+          ],
+        ],
+      ),
+      const Divider(),
+    ],
+  );
 
   Future<void> _call(HuaweiRtcCallType type) async {
     await c.refresh();
@@ -503,6 +676,12 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
     _timer?.cancel();
     unawaited(_subscription?.cancel());
     unawaited(_captureSubscription?.cancel());
+    unawaited(_incomingSubscription?.cancel());
+    unawaited(
+      HuaweiRtc.closeForegroundIncomingExperimentScreen().catchError(
+        (Object _) {},
+      ),
+    );
     super.dispose();
   }
 
@@ -541,6 +720,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
                 .missing
                 .map((r) => Text('Missing: ${r.title}')),
             const SizedBox(height: 12),
+            _incomingSection(),
             SwitchListTile(
               key: const ValueKey('rtc-live-chat-identity'),
               title: const Text('Use Live Chat customer identity'),
@@ -626,9 +806,21 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
               _captureControls(),
             Text(_result),
             const Text(
-              'Leaving this screen does not hang up. Return here to end the call.',
+              'Outgoing calls continue when leaving this screen. Incoming experiment calls are asked to end.',
             ),
             const Divider(),
+            if (kDebugMode) ...[
+              const Text('Incoming diagnostics — debug only'),
+              const Text(
+                'UTC timestamps. Registration return is not readiness. '
+                'Idle connection/authentication and peer delivery are unobservable locally. '
+                'Native channel writes are not Flutter receipt acknowledgments.',
+              ),
+              if (_incomingDiagnostics.isEmpty)
+                const Text('No incoming diagnostics yet.'),
+              ..._incomingDiagnostics.map((event) => Text(event)),
+              const Divider(),
+            ],
             const Text('Recent events'),
             ..._events.map(Text.new),
           ],

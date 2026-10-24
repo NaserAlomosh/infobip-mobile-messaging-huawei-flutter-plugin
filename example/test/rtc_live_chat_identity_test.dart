@@ -17,6 +17,12 @@ void main() {
   var failLookup = false;
 
   setUp(() async {
+    messenger.setMockMethodCallHandler(
+      const MethodChannel(
+        'infobip_mobilemessaging_huawei/huawei_rtc/incoming_experiment',
+      ),
+      (_) async => null,
+    );
     sdk = FakeSdk()..install();
     controller = ExampleController(config: testConfig);
     operations.clear();
@@ -52,6 +58,12 @@ void main() {
   });
 
   tearDown(() async {
+    messenger.setMockMethodCallHandler(
+      const MethodChannel(
+        'infobip_mobilemessaging_huawei/huawei_rtc/incoming_experiment',
+      ),
+      null,
+    );
     controller.dispose();
     await sdk.close();
     for (final name in [
