@@ -321,9 +321,8 @@ internal class ForegroundIncomingExperiment(
 
     fun accept(handle: String, video: Boolean): Map<String, Any?> {
         val current = valid(handle)
-        // 2.5.28 constructs incoming options with builder defaults, not the remote offer.
-        // No public offered-media capability accessor was found. Audio-only until verified.
-        if (video) fail("Incoming video capability is unverified in RTC Core 2.5.28")
+        // Video is an explicit local camera choice, never inferred from incoming options.
+        // Core exposes no public remote-offer media type.
         // Host validates permissions before transferring the slot and installing its existing listener.
         ringtone.stop() // Before manager adoption or SDK acceptance can begin media.
         trace(IncomingDiagnosticCode.accept_requested)
@@ -407,7 +406,8 @@ internal class ForegroundIncomingExperiment(
                 "handle" to current?.handle?.takeIf { display },
                 "family" to "application",
                 "audioSupported" to (current != null && !invalid),
-                "videoSupported" to false,
+                "videoSupported" to (current != null && !invalid),
+                "offeredCallType" to "unknown",
                 "registrationAttempted" to registrationAttempted,
                 "reason" to reason,
             ))

@@ -215,7 +215,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
         'registrationRequested' =>
           'Registration requested / waiting for incoming signaling. Readiness unconfirmed.',
         'preparing' => 'Resolving identity / requesting access token.',
-        'invitation' => 'Incoming application call invitation',
+        'invitation' => 'Incoming call — offered media type unknown',
         'connecting' => 'Connecting',
         'connected' => 'Connected',
         'ended' => 'Ended — waiting for another invitation',
@@ -227,6 +227,11 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
         'reconnecting' => 'Connection interrupted',
         _ => 'Not started',
       }),
+      if (_incoming?.handle != null)
+        const Text(
+          'The SDK does not report whether the agent offered audio or video. '
+          'Accept with camera explicitly enables your camera; grant camera and microphone permissions first.',
+        ),
       if (_incoming?.reason != null)
         Text('Incoming detail: ${_incoming!.reason}'),
       if (_incomingError != null) Text(_incomingError!),
@@ -249,7 +254,7 @@ class _HuaweiRtcScreenState extends State<HuaweiRtcScreen> {
                 onPressed: _incomingBusy
                     ? null
                     : () => _incomingAction('accept', video: true),
-                child: const Text('Accept Video'),
+                child: const Text('Accept with camera'),
               ),
             OutlinedButton(
               onPressed: _incomingBusy

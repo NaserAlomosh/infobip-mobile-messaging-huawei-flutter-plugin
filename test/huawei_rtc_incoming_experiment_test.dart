@@ -117,6 +117,32 @@ void main() {
       expect(operations.last.method, 'closeForegroundIncomingExperimentScreen');
     },
   );
+  test(
+    'explicit camera acceptance forwards video without inferring offer type',
+    () async {
+      messenger.setMockMethodCallHandler(methods, (operation) async {
+        operations.add(operation);
+        if (operation.method == 'acceptExperimentalIncomingCall') {
+          return {'id': 'video-call', 'type': 'video', 'status': 'connecting'};
+        }
+        return {...state, 'videoSupported': true, 'offeredCallType': 'unknown'};
+      });
+      final invitation = await HuaweiRtc.startForegroundIncomingExperiment(
+        HuaweiRtcLiveChatIdentity(
+          widgetId: 'widget',
+          expectedExternalUserId: 'expected',
+        ),
+      );
+      expect(invitation.videoSupported, isTrue);
+      expect(invitation.offeredCallType, 'unknown');
+      final call = await HuaweiRtc.acceptExperimentalIncomingCall(
+        handle: 'opaque',
+        video: true,
+      );
+      expect(call.type, HuaweiRtcCallType.video);
+      expect(operations.last.arguments, {'handle': 'opaque', 'video': true});
+    },
+  );
   test('errors use sanitized existing exception mapping', () async {
     messenger.setMockMethodCallHandler(methods, (_) async {
       throw PlatformException(

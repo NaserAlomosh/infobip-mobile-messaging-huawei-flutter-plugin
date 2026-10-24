@@ -323,7 +323,7 @@ void main() {
     },
   );
   testWidgets(
-    'incoming experiment requires explicit start and shows only audio actions',
+    'incoming experiment offers explicit camera acceptance with unknown offer type',
     (tester) async {
       sdk.user = {'externalUserId': testConfig.externalUserId};
       await controller.initialize();
@@ -345,7 +345,7 @@ void main() {
         if (operation.method == 'acceptExperimentalIncomingCall') {
           return {
             'id': 'incoming-native',
-            'type': 'audio',
+            'type': 'video',
             'status': 'connecting',
           };
         }
@@ -391,6 +391,7 @@ void main() {
           'state': 'invitation',
           'handle': 'opaque',
           'audioSupported': true,
+          'videoSupported': true,
           'diagnostics': [
             {
               'sequence': 1,
@@ -410,9 +411,12 @@ void main() {
       );
       await done.future;
       await tester.pumpAndSettle();
-      expect(find.text('Incoming application call invitation'), findsOneWidget);
+      expect(
+        find.text('Incoming call — offered media type unknown'),
+        findsOneWidget,
+      );
       expect(find.text('Accept Audio'), findsOneWidget);
-      expect(find.text('Accept Video'), findsNothing);
+      expect(find.text('Accept with camera'), findsOneWidget);
       expect(find.text('Incoming diagnostics — debug only'), findsOneWidget);
       expect(
         find.textContaining('native #1 invitation_callback'),
@@ -425,15 +429,15 @@ void main() {
       expect(find.textContaining('1970-01-01T00:00:01.000Z'), findsOneWidget);
       expect(find.textContaining('must-never-display'), findsNothing);
       expect(find.text('Decline'), findsOneWidget);
-      await tester.ensureVisible(find.text('Accept Audio'));
-      await tester.tap(find.text('Accept Audio'));
+      await tester.ensureVisible(find.text('Accept with camera'));
+      await tester.tap(find.text('Accept with camera'));
       await tester.pumpAndSettle();
       expect(
         operations
             .where((o) => o.method == 'acceptExperimentalIncomingCall')
             .single
             .arguments,
-        {'handle': 'opaque', 'video': false},
+        {'handle': 'opaque', 'video': true},
       );
       await tester.pumpWidget(const SizedBox());
       await tester.pump();

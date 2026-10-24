@@ -45,6 +45,7 @@ class ForegroundIncomingExperimentTest {
     private val work = Work()
     private val slot = RtcCallSlot()
     private var foreground = true
+    private var permissionVideo: Boolean? = null
     private var permitted = true
     private var sameInstallation = true
     private var registrations = 0
@@ -81,7 +82,7 @@ class ForegroundIncomingExperimentTest {
     )
     private val manager = HuaweiRtcManager(
         initialized = { true }, canStartCall = { foreground },
-        permissions = { if (!permitted) throw RtcFailure("rtc_permission_denied", "Permission denied") },
+        permissions = { video -> permissionVideo = video; if (!permitted) throw RtcFailure("rtc_permission_denied", "Permission denied") },
         tokens = RtcTokenProvider { "outgoing-token" },
         backend = object : RtcBackend {
             override fun hasActiveCall() = false
@@ -167,13 +168,64 @@ class ForegroundIncomingExperimentTest {
         status = CallStatus.RINGING; receive(call("second"))
         assertEquals("invitation", state()); assertEquals(1, registrations)
     }
-    @Test fun `stale and unsupported video actions cannot accept`() {
+    @Test fun `stale actions cannot accept and offer type remains unknown`() {
         start(); val call = call(); receive(call)
         rejected { experiment.accept("old-handle", false) }
         rejected { experiment.decline("old-handle") }
-        rejected { experiment.accept(handle(), true) }
         verify(call, never()).accept(any(ApplicationCallOptions::class.java))
-        assertEquals(false, experiment.snapshot()["videoSupported"])
+        assertEquals(true, experiment.snapshot()["videoSupported"])
+        assertEquals("unknown", experiment.snapshot()["offeredCallType"])
+    }
+    @Test fun `explicit video acceptance uses shared manager and video options`() {
+        start(); val call = call(); receive(call)
+        val value = experiment.accept(handle(), true)
+        assertEquals("video", value["type"])
+        assertEquals(true, permissionVideo)
+        val options = ArgumentCaptor.forClass(ApplicationCallOptions::class.java)
+        verify(call).accept(options.capture())
+        assertTrue(options.value.isVideo); assertTrue(options.value.isAudio)
+        verify(ringtone, atLeastOnce()).stop()
+        assertEquals("connecting", state())
+    }
+    @Test fun `video permission denial leaves invitation pending without SDK acceptance`() {
+        start(); val call = call(); receive(call); val old = handle()
+        permitted = false
+        rejected { experiment.accept(old, true) }
+        verify(call, never()).accept(any(ApplicationCallOptions::class.java))
+        assertEquals(old, handle()); assertEquals("invitation", state())
+        permitted = true
+        experiment.accept(old, true)
+        verify(call).accept(any(ApplicationCallOptions::class.java))
+    }
+    @Test fun `video initialization exception requests hangup without audio fallback`() {
+        start(); val call = call(); receive(call)
+        doThrow(IllegalStateException("camera unavailable")).`when`(call).accept(any(ApplicationCallOptions::class.java))
+        rejected { experiment.accept(handle(), true) }
+        verify(call).hangup()
+        verify(call, times(1)).accept(any(ApplicationCallOptions::class.java))
+        assertFalse(slot.acquire(this)); assertEquals("failed", state())
+        status = CallStatus.FINISHED
+        listener!!.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        assertTrue(slot.acquire(this)); slot.release(this)
+    }
+    @Test fun `video cancellation duplicate delivery and consecutive audio retain ownership rules`() {
+        start(); val first = call(); receive(first); val old = handle()
+        receive(first)
+        verify(first, never()).decline()
+        experiment.accept(old, true)
+        val conflicting = call("conflicting")
+        receive(conflicting); verify(conflicting).decline()
+        rejected { experiment.accept(old, true) }
+        status = CallStatus.FINISHED
+        listener!!.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        status = CallStatus.RINGING
+        val second = call("second"); receive(second)
+        rejected { experiment.accept(old, true) }
+        val value = experiment.accept(handle(), false)
+        assertEquals("audio", value["type"]); assertEquals(false, permissionVideo)
+        val options = ArgumentCaptor.forClass(ApplicationCallOptions::class.java)
+        verify(second).accept(options.capture()); assertFalse(options.value.isVideo)
+        assertEquals(1, registrations)
     }
     @Test fun `remote cancellation before acceptance invalidates the handle`() {
         start(); receive(call()); val old = handle()

@@ -389,7 +389,12 @@ final class HuaweiRtcIncomingExperimentEvent {
   final String? handle;
   final String family;
   final bool audioSupported;
+
+  /// Whether explicit local video acceptance is supported; not remote offer metadata.
   final bool videoSupported;
+
+  /// Core 2.5.28 does not expose the remote offered media type.
+  String get offeredCallType => 'unknown';
   final bool registrationAttempted;
   final String? reason;
   final List<HuaweiRtcIncomingDiagnostic> diagnostics;
@@ -464,7 +469,10 @@ abstract final class HuaweiRtc {
       );
 
   /// Accepts the current opaque invitation; media uses existing events/controls.
-  /// Video may only be requested when the invitation offers video.
+  /// `video: true` explicitly opts into local camera publication. Core 2.5.28
+  /// cannot identify the remote offered media type; this is not offer detection.
+  /// Camera and microphone permissions must already be granted. No automatic
+  /// audio fallback occurs if video acceptance fails.
   static Future<HuaweiRtcCall> acceptExperimentalIncomingCall({
     required String handle,
     bool video = false,

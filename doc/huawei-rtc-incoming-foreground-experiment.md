@@ -2,7 +2,7 @@
 
 **EXPERIMENTAL — NOT PRODUCTION READY**
 
-This uncommitted POC explores whether an agent calling from Infobip Conversations
+This foreground experiment explores whether an agent calling from Infobip Conversations
 can deliver an **application-call** invitation to the currently personalized Huawei
 customer while the example RTC screen is open and the Activity is resumed. It is
 not a supported plugin feature or a production registration lifecycle.
@@ -47,12 +47,11 @@ in the SDK's active-connection mode still requires device regression testing.
 
 ## Scope and limitations
 
-- **Audio POC only. Incoming video is pending.** `accept(options)` supports video,
-  but inspected incoming constructors initialize `options()` with builder defaults,
-  not a public remote-offer capability object. Treating `options().isVideo` as an
-  offered-video flag would be misleading. `videoSupported` is false and Accept
-  Video is hidden. Explicit native video requests are rejected. Existing outgoing
-  video and renderers remain available through the normal outgoing path.
+- **Explicit audio/video acceptance; offered media type unknown.** Core 2.5.28
+  exposes `accept(ApplicationCallOptions)` with video, but no public remote-offer
+  media accessor. Incoming constructors initialize `options()` with defaults.
+  `videoSupported` describes the local acceptance path, not agent intent.
+  `offeredCallType` is always `unknown`. See the incoming video update below.
 - Application-call family only. The registered listener is explicitly
   `IncomingApplicationCallEventListener`. No peer/WebRTC call is cast into this
   family. A peer-call Portal configuration is incompatible with this experiment.
@@ -109,7 +108,7 @@ provider. Neither subject nor token is returned to Dart.
 
 `HuaweiRtc.incomingExperimentEvents` uses a separate event channel and replays the
 current pending invitation for late listeners. `acceptExperimentalIncomingCall`
-and `declineExperimentalIncomingCall` require its opaque handle. Accepted audio
+and `declineExperimentalIncomingCall` require its opaque handle. Accepted audio/video
 calls are transferred atomically to `HuaweiRtcManager`, reusing `HuaweiRtc.events`,
 `getActiveCall`, `hangup`, microphone/speaker/output controls and terminal cleanup.
 The experiment adds no incoming notification service. The normal outgoing service
@@ -639,3 +638,110 @@ is logged. Debug observation failures do not change registration or global routi
   remain uncommitted/unpushed. No dependency, Gradle or manifest changes.
 - Physical Huawei loudspeaker routing, headset behavior and post-accept audio:
   **NOT RUN for this routing change**. An accepted preference is not device proof.
+
+## Incoming video update (2026-10-25)
+
+This section supersedes earlier audio-only limitations. Existing audio and ringtone
+hardware results were supplied by the user; incoming video hardware testing is NOT
+RUN by this change. Foreground-only and process/identity restrictions still apply.
+
+### Verified SDK capability and implementation
+
+Inspection of the installed RTC Core **2.5.28** AAR using `javap` verified public
+`IncomingApplicationCall.accept(ApplicationCallOptions)`, `cameraVideo(boolean)`,
+`cameraOrientation(...)`, `localCameraTrack()`, `remoteVideos()`, and camera/participant
+video callbacks. Bytecode inspection verified that incoming constructors supply
+builder-default options and that accept installs the requested options before
+starting media. Private SDP exists internally but is never accessed by this plugin.
+There is no public offered-video flag; custom data is not treated as a media contract.
+Automatic audio/video invitation classification is BLOCKED by that SDK limitation.
+
+The existing `acceptExperimentalIncomingCall(handle: ..., video: true)` is now
+supported. No new method or dependency is needed. `videoSupported` means the local
+video acceptance path is available, not that the remote party offered video.
+The additive `offeredCallType` event field and Dart getter report `unknown`.
+Older native payloads remain decodable. The example shows a generic invitation,
+explains the unknown offer type, and offers **Accept Audio**, **Accept with camera**,
+and **Decline**. Camera acceptance requires explicit user action.
+
+```dart
+// Subscribe to incomingExperimentEvents before starting the experiment.
+// On a current invitation, after the user explicitly chooses camera acceptance:
+final call = await HuaweiRtc.acceptExperimentalIncomingCall(
+  handle: invitation.handle!,
+  video: true,
+);
+// Observe HuaweiRtc.events and use existing HuaweiRtcVideoView instances keyed
+// by call.id for local and remote sources, exactly as for outgoing video.
+```
+
+Grant RECORD_AUDIO, CAMERA for video, and BLUETOOTH_CONNECT on Android 12+ through
+the host's permission flow/settings before Accept. The plugin checks permissions;
+it does not request them. Denial leaves the invitation available until cancellation
+or expiry. Ringtone stops before adoption/acceptance, including permission failure.
+No automatic audio retry follows camera/SDK failure. Synchronous acceptance failure
+requests hangup and retains the shared slot until terminal confirmation. Asynchronous
+media errors use existing RTC error events; an error alone is not terminal.
+
+Acceptance transfers the same invitation and reservation to HuaweiRtcManager.
+Its existing listener, video bindings, local/remote view ownership, stale callback
+checks and terminal sink cleanup are reused. Microphone, speaker/output, camera
+switching, camera enable/disable and hangup keep their existing meanings. Decline
+uses the same invitation validation, ringtone stop and terminal-confirmed release.
+No background delivery, HMS RTC push, token changes or Conversation routing changes
+are included. Foreground loss, Activity/engine detach, duplicate invitations,
+identity invalidation and occupied-call rejection retain the existing guards.
+
+Core exposes camera publication enable/disable, but this does not establish an
+arbitrary audio-call-to-video renegotiation contract. The existing controls operate
+on calls accepted as video; audio-to-video upgrade is not introduced. Disabling the
+camera on a video call does not change its session type or pause remote video.
+Remote negotiation, camera availability, network recovery and agent behavior must
+be verified on hardware. A successful accept return does not prove connection or
+video publication.
+
+### Physical Huawei validation procedure
+
+1. Use the current branch build, a fresh process and the same proven tenant/widget
+   and personalized customer. Grant microphone, camera and Nearby devices where
+   required. Keep the RTC screen resumed; start the foreground experiment once.
+2. From the existing Portal Conversation, initiate an application video call.
+   Expect an invitation with **offered media type unknown**, ringtone and both
+   acceptance choices. Confirm no caller type is guessed from SDK defaults.
+3. Select **Accept with camera**. Verify ringtone stops immediately, Connecting
+   advances to Connected, local preview appears and remote video is visible.
+   Verify the agent sees the device camera and both parties hear each other.
+4. Switch front/back cameras; disable/re-enable camera; mute/unmute microphone;
+   toggle speakerphone and test connected headsets. Verify remote video continues
+   while local camera is disabled. Test local and remote hangup and view cleanup.
+5. Repeat with camera denied, then microphone denied (separate calls). Expect no
+   SDK acceptance and no silent fallback. Restore permissions and accept a still
+   valid invitation, or decline it. Test camera unavailable/in use and record SDK
+   error/termination behavior; do not infer camera success from accept return.
+6. Test Decline, Portal cancellation before Accept, cancellation during Accept,
+   expiry, duplicate signaling, incoming while another call owns the slot and
+   network interruption during connection/established video. Verify stale handles
+   cannot act and uncertain termination prevents another call taking ownership.
+7. During ringing and during video, press Home/lock, pause/recreate Activity, close
+   the screen and detach the Flutter engine. Verify ringtone silence, requested
+   termination, released local views and retained slot until terminal confirmation.
+8. Make consecutive incoming audio/video calls with the same identity, then run
+   outgoing audio/video before and after incoming acceptance. Recheck audio,
+   ringtone loudspeaker routing, camera/renderers and every existing control.
+9. Record device/Android version, Portal call mode, permissions, actual media in
+   both directions, sanitized errors and termination results for each case.
+   Verify Conversation association independently. Restart the process for another
+   identity. These steps are a test procedure, not completed hardware evidence.
+
+### Automated validation for this update
+
+- Full plugin native debug unit suite, JDK 21, cached offline Gradle: **410 passed;
+  zero failures/errors/skips**. Includes existing ringtone, incoming, ownership,
+  outgoing, rendering, camera controls and lifecycle coverage, plus explicit video
+  options, video permission guard/retry, initialization exception without fallback,
+  duplicate/conflicting invitations, terminal release and video-to-next-audio tests.
+- Full plugin Flutter suite: **238 passed**. Includes camera acceptance forwarding
+  and unknown offered-type semantics, plus existing incoming/audio/outgoing tests.
+- Full example Flutter suite: **48 passed**, including explicit camera acceptance UI.
+- `git diff --check`: PASS. Device video tests: **NOT RUN**.
+- No version/dependency/build configuration changes, branch changes, commits or pushes.
