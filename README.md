@@ -1133,16 +1133,19 @@ The [example setup guide](example/README.md) covers private configuration and th
 Test Center. From `example/`, run:
 
 ```sh
+dart run tool/setup_config.dart # once; preserves an existing private file
 flutter pub get
-cp -n example_config.example.json config/example_config.local.json
-# Fill the private JSON and complete the Huawei host setup in the example guide.
+# Edit static const fields in lib/config/example_test_config.dart.
+# Complete the Huawei host setup in the example guide.
 flutter run
 ```
 
-Plain `flutter run` loads the optional private JSON asset through `lib/main.dart`.
-A clean checkout without it compiles with safe empty defaults and reports missing
-prerequisites. Stop and rebuild after changing configuration. No generated launcher
-is required; existing private Dart files remain untouched.
+Fresh clones require the one-time setup to copy safe defaults from the tracked Dart
+template. Plain `flutter run` then uses the private `ExampleTestConfig` constants
+through a synchronous mapper. Stop and rebuild after editing values. The private
+file is ignored by Git and excluded from pub.dev; never force-add it. To restore
+safe defaults, intentionally remove it and rerun setup. Hardcoded test credentials
+are extractable from APKs and must never be production secrets.
 
 Follow Setup → Push → User/Installation → Chat/Inbox → RTC → Screen Sharing.
 The example covers Application Code initialization, separate MM/Chat JWT flows,
@@ -1222,7 +1225,7 @@ and Flutter-generated registration code.
    Calls application, the backend needs event subscriptions and call-control logic
    to accept and connect the call. Generic Calls API events do not expose calls
    managed by Conversations. No unverified Portal menu path is assumed here.
-4. Set `rtcCallsConfigurationId` in the example's private JSON. The example passes
+4. Set `rtcCallsConfigurationId` in the private `ExampleTestConfig` Dart class. The example passes
    it unchanged to `HuaweiRtcCallRequest.callsConfigurationId`, through the channel
    and native `CallApplicationRequest`. A consumer uses the public API as follows:
 

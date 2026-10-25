@@ -23,62 +23,50 @@ The [configuration reference](../README.md#configuration-reference) explains ID,
 token and signing-key ownership. App Key, Application ID and a base URL are not
 initialization inputs for this plugin.
 
-## One private JSON configuration
+## Direct Dart test configuration
 
 Validated with Flutter 3.35.7 / Dart 3.9.2 and Java 21. Flutter 3.47.7
-requires a newer Gradle wrapper than this branch provides; this task does not
-upgrade the Android toolchain. Use the validated baseline for these commands.
+requires newer Android tooling than this branch provides.
 
-From a fresh checkout:
+From a fresh checkout, perform this one-time setup:
 
 ```sh
-git clone https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin.git
-cd infobip-mobile-messaging-huawei-flutter-plugin/example
+cd example
+dart run tool/setup_config.dart
 flutter pub get
-cp -n example_config.example.json config/example_config.local.json
 ```
 
-Edit `config/example_config.local.json` using the field table below, then complete
-[Huawei Android host setup](#huawei-android-host-setup). The `cp -n` command
-preserves an existing file. Use JSON strings, numeric integers, booleans and an
-object for `installationAttributes`, matching the template types. Then run:
+The setup command copies `lib/config/example_test_config.template.dart` to
+`lib/config/example_test_config.dart` only when the private file is absent.
+Existing private contents are never overwritten. Dart imports are not optional:
+this setup step is required before analyzing, testing or building a fresh clone.
+The safe template retains all fields, comments, types and default values.
+
+Enter test values directly in the `static const` fields of `ExampleTestConfig`
+in `lib/config/example_test_config.dart`, then complete
+[Huawei Android host setup](#huawei-android-host-setup). Run normally:
 
 ```sh
 flutter run
 ```
 
-If multiple devices are connected, use `flutter devices`, then
-`flutter run -d YOUR_HUAWEI_DEVICE_ID`. `lib/main.dart` is the canonical entry point.
-It loads the optional private JSON from the declared `config/` asset directory.
-The tracked directory marker allows a clean checkout to compile without private
-files. Missing configuration uses empty defaults and the Test Center shows missing
-prerequisites; malformed JSON or incorrect value types shows a safe configuration
-error without printing values. No optional Dart import or launcher generation is used.
+From the repository root, the equivalent is `cd example` followed by `flutter run`.
+No launch arguments or alternate entrypoint are needed. `main.dart` synchronously
+maps all constants to the existing `ExampleConfig` and `ExampleController`.
+There is no runtime configuration loader, configuration asset or environment override.
+Safe defaults compile after setup; feature actions still require their prerequisites.
+Stop and rebuild after changing constants.
 
-To update configuration, edit the same JSON file, stop the app, then run:
+The private Dart file is ignored by Git and excluded from the published package.
+Never force-add it. To intentionally discard local test values and restore safe
+configuration, remove that file locally and rerun `dart run tool/setup_config.dart`.
+Keep a private backup first if the values are still needed.
 
-```sh
-flutter run
-```
-
-A full stop/rebuild is required after adding or changing assets; hot reload is
-insufficient. For missing Application Code, set `infobipApplicationCode`. For
-blocked RTC, configure routing below and complete registration/permissions. If
-values appear ignored, check the exact path and rebuild. JSON keys are case-sensitive.
-The old uppercase `INFOBIP_*` JSON format is obsolete; use the current template.
-
-Existing users: copy values from your private `lib/config/example_test_config.dart`
-into the matching JSON keys once. The old private file and `main_local.dart` remain
-ignored and are never overwritten, but are no longer needed. The Dart template is
-retained only as a legacy field reference; new setup uses the JSON template.
-All feature controllers still receive the same `ExampleConfig` object.
-
-Private JSON and old private Dart files are excluded from Git and pub.dev packaging.
-JSON assets are extractable from built apps: use only test values and keep APKs
-private, just as with the former compiled Dart configuration. Do not place unrelated
-private files in `config/`, because Flutter bundles that directory.
-
-Use controlled test credentials and decrypted values only. Signing secrets are extractable from test APKs; keep those APKs private. Production JWTs belong on a trusted backend. Never use the banking AppKey as a signing key. No decryption or banking encryption exists here.
+Hardcoded credentials can be extracted from compiled APKs. Use only controlled
+test credentials, keep test APKs private, and never embed production secrets.
+Production JWT signing belongs on a trusted backend. No decryption is performed.
+Existing obsolete local configuration files are not loaded; remove them manually
+when no longer needed. Huawei `agconnect-services.json` remains separate and unchanged.
 
 ### Every active field
 
@@ -130,7 +118,7 @@ Host configuration placement follows [Huawei's Flutter Android integration guide
    Calls application, the backend needs event subscriptions and call-control logic
    to accept and connect the call. Generic Calls API events do not expose calls
    managed by Conversations. No unverified Portal menu path is assumed here.
-4. Set `rtcCallsConfigurationId` in the example's private JSON. The example passes
+4. Set `rtcCallsConfigurationId` in the private `ExampleTestConfig` Dart class. The example passes
    it unchanged to `HuaweiRtcCallRequest.callsConfigurationId`, through the channel
    and native `CallApplicationRequest`. A consumer uses the public API as follows:
 
