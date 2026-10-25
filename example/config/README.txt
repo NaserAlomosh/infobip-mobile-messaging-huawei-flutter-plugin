@@ -1,0 +1,1 @@
+Obsolete local configuration directory. The app does not load or bundle this directory. See ../README.md for direct Dart constants setup. Private files are preserved; remove them manually when no longer needed.
