@@ -1,4 +1,4 @@
-## Unreleased
+## 1.1.0
 
 - Added opt-in `HuaweiRtcCallRequest.liveChatIdentity` with
   `HuaweiRtcLiveChatIdentity` for outgoing customer audio/video calls. Resolves
@@ -18,7 +18,19 @@
 - Corrected current incoming RTC documentation and documented its experimental
   lifecycle contract. Included consumer identity and incoming guides in package
   contents while retaining internal investigation exclusions.
-- Fixed the example Android Activity package to match its namespace and launcher.
+- Simplified example startup to direct `ExampleTestConfig` Dart constants, mapped
+  synchronously into the existing controller. Added a one-time safe-default setup
+  command that preserves existing private files; removed JSON configuration assets,
+  runtime loading and alternate-launcher setup.
+- Expanded Huawei, Infobip, Inbox authentication and RTC routing documentation;
+  added GitHub Sponsors configuration.
+- Kept private test configuration and internal audit artifacts out of package
+  contents. Hardcoded test credentials remain extractable from test APKs.
+
+Existing public APIs remain source-compatible; SDK/toolchain dependencies are unchanged.
+The new identity option is additive. Incoming RTC remains experimental and
+foreground-only. SEC-01 upstream sensitive logging remains partially mitigated;
+see [security guidance](SECURITY.md).
 
 ## 1.0.1
 

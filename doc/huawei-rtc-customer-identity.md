@@ -11,8 +11,8 @@ User ID is not interchangeable with a Live Chat Registration ID.
 Opt in with `liveChatIdentity` when outgoing customer calls should use the
 customer identity associated with your Live Chat widget. This is additive; the
 plugin never enables it implicitly for existing consumers. Supplying both modes
-is rejected. No registration ID is returned to Dart. This option is an unreleased
-addition and is not available in published version 1.0.1.
+is rejected. No registration ID is returned to Dart. This option is introduced in 1.1.0
+and is not available in version 1.0.1.
 
 ```dart
 import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';

@@ -3,10 +3,9 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This README describes the current checkout, including unreleased RTC additions.
-Published **1.0.1** does not include the Live Chat identity option or experimental
-foreground incoming APIs described below. The installation example remains on
-the published version until a new release is prepared.
+This README describes version **1.1.0**, including opt-in Live Chat identity and
+experimental foreground incoming RTC. Version 1.0.1 does not include those APIs.
+For a release candidate not yet available on pub.dev, use the checkout path below.
 
 ## Contents
 
@@ -33,7 +32,7 @@ the published version until a new release is prepared.
 ## Features and support
 
 “Supported” describes implemented APIs, not certification of your device or account.
-Unreleased rows require this repository checkout; they are absent from pub.dev 1.0.1.
+Live Chat identity and foreground incoming APIs require version 1.1.0 or this checkout.
 
 | Feature | Status | Entry point |
 | --- | --- | --- |
@@ -42,8 +41,8 @@ Unreleased rows require this repository checkout; they are absent from pub.dev 1
 | User, installation, personalization, custom events, Inbox | Supported | `personalize`, `saveUser`, `saveInstallation`, `submitEvent`, `fetchInbox` |
 | Native/embedded Live Chat, attachments, events, JWT provider | Supported | `showChat`, `InfobipHuaweiChatView`, `setChatJwtProvider` |
 | Outgoing application audio/video and media controls | Supported | `HuaweiRtc.callApplication` |
-| Live Chat identity for outgoing RTC | Supported, unreleased opt-in | `HuaweiRtcLiveChatIdentity` |
-| Foreground incoming audio/video, Accept/Decline, ringtone | Experimental, unreleased | `startForegroundIncomingExperiment` |
+| Live Chat identity for outgoing RTC | Supported, opt-in since 1.1.0 | `HuaweiRtcLiveChatIdentity` |
+| Foreground incoming audio/video, Accept/Decline, ringtone | Experimental, foreground-only since 1.1.0 | `startForegroundIncomingExperiment` |
 | Screen-as-Camera | Supported, Android 10+; 640×480 output | `HuaweiRtcScreenAsCamera` |
 | Background/terminated incoming RTC, HMS RTC push | Unsupported | No supported API |
 | Official RTC UI `enableCalls` / `enableChatCalls` | Guarded, unsupported | Do not enable `WebRTCUI` |
@@ -80,11 +79,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^1.0.1
+  infobip_mobilemessaging_huawei: ^1.1.0
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above for released APIs. To evaluate the unreleased rows,
+the hosted dependency above once 1.1.0 is published. To evaluate this checkout,
 clone this repository and point your host at that checkout instead:
 
 ```yaml
@@ -94,7 +93,7 @@ dependencies:
 ```
 
 Replace the relative path with your actual checkout location. Do not declare both
-hosted and path dependencies. A `^1.0.1` install does not provide unreleased APIs.
+hosted and path dependencies. Version 1.0.1 does not provide the new identity or incoming APIs.
 
 ## Quick Start
 
@@ -896,7 +895,7 @@ A call object, preview or token response alone does not prove those outcomes.
 
 ## Experimental foreground incoming RTC
 
-The unreleased incoming flow supports application audio/video invitations,
+The experimental incoming flow supports application audio/video invitations,
 Accept/Decline, native ringtone with best-effort speaker routing, explicit
 camera-enabled acceptance, local/remote video rendering, microphone mute,
 camera switching/on/off, speakerphone controls, and call termination/cleanup.

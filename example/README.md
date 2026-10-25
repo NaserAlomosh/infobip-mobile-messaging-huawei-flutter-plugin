@@ -256,7 +256,7 @@ acceptance and Decline, with native ringtone and existing video/media controls.
 Initialize and personalize the configured user, use the matching Chat widget,
 grant call permissions and keep the Activity resumed. Follow the
 [consumer guide](../doc/huawei-rtc-incoming.md) for states, errors and lifecycle
-limitations. These APIs are unreleased additions, absent from published 1.0.1.
+limitations. These APIs are introduced in 1.1.0 and are absent from version 1.0.1.
 
 Background/terminated-app delivery is unsupported. Account changes and engine
 detach invalidate the process-scoped registration; retry requires process

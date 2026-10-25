@@ -1,6 +1,6 @@
 # Experimental foreground incoming RTC
 
-This is an unreleased addition, absent from published 1.0.1. The API remains
+Introduced in 1.1.0 and absent from version 1.0.1, this API remains
 **experimental — not production ready**. It supports incoming application audio
 and video calls while the host's incoming screen is open and Activity is resumed.
 It does not implement background, locked-screen or terminated-app delivery,
