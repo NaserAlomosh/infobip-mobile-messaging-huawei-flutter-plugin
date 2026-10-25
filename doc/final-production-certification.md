@@ -4,11 +4,13 @@
 > Its publication/version/licensing conclusions describe that checkout, not
 > the current package. Use the [current README](../README.md) for installation
 > and setup, and rerun release checks for the version being prepared.
+> The root LICENSE now exists. Superseded publication snapshots were removed;
+> missing-license findings and test counts below describe only the historical audit.
 
 
 Audit date: 2026-10-12, Asia/Amman. Candidate: `fb359cb6f2c8609b03e2652b929a20020fcc8f21`.
 **Production certification: NO-GO. Package publication is assessed separately
-in [publication readiness](publication-readiness.md).**
+in [current integration and security guidance](../README.md).**
 
 Publication documentation review, 2026-10-12: the original audit/build/test
 results below are historical evidence, not new verification runs. Subsequent
@@ -536,7 +538,7 @@ confirmed. Automated success does not close the validation-gap findings.
 
 **Package publication: NO-GO** because the root LICENSE and owner authorization
 of provenance/redistribution rights are missing. Final dry-run success and upload
-authorization must be confirmed; see [publication readiness](publication-readiness.md).
+authorization must be confirmed; see [current integration and security guidance](../README.md).
 
 **Production security certification: not granted.** SEC-01 remains PARTIALLY
 MITIGATED, with RTC printf outside the optional workaround. Signed-device/backend
@@ -576,7 +578,7 @@ do not require vendor disclosure before publication.
       candidate and review its archive for secrets/private artifacts. Last recorded
       run failed for missing LICENSE; the current publication review also failed
       with exit 65. Successful post-LICENSE dry-run remains UNVERIFIED; see
-      [current results](publication-readiness.md#requested-validation).
+      [current validation procedure](../CONTRIBUTING.md#formatting-and-validation).
 - [ ] For production security acceptance, assess upstream MM authorization-header
       and RTC temporary TURN-credential logging and record residual risk / verified
       remediation. SEC-01 remains PARTIALLY MITIGATED; vendor fix and signed-device

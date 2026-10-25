@@ -72,6 +72,23 @@ class HuaweiRtcBoundaryTest {
         assertEquals(43200L, request.value.timeToLive)
     }
 
+    @Test fun `resolved Chat subject uses the unchanged native token contract`() {
+        val contacts = mock(org.infobip.mobile.messaging.api.appinstance.MobileApiAppInstance::class.java)
+        `when`(contacts.getLivechatContactInformation("installation")).thenReturn(
+            org.infobip.mobile.messaging.api.appinstance.LivechatContactInformation(arrayOf(
+                org.infobip.mobile.messaging.api.appinstance.LivechatDestination("widget", "chat-subject"))))
+        val resolved = NativeLiveChatIdentityResolver({ "installation" to "user" }, { contacts })
+            .resolve("widget", "user")
+        val service = mock(MobileApiRtc::class.java)
+        `when`(service.getToken(any(TokenBody::class.java))).thenReturn(TokenResponse("unit-test-token", "expiration"))
+        val provider = HuaweiRtcTokenProvider({ fail("No installation fallback"); null }, { service })
+        assertEquals("unit-test-token", provider.fetch(resolved.subject))
+        val body = ArgumentCaptor.forClass(TokenBody::class.java)
+        verify(service).getToken(body.capture())
+        assertEquals("chat-subject", body.value.identity)
+        assertEquals(43200L, body.value.timeToLive)
+    }
+
     @Test fun `omitted identity uses current installation and token is fetched afresh`() {
         val bodies = mutableListOf<TokenBody>()
         val service = mock(MobileApiRtc::class.java)

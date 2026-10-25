@@ -23,6 +23,12 @@ void main() {
   Completer<Object?>? pending;
   final operations = <MethodCall>[];
   setUp(() {
+    messenger.setMockMethodCallHandler(
+      const MethodChannel(
+        'infobip_mobilemessaging_huawei/huawei_rtc/incoming_experiment',
+      ),
+      (_) async => null,
+    );
     sdk = FakeSdk()..install();
     controller = ExampleController(config: testConfig);
     call = {
@@ -97,6 +103,12 @@ void main() {
     });
   });
   tearDown(() async {
+    messenger.setMockMethodCallHandler(
+      const MethodChannel(
+        'infobip_mobilemessaging_huawei/huawei_rtc/incoming_experiment',
+      ),
+      null,
+    );
     controller.dispose();
     await sdk.close();
     messenger.setMockMethodCallHandler(const MethodChannel(eventName), null);
@@ -308,6 +320,133 @@ void main() {
       expect(find.text('Call duration: 00:04'), findsOneWidget);
       expect(button(tester, 'Mute microphone').onPressed, isNull);
       await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'incoming experiment offers explicit camera acceptance with unknown offer type',
+    (tester) async {
+      sdk.user = {'externalUserId': testConfig.externalUserId};
+      await controller.initialize();
+      final incomingState = <String, Object?>{
+        'state': 'registrationRequested',
+        'family': 'application',
+        'handle': null,
+        'audioSupported': false,
+        'videoSupported': false,
+        'registrationAttempted': true,
+        'reason': null,
+      };
+      messenger.setMockMethodCallHandler(channel, (operation) async {
+        operations.add(operation);
+        if (operation.method == 'getActiveCall') return null;
+        if (operation.method == 'startForegroundIncomingExperiment') {
+          return incomingState;
+        }
+        if (operation.method == 'acceptExperimentalIncomingCall') {
+          return {
+            'id': 'incoming-native',
+            'type': 'video',
+            'status': 'connecting',
+          };
+        }
+        return null;
+      });
+      tester.view.physicalSize = const Size(1000, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HuaweiRtcScreen(controller: controller, video: false),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        operations.where(
+          (o) => o.method == 'startForegroundIncomingExperiment',
+        ),
+        isEmpty,
+      );
+      await tester.scrollUntilVisible(
+        find.text('Start foreground incoming experiment'),
+        100,
+      );
+      await tester.tap(find.text('Start foreground incoming experiment'));
+      await tester.pumpAndSettle();
+      expect(
+        operations
+            .where((o) => o.method == 'startForegroundIncomingExperiment')
+            .length,
+        1,
+      );
+      expect(
+        find.textContaining('Registration requested / waiting'),
+        findsOneWidget,
+      );
+      final done = Completer<void>();
+      messenger.handlePlatformMessage(
+        'infobip_mobilemessaging_huawei/huawei_rtc/incoming_experiment',
+        const StandardMethodCodec().encodeSuccessEnvelope({
+          ...incomingState,
+          'state': 'invitation',
+          'handle': 'opaque',
+          'audioSupported': true,
+          'videoSupported': true,
+          'diagnostics': [
+            {
+              'sequence': 1,
+              'timestampMillis': 1000,
+              'event': 'invitation_callback',
+              'token': 'must-never-display',
+              'identity': 'must-never-display',
+            },
+            {
+              'sequence': 2,
+              'timestampMillis': 1100,
+              'event': 'invitation_published',
+            },
+          ],
+        }),
+        (_) => done.complete(),
+      );
+      await done.future;
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Incoming call — offered media type unknown'),
+        findsOneWidget,
+      );
+      expect(find.text('Accept Audio'), findsOneWidget);
+      expect(find.text('Accept with camera'), findsOneWidget);
+      expect(find.text('Incoming diagnostics — debug only'), findsOneWidget);
+      expect(
+        find.textContaining('native #1 invitation_callback'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('flutter_event_received native_sequence=2'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('1970-01-01T00:00:01.000Z'), findsOneWidget);
+      expect(find.textContaining('must-never-display'), findsNothing);
+      expect(find.text('Decline'), findsOneWidget);
+      await tester.ensureVisible(find.text('Accept with camera'));
+      await tester.tap(find.text('Accept with camera'));
+      await tester.pumpAndSettle();
+      expect(
+        operations
+            .where((o) => o.method == 'acceptExperimentalIncomingCall')
+            .single
+            .arguments,
+        {'handle': 'opaque', 'video': true},
+      );
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      expect(
+        operations
+            .where((o) => o.method == 'closeForegroundIncomingExperimentScreen')
+            .length,
+        1,
+      );
     },
   );
 }

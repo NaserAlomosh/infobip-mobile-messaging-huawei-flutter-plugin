@@ -1,5 +1,5 @@
 /// Controlled SDK testing only. Never ship signing secrets in a production app.
-/// Values are injected by the local Dart launcher; empty defaults compile cleanly.
+/// Values are supplied by the direct Dart test-constants mapper or by tests.
 final class ExampleConfig {
   const ExampleConfig({
     this.applicationCode = '',

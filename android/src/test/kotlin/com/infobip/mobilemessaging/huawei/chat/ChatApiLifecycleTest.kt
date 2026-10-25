@@ -62,9 +62,14 @@ class ChatApiLifecycleTest {
         assertEquals(listOf("success"), retry.values); verify(chat, times(2)).activate()
         verify(initializer, never()).reset()
     }
-    @Test fun `pending MM initialization blocks cleanup without touching RTC`() {
+    @Test fun `pending MM initialization blocks cleanup with only RTC identity guards`() {
         initialize(); assertEquals(listOf("operation_in_progress"), cleanup().values)
-        verifyNoInteractions(rtc, webRtc, cleanup)
+        verify(rtc, times(2)).beginIdentityMutation()
+        verify(rtc).endIdentityMutation() // Rejected cleanup releases only its own guard.
+        verifyNoMoreInteractions(rtc)
+        verifyNoInteractions(webRtc, cleanup)
+        initializations.single()(null); drain()
+        verify(rtc, times(2)).endIdentityMutation()
     }
     @Test fun `active RTC rejection preserves Chat and never hangs up`() {
         `when`(rtc.prepareCleanup()).thenReturn(RtcFailure("rtc_invalid_state", "Finish the call first"))

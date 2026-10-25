@@ -111,6 +111,19 @@ class HuaweiRtcManagerTest {
             intent.getStringExtra("identity") == it && it != null
         }
     }
+    private var chatUser: String? = "expected-user"
+    private var chatFailure: RtcFailure? = null
+    private var chatLookups = 0
+    private val chatResolver = LiveChatIdentityResolver { widget, expected ->
+        chatLookups++
+        assertEquals("exact-widget", widget)
+        assertEquals("expected-user", expected)
+        chatFailure?.let { throw it }
+        if (chatUser != expected) throw RtcFailure("rtc_invalid_state", "User mismatch")
+        ResolvedChatIdentity("chat-subject") {
+            if (chatUser != expected) throw RtcFailure("rtc_invalid_state", "User changed")
+        }
+    }
     private val manager = manager()
     private fun manager() = HuaweiRtcManager(
         initialized = { initialized }, canStartCall = { foreground },
@@ -120,7 +133,107 @@ class HuaweiRtcManagerTest {
         },
         tokens = RtcTokenProvider { subject = it; tokenCalls++; tokenFailure?.let { throw it }; "unit-test-token" },
         backend = backend, executor = executor, slot = slot, notification = notice,
+        chatIdentities = chatResolver,
     )
+    private fun chatRequest(type: String = "audio") = mapOf(
+        "callsConfigurationId" to "calls-config", "type" to type,
+        "liveChatIdentity" to mapOf("widgetId" to "exact-widget", "expectedExternalUserId" to "expected-user"))
+
+    @Test fun `Chat audio and video resolve once per call through existing token and media flow`() {
+        for (type in listOf("audio", "video")) {
+            val reply = invoke("callApplication", chatRequest(type))
+            executor.runNext(); idle()
+            assertNull(reply.code)
+            assertEquals("chat-subject", subject)
+            assertEquals(type == "video", requestedVideo)
+            assertFalse(reply.value.toString().contains("chat-subject"))
+            listener.onHangup(CallHangupEvent(ErrorCode.NORMAL_HANGUP, null)); idle()
+        }
+        assertEquals(2, chatLookups)
+        assertEquals(2, tokenCalls)
+        assertEquals(2, callCount)
+    }
+
+    @Test fun `Chat lookup failure and timeout do not request a token or call`() {
+        chatFailure = RtcFailure("rtc_identity_unavailable", "Lookup unavailable")
+        val failed = invoke("callApplication", chatRequest())
+        executor.runNext(); idle()
+        assertEquals("rtc_identity_unavailable", failed.code)
+        chatFailure = null
+        val timedOut = invoke("callApplication", chatRequest())
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(31))
+        executor.runNext(); idle()
+        assertEquals("rtc_identity_unavailable", timedOut.code)
+        assertEquals(1, timedOut.completions)
+        assertEquals(0, tokenCalls)
+        assertEquals(0, callCount)
+    }
+
+    @Test fun `Chat mode rejects mutation and invalidates even logout relogin to same account`() {
+        val stale = invoke("callApplication", chatRequest())
+        executor.runNext()
+        manager.beginIdentityMutation()
+        assertEquals("rtc_invalid_state", stale.code)
+        assertEquals("rtc_invalid_state", invoke("callApplication", chatRequest()).code)
+        manager.endIdentityMutation()
+        idle()
+        assertEquals(0, callCount)
+        assertEquals(1, stale.completions)
+        val fresh = invoke("callApplication", chatRequest())
+        executor.runNext(); idle()
+        assertNull(fresh.code)
+    }
+
+    @Test fun `Chat mode rechecks user after token and while foreground service starts`() {
+        val pending = invoke("callApplication", chatRequest())
+        executor.runNext()
+        chatUser = null
+        idle()
+        assertEquals("rtc_invalid_state", pending.code)
+        assertEquals(0, callCount)
+        chatUser = "expected-user"
+        notice.autoReady = false
+        val waiting = invoke("callApplication", chatRequest("video"))
+        executor.runNext(); idle()
+        chatUser = "another-user"
+        notice.ready!!.invoke(null)
+        assertEquals("rtc_invalid_state", waiting.code)
+        assertEquals(0, callCount)
+    }
+
+    @Test fun `other engine identity mutation invalidates Chat call before submission`() {
+        notice.autoReady = false
+        val pending = invoke("callApplication", chatRequest())
+        executor.runNext(); idle()
+        val other = manager()
+        other.beginIdentityMutation(); other.endIdentityMutation()
+        notice.ready!!.invoke(null)
+        assertEquals("rtc_invalid_state", pending.code)
+        assertEquals(0, callCount)
+        other.dispose()
+    }
+
+    @Test fun `Chat disposal drops queued response without token or native call`() {
+        val pending = invoke("callApplication", chatRequest())
+        manager.dispose()
+        executor.runNext(); idle()
+        assertEquals("rtc_invalid_state", pending.code)
+        assertEquals(1, pending.completions)
+        assertEquals(0, tokenCalls)
+        assertEquals(0, callCount)
+    }
+
+    @Test fun `native channel rejects mixed modes missing widget and missing expected user`() {
+        for (args in listOf(
+            chatRequest() + ("identity" to "explicit"),
+            chatRequest() + ("liveChatIdentity" to mapOf("widgetId" to "exact-widget")),
+            chatRequest() + ("liveChatIdentity" to mapOf("widgetId" to "", "expectedExternalUserId" to "expected-user")),
+            chatRequest() + ("liveChatIdentity" to mapOf("widgetId" to "exact-widget", "expectedExternalUserId" to "")),
+        )) assertEquals("rtc_invalid_argument", invoke("callApplication", args).code)
+        assertEquals(0, chatLookups)
+        assertEquals(0, tokenCalls)
+    }
+
     private val events = mutableListOf<Map<*, *>>()
     private val sink = object : EventChannel.EventSink {
         override fun success(event: Any?) {

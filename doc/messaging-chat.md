@@ -1,7 +1,15 @@
 # Messaging, Inbox and Chat integration
 
 Complete [Android/Huawei setup](../README.md#android-configuration) first.
-The examples use the imports shown in the [README](../README.md#flutter-initialization).
+Use these imports for the recipes below. Top-level `await` snippets belong inside
+your async screen/session handlers after initialization. Catch errors at the UI
+boundary as shown in the [README](../README.md#error-handling).
+
+```dart
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
+```
 
 ## Initialization and Chat activation recovery
 
@@ -83,21 +91,29 @@ Message `receivedTimestamp` and `seenDate` values are numeric Unix epoch millise
 
 ## Installation
 
-Use the published package in your host application's `pubspec.yaml`:
-
-```yaml
-dependencies:
-  infobip_mobilemessaging_huawei: ^1.0.1
-```
-
-Run `flutter pub get`. A local path dependency is only needed when evaluating a
-repository checkout. Import the public library in the Dart examples below:
+After SDK initialization, read the cached installation or refresh server state:
 
 ```dart
-import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
+Future<Installation> updateInstallationPreferences(bool pushEnabled) async {
+  final installation = await InfobipMobileMessagingHuawei.fetchInstallation();
+  installation.isPushRegistrationEnabled = pushEnabled;
+  return InfobipMobileMessagingHuawei.saveInstallation(installation);
+}
+
+Future<List<Installation>?> makePrimary(String registeredPushId) =>
+    InfobipMobileMessagingHuawei.setInstallationAsPrimary(
+      pushRegistrationId: registeredPushId, isPrimary: true,
+    );
+
+Future<void> unlinkInstallation(String registeredPushId) =>
+    InfobipMobileMessagingHuawei.depersonalizeInstallation(registeredPushId);
 ```
+
+Only `isPrimaryDevice`, `isPushRegistrationEnabled`, and `customAttributes` are
+writable. Registration/token/system properties are snapshots, not configuration.
+Authorize installation-selection actions in your host; never log registration IDs.
+Observe `onInstallationUpdated`, cancel listeners with their owner, and use
+`fetchInstallation` after a write when server confirmation is needed.
 
 ## Inbox
 
@@ -174,9 +190,55 @@ an attached native view. Attachments remain available through the native compose
 programmatic sending is text-only. View events include loading success/failure,
 connection changes, exit, theme/widget information, view changes, attachment
 preview and opaque raw received messages. Handle raw content privately.
-Thread-management commands and composer draft setters are unavailable.
+Typed thread creation/selection models and composer draft setters are unavailable.
+The embedded view supports querying multithread mode and showing its thread list.
 Global `setChatCustomization` differs from view-scoped widget themes; apply global
 customization before presenting Chat. See [API compatibility](../API_COMPATIBILITY.md).
+
+### Customization and widget exceptions
+
+Apply global styling before presenting native or embedded Chat. Android resource
+names must exist in your host; widget themes are separate portal-defined names.
+
+```dart
+Future<void> customizeChat(void Function(String) showSafeError) async {
+  await InfobipMobileMessagingHuawei.setChatCustomization(
+    const ChatCustomization(
+      chatToolbar: ToolbarCustomization(titleText: 'Support'),
+    ),
+  );
+  await InfobipMobileMessagingHuawei.setChatPushTitle('Support');
+  await InfobipMobileMessagingHuawei.setChatPushBody(null); // Restore default.
+  await InfobipMobileMessagingHuawei.setChatExceptionHandler(
+    (exception) async { showSafeError('chat_widget_error'); },
+    (error) { showSafeError('chat_handler_failed'); },
+  );
+}
+
+Future<void> restoreDefaultChatExceptionHandling() =>
+    InfobipMobileMessagingHuawei.setChatExceptionHandler(null);
+```
+
+Call the restore helper when removing your app-level handler; successful SDK
+cleanup also clears it. Do not print exception content. Global push title/body
+changes affect future Chat notifications and accept `null` to restore defaults.
+For view-scoped contextual data, `sendContextualDataWithStrategy(data,
+ChatMultithreadStrategies.ACTIVE)` targets the current thread; `ALL` and
+`ALL_PLUS_NEW` are also exposed. Inspect `getLanguage()` and `getWidgetTheme()`
+for SDK readback. On an attached embedded view, query thread mode before showing
+the native thread list:
+
+```dart
+Future<void> showChatThreads(InfobipHuaweiChatController controller) async {
+  if (await controller.isMultithread()) {
+    await controller.showThreadsList();
+  }
+}
+```
+
+`setChatDraftMessage` is a retained compatibility method that returns
+`not_available` on this Huawei SDK. There is no typed thread creation or selection
+API; native thread-list UI handles the supported navigation.
 
 ## Chat unread counters and JWT authentication
 

@@ -1,6 +1,6 @@
 # Screen sharing through Screen-as-Camera
 
-Screen-as-Camera is supported for the intended 1.0.0 stable release. This guide
+Screen-as-Camera is supported by the current plugin. This guide
 reflects the current implementation; the POC, performance, orientation and quality
 reports remain historical audit evidence. Support does not imply completed device
 or security certification.

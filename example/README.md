@@ -23,24 +23,50 @@ The [configuration reference](../README.md#configuration-reference) explains ID,
 token and signing-key ownership. App Key, Application ID and a base URL are not
 initialization inputs for this plugin.
 
-## One editable Dart configuration
+## Direct Dart test configuration
 
-From `example/`:
+Validated with Flutter 3.35.7 / Dart 3.9.2 and Java 21. Flutter 3.47.7
+requires newer Android tooling than this branch provides.
+
+From a fresh checkout, perform this one-time setup:
 
 ```sh
+cd example
+dart run tool/setup_config.dart
 flutter pub get
-dart run tool/prepare_local.dart
 ```
 
-Edit **`example/lib/config/example_test_config.dart`**. It is Git-ignored. The launcher creates it from the tracked empty `example_test_config.template.dart` only if it does not already exist, and never overwrites existing local configuration values. It regenerates the ignored `lib/main_local.dart` launcher each time; preserve any custom launcher edits before rerunning it. Then run:
+The setup command copies `lib/config/example_test_config.template.dart` to
+`lib/config/example_test_config.dart` only when the private file is absent.
+Existing private contents are never overwritten. Dart imports are not optional:
+this setup step is required before analyzing, testing or building a fresh clone.
+The safe template retains all fields, comments, types and default values.
+
+Enter test values directly in the `static const` fields of `ExampleTestConfig`
+in `lib/config/example_test_config.dart`, then complete
+[Huawei Android host setup](#huawei-android-host-setup). Run normally:
 
 ```sh
-flutter run -t lib/main_local.dart -d YOUR_HUAWEI_DEVICE_ID
+flutter run
 ```
 
-Use `flutter devices` to get the ID. No Dart defines or JSON test-data file is needed. Restart/rebuild after changing static fields. `lib/main.dart` uses the tracked empty template, so a clean checkout compiles and reports missing prerequisites. `main_local.dart` is an ignored entry point using the same mapping with the local file instead. This keeps the tracked template empty and preserves your private values. All feature controllers receive that one configuration object. Running plain `flutter run` intentionally uses empty template values; use the command above for your device session. The old JSON template is retained only as historical reference and is no longer read.
+From the repository root, the equivalent is `cd example` followed by `flutter run`.
+No launch arguments or alternate entrypoint are needed. `main.dart` synchronously
+maps all constants to the existing `ExampleConfig` and `ExampleController`.
+There is no runtime configuration loader, configuration asset or environment override.
+Safe defaults compile after setup; feature actions still require their prerequisites.
+Stop and rebuild after changing constants.
 
-Use controlled test credentials and decrypted values only. Signing secrets are extractable from test APKs; keep those APKs private. Production JWTs belong on a trusted backend. Never use the banking AppKey as a signing key. No decryption or banking encryption exists here.
+The private Dart file is ignored by Git and excluded from the published package.
+Never force-add it. To intentionally discard local test values and restore safe
+configuration, remove that file locally and rerun `dart run tool/setup_config.dart`.
+Keep a private backup first if the values are still needed.
+
+Hardcoded credentials can be extracted from compiled APKs. Use only controlled
+test credentials, keep test APKs private, and never embed production secrets.
+Production JWT signing belongs on a trusted backend. No decryption is performed.
+Existing obsolete local configuration files are not loaded; remove them manually
+when no longer needed. Huawei `agconnect-services.json` remains separate and unchanged.
 
 ### Every active field
 
@@ -71,6 +97,63 @@ Use controlled test credentials and decrypted values only. Signing secrets are e
 
 Host configuration placement follows [Huawei's Flutter Android integration guide](https://developer.huawei.com/consumer/en/doc/HMS-Plugin-Guides-V1/integrating-sdk-0000001052151811-V1). The no-file build path does not validate real AGC credentials/plugin processing; verify the downloaded file, numeric `app_id`, host plugin application and signing configuration on your device build. The existing `app_name` and `infobip_application_code` strings are placeholders; initialization uses the Dart `infobipApplicationCode`, not that application-code resource.
 
+## Configure Infobip RTC Calls Routing
+
+1. A **Calls Configuration ID** selects the application handling an outgoing RTC
+   call. It is not a callee, Chat widget ID, Application Code, or push identifier.
+   For a custom application, ask your backend administrator for the ID created
+   through the [Calls Configuration API](https://www.infobip.com/docs/voice-and-video/calls).
+2. Choose the destination with your administrator. Infobip documents
+   [a built-in Conversations destination](https://github.com/infobip/infobip-rtc-android/wiki/InfobipCallsConfiguration):
+   `InfobipCallsConfiguration.CONVERSATIONS.getCallsConfiguration()`. In the
+   pinned RTC Android 2.5.28 SDK its literal value is `conversations`.
+   This is a standard destination identifier, **not an account-generated ID**,
+   but it is **not a universal working default**: your account must have
+   Conversations calling enabled and the appropriate routing/receiving agents.
+   The empty example default requires an explicit choice; use `conversations`
+   only for an enabled Conversations integration, or your custom Calls ID.
+3. Ask the account administrator to enable Web and In-app Calls and confirm the
+   receiving destination. For Conversations, confirm the linked integration,
+   routing/assignment and an available agent able to accept the call. For a custom
+   Calls application, the backend needs event subscriptions and call-control logic
+   to accept and connect the call. Generic Calls API events do not expose calls
+   managed by Conversations. No unverified Portal menu path is assumed here.
+4. Set `rtcCallsConfigurationId` in the private `ExampleTestConfig` Dart class. The example passes
+   it unchanged to `HuaweiRtcCallRequest.callsConfigurationId`, through the channel
+   and native `CallApplicationRequest`. A consumer uses the public API as follows:
+
+```dart
+import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
+
+Future<void> callConfiguredDestination(String callsConfigurationId) async {
+  // Initialize Mobile Messaging, wait for registration, and grant microphone
+  // permission first. Supply an administrator-confirmed destination ID.
+  await HuaweiRtc.callApplication(HuaweiRtcCallRequest(
+    callsConfigurationId: callsConfigurationId,
+    type: HuaweiRtcCallType.audio,
+  ));
+}
+```
+
+5. The RTC token is obtained natively through initialized Mobile Messaging;
+   there is no Dart RTC token field. Default caller identity is the registered
+   installation; an explicit identity must be authorized. MM/Chat JWTs remain
+   separate contracts. An **RTC Push Configuration ID** configures RTC push
+   registration (`WebRTCUI.configurationId`), not outgoing routing. Do not pass
+   it as this Calls ID. It does not enable background incoming HMS calls here.
+6. Test on a physical Huawei device: initialize/register, grant permissions,
+   have the intended agent ready, start audio, observe `established`, confirm
+   the intended agent receives it and verify two-way media. Hang up and wait for
+   `finished`. Repeat with video and camera permission. A returned call object
+   or successful token request alone is not proof of routing or media delivery.
+
+Troubleshooting: a blank ID is rejected locally; an unknown/unauthorized ID needs
+administrator verification. For token failures, check initialization, registration
+and authorized caller identity. If no agent receives the call, confirm the chosen
+application, account entitlement, routing, agent availability and backend handling.
+For permission/network/media errors, check device permissions and connectivity
+separately. Do not replace the Calls ID with a Push ID, widget ID or guessed value.
+
 ## Guided execution order
 
 1. **Setup:** initialize; inspect readiness and host status. Grant call permissions through the reused three-stage setup controls.
@@ -91,15 +174,15 @@ The event store omits raw notification bodies, titles, deep links, payloads, use
 
 ## Reused features and unsupported boundaries
 
-Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpers, Inbox, User, Installation, native/embedded Chat and existing outgoing RTC screens. `HuaweiRtc.callApplication`, `hangup`, `getActiveCall`, `events`, current-call controls and notification return consumption drive RTC. `HuaweiRtcVideoView` provides local/remote rendering; `HuaweiRtcScreenAsCamera` drives capture. Token acquisition remains native. Screen navigation alone does not hang up. This documentation task changes no runtime behavior.
+Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpers, Inbox, User, Installation, native/embedded Chat and existing outgoing RTC screens. `HuaweiRtc.callApplication`, `hangup`, `getActiveCall`, `events`, current-call controls and notification return consumption drive RTC. `HuaweiRtcVideoView` provides local/remote rendering; `HuaweiRtcScreenAsCamera` drives capture. Token acquisition remains native. Screen navigation alone does not hang up. Configuration loading changes only example startup; SDK authentication and RTC behavior are unchanged.
 
-**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, multiparty video gallery, a separate screen-share track and configurable screen encoding resolution. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; screen navigation alone does not hang up.
+**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, multiparty video gallery, a separate screen-share track and configurable screen encoding resolution. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; outgoing screen navigation alone does not hang up. Incoming screen disposal requests termination as described below.
 
 See the existing [RTC scope](../doc/huawei-rtc-outgoing.md), [verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md), [device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md), [WebRTC safeguards](../doc/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
 
 ## Validation
 
-From `example/`: `flutter analyze --no-pub`, `flutter test --no-pub`. For a privately configured device host, build/run `flutter build apk --debug -t lib/main_local.dart` or the run command above. Root plugin: `flutter analyze --no-pub` and `flutter test --no-pub`. From `example/android/`, run `./gradlew :infobip_mobilemessaging_huawei:testDebugUnitTest` with Java 21 for Android 36 Robolectric coverage. Automated tests use synthetic fixtures only; they do not count as device report Passes. [Release packaging results](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/release-packaging.md) record this task; `VALIDATION.md` remains historical.
+From `example/`: `flutter analyze --no-pub`, `flutter test --no-pub`. For a privately configured device host, build/run `flutter build apk --debug` or the run command above. Root plugin: `flutter analyze --no-pub` and `flutter test --no-pub`. From `example/android/`, run `./gradlew :infobip_mobilemessaging_huawei:testDebugUnitTest` with Java 21 for Android 36 Robolectric coverage. Automated tests use synthetic fixtures only; they do not count as device report Passes. Rerun these checks for your checkout; old validation counts are not current release evidence.
 
 ## Final configuration/authentication audit
 
@@ -151,3 +234,38 @@ There are no production RTC token/signing secrets to fill in Dart. The native
 provider asks the backend for a token through initialized MM. Local Chat/MM signing
 helpers are controlled-test conveniences only; production issuance belongs on a
 trusted backend. This run does not supply credentials or claim physical testing.
+
+## Live Chat identity for outgoing RTC
+
+The audio/video screen keeps the configured `rtcIdentity` (or installation
+fallback) by default. Enable **Use Live Chat customer identity** to demonstrate
+the production opt-in `liveChatIdentity` request. Configure `chatWidgetId` to match
+the Chat widget exactly and complete personalization as `externalUserId` first.
+The native call flow resolves the registration; the example never handles or
+displays it. Failures are sanitized and do not fall back to another identity.
+See [Dart usage, failures and SDK compatibility](../doc/huawei-rtc-customer-identity.md).
+Correct customer name/email was observed on Huawei devices; internal People
+Person ID equality is not established. Every outgoing call may create a new
+Conversation; no supported way to force reuse is verified. Agent-initiated
+application calls use the separate experimental foreground flow described below.
+
+## Experimental foreground incoming calls
+
+The RTC screen supports explicit Start, audio acceptance, camera-enabled video
+acceptance and Decline, with native ringtone and existing video/media controls.
+Initialize and personalize the configured user, use the matching Chat widget,
+grant call permissions and keep the Activity resumed. Follow the
+[consumer guide](../doc/huawei-rtc-incoming.md) for states, errors and lifecycle
+limitations. These APIs are introduced in 1.1.0 and are absent from version 1.0.1.
+
+Background/terminated-app delivery is unsupported. Account changes and engine
+detach invalidate the process-scoped registration; retry requires process
+recreation. No supported token replacement or unregister exists. Offered media
+type remains unknown; video acceptance is an explicit local camera choice.
+Incoming auto-reconnect is disabled, and Conversation reuse is not established.
+The example closes the incoming flow on screen disposal, requesting termination;
+it does not unregister signaling. This differs from outgoing screen navigation.
+
+## Support This Project
+
+Support ongoing maintenance through [GitHub Sponsors](https://github.com/sponsors/NaserAlomosh).
