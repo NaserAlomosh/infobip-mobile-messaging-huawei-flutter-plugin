@@ -39,6 +39,7 @@ String safeFailure(String operation, Object error) {
     'rtc_call_already_active',
     'rtc_no_active_call',
     'rtc_token_failed',
+    'rtc_identity_unavailable',
     'rtc_call_failed',
     'rtc_invalid_state',
     'permission_request_active',

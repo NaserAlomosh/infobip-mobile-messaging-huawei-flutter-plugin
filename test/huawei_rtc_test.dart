@@ -89,6 +89,58 @@ void main() {
     messenger.setMockMethodCallHandler(eventMethods, null);
   });
 
+  test('Live Chat identity is sent atomically with the call request', () async {
+    await HuaweiRtc.callApplication(
+      HuaweiRtcCallRequest(
+        callsConfigurationId: 'calls-config',
+        type: HuaweiRtcCallType.audio,
+        liveChatIdentity: HuaweiRtcLiveChatIdentity(
+          widgetId: 'exact-widget',
+          expectedExternalUserId: 'expected-user',
+        ),
+      ),
+    );
+    expect(calls.single.method, 'callApplication');
+    expect(calls.single.arguments, {
+      'callsConfigurationId': 'calls-config',
+      'type': 'audio',
+      'liveChatIdentity': {
+        'widgetId': 'exact-widget',
+        'expectedExternalUserId': 'expected-user',
+      },
+    });
+  });
+
+  test('identity modes are mutually exclusive and require widget and user', () {
+    expect(
+      () => HuaweiRtcLiveChatIdentity(
+        widgetId: '',
+        expectedExternalUserId: 'user',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => HuaweiRtcLiveChatIdentity(
+        widgetId: 'widget',
+        expectedExternalUserId: ' ',
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => HuaweiRtcCallRequest(
+        callsConfigurationId: 'config',
+        type: HuaweiRtcCallType.audio,
+        identity: 'explicit',
+        liveChatIdentity: HuaweiRtcLiveChatIdentity(
+          widgetId: 'widget',
+          expectedExternalUserId: 'user',
+        ),
+      ),
+      throwsArgumentError,
+    );
+    expect(calls, isEmpty);
+  });
+
   for (final type in HuaweiRtcCallType.values) {
     test(
       '${type.name} encodes distinct typed request and decodes call',
@@ -151,6 +203,7 @@ void main() {
     'rtc_call_already_active',
     'rtc_no_active_call',
     'rtc_token_failed',
+    'rtc_identity_unavailable',
     'rtc_call_failed',
     'rtc_invalid_state',
   ]) {

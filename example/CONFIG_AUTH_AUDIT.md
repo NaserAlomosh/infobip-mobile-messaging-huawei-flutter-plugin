@@ -1,3 +1,5 @@
+> Historical audit: entrypoint/setup descriptions below predate the direct Dart configuration refactor. See README.md for current setup; alternate launchers are no longer used.
+
 # Final example configuration and authentication audit
 
 Audit dates: 10–11 October 2026 (Asia/Amman). Branch: `feature/huawei-rtc-core`.
@@ -10,8 +12,8 @@ The first pass was read-only. Source findings were checked against public Dart m
 
 | Classification | Area | Evidence / outcome |
 | --- | --- | --- |
-| CONFIRMED | Static mapping | `main.dart` maps every static field into `ExampleConfig`; `main_local.dart` has the identical mapping with only its config import changed. `prepare_local.dart` copies an absent local config and never overwrites existing values. All active feature routes share the injected controller; no runtime mock identity or duplicate credentials were found. Full restart/rebuild is required for static changes. |
-| CONFIRMED | Local/clean entrypoints | Plain `flutter run` uses the tracked empty template. `flutter run -t lib/main_local.dart` uses the ignored local Dart file. Config, entrypoint and AGC file are ignored and untracked. No missing local import appears in the tracked application's import graph. |
+| CONFIRMED | Static mapping | `test_config_mapper.dart` maps the direct `ExampleTestConfig` constants to `ExampleConfig`; all feature routes share the injected controller. Full restart/rebuild is required for static changes. |
+| CONFIRMED | Local/clean entrypoints | Run `dart run tool/setup_config.dart` once from `example/` before analysis/builds. It copies safe defaults only when the ignored private Dart file is absent. Both local and clean setups then use plain `flutter run`. |
 | NOT_APPLICABLE | Legacy independent RTC credentials | Legacy Package A authorization KID/hex secret map to `jwtKid`/`jwtSecretKey`; Application Code maps to `infobipApplicationCode`. Legacy Package B's Application ID, AppKey and Base URL are not inputs to the new outgoing extension. No old package, initialization or decryption was introduced. `environmentName` is injected but is not consumed by SDK requests or reports. |
 | CONFIRMED | Initialization | Application Code is trimmed and passed to public `initialize(applicationCode:)`; the initialized flag is set only after native success. Repeated initialization is idempotent. Installation ID, token, enabled flags and permissions are separate readiness checks; initialization does not prove registration. |
 | FIXED | Initialization/error status | Missing Application Code now produces an explicit local blocker. Initialization failure retains its sanitized SDK diagnostic in the catalog rather than being replaced by a generic `StateError`. |
@@ -37,7 +39,7 @@ The first pass was read-only. Source findings were checked against public Dart m
 
 - Baseline: requested no-write formatter check, clean example analyzer, 25 example tests passed.
 - Final: requested no-write formatter check, clean example analyzer, **35 example tests passed** (10 focused regressions added), **200 root plugin tests passed**.
-- Android arm64 debug build: `BUILD SUCCESSFUL` using `./gradlew :app:assembleDebug --offline -Ptarget=lib/main_local.dart -Ptarget-platform=android-arm64 --console=plain` from `example/android/`. Existing repository/deprecation warnings remain. No real AGC credential file/device/backend acceptance is established.
+- Historical Android arm64 debug build passed with a former local entrypoint. Current direct-configuration validation is separate; see README.md for setup.
 - Clean checkout: analyzer and arm64 build are verified with the ignored config/entrypoint temporarily absent and their contents restored unchanged; the standard target is `lib/main.dart`.
 - Diff/ignore checks: only `example/` changes; signing helpers, static templates/mapping, production sources and RTC screen are unchanged. No commit, push or merge.
 

@@ -1,3 +1,37 @@
+## 1.1.0
+
+- Added opt-in `HuaweiRtcCallRequest.liveChatIdentity` with
+  `HuaweiRtcLiveChatIdentity` for outgoing customer audio/video calls. Resolves
+  the exact Chat widget registration natively with account/lifecycle validation,
+  bounded preparation and no identity fallback or registration-ID exposure.
+- Preserved explicit RTC identity and installation fallback behavior. Conversation
+  reuse remains unverified/unsupported. Huawei 8.14.0 and RTC Core 2.5.28
+  dependencies are unchanged.
+- Added experimental foreground incoming application audio/video calls with
+  Accept/Decline, native ringtone with best-effort speaker routing, explicit local
+  camera acceptance, local/remote video, existing media controls and termination
+  cleanup. Invitations require explicit foreground registration; background and
+  terminated-app incoming calls are unsupported. Offered media type is unknown,
+  incoming auto-reconnect is disabled, and registration is process-scoped with no
+  supported token replacement or unregister API. Account changes and engine
+  detachment invalidate the flow and require process recreation before retrying.
+- Corrected current incoming RTC documentation and documented its experimental
+  lifecycle contract. Included consumer identity and incoming guides in package
+  contents while retaining internal investigation exclusions.
+- Simplified example startup to direct `ExampleTestConfig` Dart constants, mapped
+  synchronously into the existing controller. Added a one-time safe-default setup
+  command that preserves existing private files; removed JSON configuration assets,
+  runtime loading and alternate-launcher setup.
+- Expanded Huawei, Infobip, Inbox authentication and RTC routing documentation;
+  added GitHub Sponsors configuration.
+- Kept private test configuration and internal audit artifacts out of package
+  contents. Hardcoded test credentials remain extractable from test APKs.
+
+Existing public APIs remain source-compatible; SDK/toolchain dependencies are unchanged.
+The new identity option is additive. Incoming RTC remains experimental and
+foreground-only. SEC-01 upstream sensitive logging remains partially mitigated;
+see [security guidance](SECURITY.md).
+
 ## 1.0.1
 
 ### Documentation

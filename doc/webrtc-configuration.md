@@ -8,6 +8,12 @@ Code/unit verification does not establish Huawei device success.
 **Official MM incoming-call APIs:** unsupported/guarded. Nothing in the outgoing
 extension enables `enableCalls`, `enableChatCalls` or incoming HMS push.
 
+**Experimental foreground incoming extension:** the separate
+[foreground flow](huawei-rtc-incoming.md) supports application audio/video calls
+with explicit registration and acceptance. It has no background/terminated-app
+delivery or supported registration renewal/unregister lifecycle. It does not
+enable the guarded official MM APIs above.
+
 The direct RTC Core investigation is recorded in
 [WebRTC Core feasibility](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-research.md), with an explicit
 [Huawei device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md). Core avoids the conflicting

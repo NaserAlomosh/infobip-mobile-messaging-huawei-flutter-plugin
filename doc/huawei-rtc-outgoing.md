@@ -274,3 +274,20 @@ unit tests do not establish live authentication, delivery or peer media.
 [provider]: https://github.com/infobip/mobile-messaging-sdk-huawei/blob/5822d18b6a8686f3ce0db3ecbbcb0ad5439b0824/infobip-mobile-messaging-huawei-sdk/src/main/java/org/infobip/mobile/messaging/mobileapi/MobileApiResourceProvider.java
 [service]: https://github.com/infobip/mobile-messaging-sdk-android/blob/d2755309de0b3f68d1ef1ed8302d65d75b3526c6/infobip-mobile-messaging-api-java/src/main/java/org/infobip/mobile/messaging/api/rtc/MobileApiRtc.java
 [token-provider]: https://github.com/infobip/mobile-messaging-sdk-android/blob/d2755309de0b3f68d1ef1ed8302d65d75b3526c6/infobip-rtc-ui/src/main/java/com/infobip/webrtc/ui/internal/core/TokenProvider.kt
+
+## Optional Live Chat customer identity
+
+Use the additive `HuaweiRtcCallRequest.liveChatIdentity` option to resolve the
+Live Chat Registration ID for the exact configured widget and expected personalized
+user. Explicit RTC identity and installation fallback remain compatible. See
+[customer identity and failure behavior](huawei-rtc-customer-identity.md) for Dart
+usage and Huawei 8.14.0 / RTC 2.5.28 compatibility. The tested outgoing flow
+displayed correct name/email; equal internal People Person IDs are not guaranteed.
+Calls may create new Conversations. No supported Conversation-reuse mechanism is
+verified. Agent-initiated application calls use the separate
+[experimental foreground incoming flow](huawei-rtc-incoming.md), which does not
+add HMS push delivery or guarantee Conversation reuse.
+
+## Calls routing setup
+
+See [Configure Infobip RTC Calls Routing](../README.md#configure-infobip-rtc-calls-routing) for custom configuration IDs, the built-in `conversations` destination, account-side requirements and agent verification. An RTC Push Configuration ID is not an outgoing Calls Configuration ID.

@@ -26,7 +26,13 @@ internal class RtcFailure(val code: String, override val message: String) : Exce
 }
 
 // Never make this a data class: its generated toString would include the identity.
-internal class RtcInput(val callsConfigurationId: String, val type: String, val identity: String?) {
+internal class RtcInput(
+    val callsConfigurationId: String,
+    val type: String,
+    val identity: String?,
+    val chatWidgetId: String? = null,
+    val expectedExternalUserId: String? = null,
+) {
     val video: Boolean get() = type == "video"
 
     companion object {
@@ -37,12 +43,18 @@ internal class RtcInput(val callsConfigurationId: String, val type: String, val 
             val identity = data["identity"]
             if (configuration.isBlank() || type !in setOf("audio", "video") ||
                 (identity != null && (identity !is String || identity.isBlank()))) invalid()
-            return RtcInput(configuration, type, identity as? String)
+            val chat = data["liveChatIdentity"]
+            if (chat == null) return RtcInput(configuration, type, identity as? String)
+            if (identity != null || chat !is Map<*, *>) invalid()
+            val widget = chat["widgetId"] as? String ?: invalid()
+            val user = chat["expectedExternalUserId"] as? String ?: invalid()
+            if (widget.isBlank() || user.isBlank()) invalid()
+            return RtcInput(configuration, type, null, widget, user)
         }
 
         private fun invalid(): Nothing = throw RtcFailure(
             "rtc_invalid_argument",
-            "Provide a Calls configuration ID, audio or video type, and an optional nonblank identity",
+            "Provide a Calls configuration ID, audio or video type, and one valid identity option",
         )
     }
 }
@@ -53,6 +65,12 @@ internal class RtcCallSlot {
     fun acquire(candidate: Any): Boolean {
         if (owner != null) return false
         owner = candidate
+        return true
+    }
+    /** Atomic main-thread handoff from a pending incoming invitation to the existing media owner. */
+    fun transfer(candidate: Any, next: Any): Boolean {
+        if (owner !== candidate) return false
+        owner = next
         return true
     }
     fun release(candidate: Any) {
