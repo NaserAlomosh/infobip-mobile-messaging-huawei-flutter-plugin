@@ -1,4 +1,4 @@
-package com.blink.cbt
+package com.infobip.mobilemessaging.huawei.example
 
 import android.Manifest
 import android.app.NotificationManager

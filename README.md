@@ -3,7 +3,10 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This README documents release **1.0.1**.
+This README describes the current checkout, including unreleased RTC additions.
+Published **1.0.1** does not include the Live Chat identity option or experimental
+foreground incoming APIs described below. The installation example remains on
+the published version until a new release is prepared.
 
 ## Features
 
@@ -11,6 +14,8 @@ This README documents release **1.0.1**.
 - User and installation management, personalization, custom events and Mobile Inbox.
 - Native and embedded Chat, native attachments, unread counters and backend JWT providers.
 - Outgoing RTC audio/video calls, local/remote rendering, call controls and notifications.
+- Experimental foreground incoming audio/video, Accept/Decline and native ringtone;
+  explicit camera acceptance reuses local/remote video and media controls.
 - Android Screen-as-Camera sharing with consent, capture notification and camera restoration.
 
 ## Supported Platforms
@@ -187,7 +192,31 @@ registered installation's `pushRegistrationId`; wait for registration first.
 An explicit identity is the authorized **caller/token subject**, not a callee.
 Your backend/account must authorize it and the configuration. There is no callee
 parameter; backend routing decides the destination. Outgoing calls do not need
-`WebRTCUI`; incoming HMS calls and Chat calling remain unsupported.
+`WebRTCUI`; incoming HMS push and the official `enableCalls` / `enableChatCalls`
+APIs remain unsupported. The experimental foreground flow below is separate.
+
+## Experimental foreground incoming RTC
+
+The unreleased incoming flow supports application audio/video invitations,
+Accept/Decline, native ringtone with best-effort speaker routing, explicit
+camera-enabled acceptance, local/remote video rendering, microphone mute,
+camera switching/on/off, speakerphone controls, and call termination/cleanup.
+Start it explicitly from a resumed Activity using the personalized user's exact
+Live Chat widget. See the [incoming consumer guide](doc/huawei-rtc-incoming.md)
+for usage, permissions, event states, errors and cleanup.
+
+This remains **experimental**, not production-ready background telephony:
+
+- Background and terminated-app incoming calls are unsupported.
+- Registration is process-scoped. Logout, account changes and engine detach
+  invalidate it; retry after invalidation requires process recreation.
+- There is no supported active-registration token replacement or unregister API.
+  Closing the incoming screen does not unregister native signaling.
+- Preparation success does not confirm signaling readiness; accept success does
+  not confirm connected bidirectional media. Observe lifecycle events.
+- Offered audio/video type is unknown. Choose audio or camera-enabled video
+  explicitly; `videoSupported` describes local capability, not the remote offer.
+- Incoming auto-reconnect is disabled. Existing Conversation reuse is not established.
 
 ## Android Configuration
 
@@ -505,7 +534,8 @@ usage, lifecycle failures and pinned SDK compatibility. The supplied Huawei test
 confirmed correct customer name/email for this outgoing flow; internal People
 Person ID equality is not guaranteed. Each call may create a new Conversation;
 there is no verified supported way to force reuse. Agent-initiated incoming calls
-are not implemented.
+are available through the separate
+[experimental foreground flow](doc/huawei-rtc-incoming.md).
 
 Subscribe before starting and grant the host permissions described above.
 Use the Calls Configuration ID supplied by your backend/account administrator:
@@ -634,7 +664,7 @@ still identify your environment; do not publish private customer configuration.
 | MM/Inbox key ID and signing key / `jwtKid`, `jwtSecretKey` | Infobip profile / backend | Profile JWT authorization key configuration | Backend signer; isolated example local signing fields only | Optional: issuing MM/Inbox JWTs | ID non-secret; key secret (example expects hex) |
 | User identity / `externalUserId` | Your identity backend | Authenticated account record | `UserIdentity`, Inbox request; match JWT subject | Optional: personalization, protected Chat/Inbox | Personal data; not a password or signing key |
 | RTC Calls Configuration ID / `callsConfigurationId` | Infobip Calls | Calls configuration creation/API response or administrator | `HuaweiRtcCallRequest` | Required: outgoing RTC | Non-secret routing ID |
-| RTC Push Configuration ID / `WebRTCUI.configurationId` | Infobip WebRTC | Push registration configuration | No active supported incoming HMS flow; do not pass as Calls ID | Not required for outgoing calls; incoming calls unsupported | Non-secret configuration ID |
+| RTC Push Configuration ID / `WebRTCUI.configurationId` | Infobip WebRTC | Push registration configuration | No supported incoming HMS push flow; do not pass as Calls ID | Not used by outgoing or experimental foreground incoming calls | Non-secret configuration ID |
 | RTC Identity / request `identity` | Your backend or native installation | Authorized caller subject; default `pushRegistrationId` | Optional `HuaweiRtcCallRequest.identity` | Optional override; otherwise registration must complete | Identity / personal data; not destination |
 | RTC token | Native MM backend response | Acquired natively for each outgoing call | Native SDK only; no Dart token argument | Outgoing RTC, automatic acquisition | Sensitive temporary token |
 | HMS token / `pushServiceToken` and `pushRegistrationId` | HMS / Infobip SDK | Registration events or installation snapshot | Native SDK managed; inspect presence only | Push; registration ID also default RTC identity | Sensitive device identifiers; not manual configuration |

@@ -2,10 +2,23 @@
 
 **EXPERIMENTAL — NOT PRODUCTION READY**
 
-This foreground experiment explores whether an agent calling from Infobip Conversations
-can deliver an **application-call** invitation to the currently personalized Huawei
-customer while the example RTC screen is open and the Activity is resumed. It is
-not a supported plugin feature or a production registration lifecycle.
+## Current status — 2026-10-25
+
+The implemented experimental foreground flow supports application audio/video
+invitations, Accept/Decline, native ringtone with speaker routing, local/remote
+video, microphone/camera/speaker controls and termination cleanup. The project
+owner reports these capabilities physically verified on a Huawei device. This
+documentation update did not repeat those device tests or establish a complete
+Android/OEM, token-expiry or account-lifecycle acceptance matrix.
+
+Use the concise [consumer guide](huawei-rtc-incoming.md) for the current contract.
+Background and terminated-app calls remain unsupported. Registration is
+process-scoped, with no supported renewal/unregister; incoming auto-reconnect is
+disabled, offered media type is unknown and Conversation reuse is not established.
+
+The sections below retain the investigation chronology. Earlier “not received”
+or “NOT RUN” results describe their dated tests, not the latest owner-supplied
+feature results. This report stays excluded from the published package.
 
 ## Version and API evidence
 

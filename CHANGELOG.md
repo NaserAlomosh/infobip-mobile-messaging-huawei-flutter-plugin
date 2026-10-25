@@ -5,8 +5,20 @@
   the exact Chat widget registration natively with account/lifecycle validation,
   bounded preparation and no identity fallback or registration-ID exposure.
 - Preserved explicit RTC identity and installation fallback behavior. Conversation
-  reuse remains unverified/unsupported; agent-initiated incoming calls are not
-  implemented. Huawei 8.14.0 and RTC Core 2.5.28 dependencies are unchanged.
+  reuse remains unverified/unsupported. Huawei 8.14.0 and RTC Core 2.5.28
+  dependencies are unchanged.
+- Added experimental foreground incoming application audio/video calls with
+  Accept/Decline, native ringtone with best-effort speaker routing, explicit local
+  camera acceptance, local/remote video, existing media controls and termination
+  cleanup. Invitations require explicit foreground registration; background and
+  terminated-app incoming calls are unsupported. Offered media type is unknown,
+  incoming auto-reconnect is disabled, and registration is process-scoped with no
+  supported token replacement or unregister API. Account changes and engine
+  detachment invalidate the flow and require process recreation before retrying.
+- Corrected current incoming RTC documentation and documented its experimental
+  lifecycle contract. Included consumer identity and incoming guides in package
+  contents while retaining internal investigation exclusions.
+- Fixed the example Android Activity package to match its namespace and launcher.
 
 ## 1.0.1
 

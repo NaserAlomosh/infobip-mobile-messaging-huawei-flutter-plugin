@@ -53,6 +53,8 @@ Thumbs.db
 /doc/*
 !/doc/messaging-chat.md
 !/doc/huawei-rtc-outgoing.md
+!/doc/huawei-rtc-customer-identity.md
+!/doc/huawei-rtc-incoming.md
 !/doc/screen-sharing.md
 !/doc/webrtc-configuration.md
 /example/CONFIG_AUTH_AUDIT.md

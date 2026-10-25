@@ -284,4 +284,6 @@ user. Explicit RTC identity and installation fallback remain compatible. See
 usage and Huawei 8.14.0 / RTC 2.5.28 compatibility. The tested outgoing flow
 displayed correct name/email; equal internal People Person IDs are not guaranteed.
 Calls may create new Conversations. No supported Conversation-reuse mechanism is
-verified, and Agent-initiated incoming calls are not implemented.
+verified. Agent-initiated application calls use the separate
+[experimental foreground incoming flow](huawei-rtc-incoming.md), which does not
+add HMS push delivery or guarantee Conversation reuse.

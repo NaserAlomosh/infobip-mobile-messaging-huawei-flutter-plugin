@@ -11,8 +11,8 @@ User ID is not interchangeable with a Live Chat Registration ID.
 Opt in with `liveChatIdentity` when outgoing customer calls should use the
 customer identity associated with your Live Chat widget. This is additive; the
 plugin never enables it implicitly for existing consumers. Supplying both modes
-is rejected. The unpublished experiment's diagnostic lookup API and A/B selector
-have been removed; no registration ID is returned to Dart.
+is rejected. No registration ID is returned to Dart. This option is an unreleased
+addition and is not available in published version 1.0.1.
 
 ```dart
 Future<HuaweiRtcCall> callCustomerSupport({
@@ -93,16 +93,10 @@ Infobip Conversations may create a new Conversation for each outgoing call; this
 was observed in the supplied tests. The plugin has no verified supported mechanism
 for forcing reuse of an existing Conversation. No Conversation ID, customData,
 entityId, Portal settings or routing changes are introduced. Agent-initiated
-incoming calls are not implemented. No RTC UI dependency is added.
+application calls are available through the separate
+[experimental foreground incoming flow](huawei-rtc-incoming.md); that flow does
+not establish Conversation reuse. No RTC UI dependency is added.
 
 This implementation uses the branch's pinned Huawei Core/Chat/Inbox **8.14.0**
 and RTC Core **2.5.28** SDK APIs. No dependency upgrade is required or performed;
 compatibility with other SDK versions is not certified here.
-
-## Experiment audit
-
-Retained: fresh installation-scoped SDK destination lookup, exact widget selection,
-expected-user checks and sanitized failures. Moved lifecycle invalidation into
-pending call ownership. Removed: standalone diagnostic method-channel/Dart API,
-separate diagnostic executor/coordinator, exposed registration result, and A/B
-presentation. The token provider and RTC backend required no production changes.

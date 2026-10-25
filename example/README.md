@@ -93,7 +93,7 @@ The event store omits raw notification bodies, titles, deep links, payloads, use
 
 Reused `ExampleController`, readiness/permissions, MM and Chat JWT signing helpers, Inbox, User, Installation, native/embedded Chat and existing outgoing RTC screens. `HuaweiRtc.callApplication`, `hangup`, `getActiveCall`, `events`, current-call controls and notification return consumption drive RTC. `HuaweiRtcVideoView` provides local/remote rendering; `HuaweiRtcScreenAsCamera` drives capture. Token acquisition remains native. Screen navigation alone does not hang up. This documentation task changes no runtime behavior.
 
-**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, multiparty video gallery, a separate screen-share track and configurable screen encoding resolution. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; screen navigation alone does not hang up.
+**Unsupported:** incoming Huawei HMS call signaling and official `enableCalls`/`enableChatCalls` parity, simulated incoming calls, multiparty video gallery, a separate screen-share track and configurable screen encoding resolution. Outgoing video requires peer confirmation of frames; outgoing audio requires real two-way media confirmation. Token success, routing, media release, background behavior and Activity recreation need real hardware/backend evidence. App cleanup should follow hangup/finished; outgoing screen navigation alone does not hang up. Incoming screen disposal requests termination as described below.
 
 See the existing [RTC scope](../doc/huawei-rtc-outgoing.md), [verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/huawei-rtc-outgoing-verification.md), [device plan](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/webrtc-core-device-validation.md), [WebRTC safeguards](../doc/webrtc-configuration.md), and [compatibility matrix](../API_COMPATIBILITY.md). Existing upstream authorization logging concern documented there remains outside example scope: keep raw device/SDK logs private.
 
@@ -164,4 +164,21 @@ See [Dart usage, failures and SDK compatibility](../doc/huawei-rtc-customer-iden
 Correct customer name/email was observed on Huawei devices; internal People
 Person ID equality is not established. Every outgoing call may create a new
 Conversation; no supported way to force reuse is verified. Agent-initiated
-incoming calls are not implemented.
+application calls use the separate experimental foreground flow described below.
+
+## Experimental foreground incoming calls
+
+The RTC screen supports explicit Start, audio acceptance, camera-enabled video
+acceptance and Decline, with native ringtone and existing video/media controls.
+Initialize and personalize the configured user, use the matching Chat widget,
+grant call permissions and keep the Activity resumed. Follow the
+[consumer guide](../doc/huawei-rtc-incoming.md) for states, errors and lifecycle
+limitations. These APIs are unreleased additions, absent from published 1.0.1.
+
+Background/terminated-app delivery is unsupported. Account changes and engine
+detach invalidate the process-scoped registration; retry requires process
+recreation. No supported token replacement or unregister exists. Offered media
+type remains unknown; video acceptance is an explicit local camera choice.
+Incoming auto-reconnect is disabled, and Conversation reuse is not established.
+The example closes the incoming flow on screen disposal, requesting termination;
+it does not unregister signaling. This differs from outgoing screen navigation.
