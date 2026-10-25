@@ -15,6 +15,8 @@ is rejected. No registration ID is returned to Dart. This option is an unrelease
 addition and is not available in published version 1.0.1.
 
 ```dart
+import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
+
 Future<HuaweiRtcCall> callCustomerSupport({
   required String callsConfigurationId,
   required String configuredChatWidgetId,

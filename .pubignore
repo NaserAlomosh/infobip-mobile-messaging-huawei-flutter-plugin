@@ -58,4 +58,8 @@ Thumbs.db
 !/doc/screen-sharing.md
 !/doc/webrtc-configuration.md
 /example/CONFIG_AUTH_AUDIT.md
-/example/VALIDATION.md
+
+# Private example configuration (pubignore overrides gitignore).
+/example/config/example_config.local.json
+/example/lib/config/example_test_config.dart
+/example/lib/main_local.dart

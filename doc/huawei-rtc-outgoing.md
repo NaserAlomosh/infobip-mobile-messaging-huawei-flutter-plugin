@@ -287,3 +287,7 @@ Calls may create new Conversations. No supported Conversation-reuse mechanism is
 verified. Agent-initiated application calls use the separate
 [experimental foreground incoming flow](huawei-rtc-incoming.md), which does not
 add HMS push delivery or guarantee Conversation reuse.
+
+## Calls routing setup
+
+See [Configure Infobip RTC Calls Routing](../README.md#configure-infobip-rtc-calls-routing) for custom configuration IDs, the built-in `conversations` destination, account-side requirements and agent verification. An RTC Push Configuration ID is not an outgoing Calls Configuration ID.

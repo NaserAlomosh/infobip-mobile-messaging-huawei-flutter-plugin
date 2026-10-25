@@ -64,8 +64,12 @@ abstract final class ExampleTestConfig {
   // ==========================================
   // 7. OUTGOING HUAWEI RTC / WEBRTC
   // ==========================================
-  // Obtain from your Infobip Calls configuration/backend administrator.
-  static const String rtcCallsConfigurationId = ''; // NOT RTC push config ID
+  /// Outgoing Calls routing ID; obtain from the account/backend administrator.
+  /// 'conversations' is the SDK's built-in Conversations destination, only
+  /// usable with account-side Conversations calling/routing enabled.
+  /// Custom Calls applications use their own configuration ID.
+  /// This is NOT an RTC Push Configuration ID. See example/README.md.
+  static const String rtcCallsConfigurationId = '';
   static const String rtcIdentity = ''; // Empty uses registered installation ID
   static const bool enableAudioTesting = true;
   static const bool enableVideoTesting = true;
