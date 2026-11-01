@@ -1,0 +1,68 @@
+name: Publish to pub.dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version in pubspec.yaml; run on its existing v<version> tag'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pubdev-publication
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: >-
+      github.repository == 'NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin' &&
+      github.ref_type == 'tag'
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_version: ${{ inputs.version }}
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pubdev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify approved version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          version=$(sed -n 's/^version: *//p' pubspec.yaml)
+          test "$RELEASE_VERSION" = "$version"
+          test "$GITHUB_REF_TYPE" = tag
+          test "$GITHUB_REF_NAME" = "v$version"
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+
+      # Official action configures short-lived pub.dev OIDC authentication.
+      # Match Flutter 3.44.4's Dart SDK; keep Flutter's SDK for Flutter commands.
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
+        with:
+          sdk: '3.12.2'
+
+      - name: Resolve package dependencies
+        run: flutter pub get --no-example
+
+      - name: Recheck package and publish
+        run: |
+          flutter pub publish --dry-run
+          flutter pub publish --force
