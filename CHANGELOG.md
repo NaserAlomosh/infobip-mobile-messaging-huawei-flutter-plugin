@@ -1,14 +1,14 @@
-## Unreleased — Huawei 9.3.0 Phase 1 (pending owner review)
+## 2.0.0 (unreleased)
 
-- Align Huawei Core, Inbox and Chat on published 9.3.0; retain RTC 2.5.28.
-- Move compileSdk to 37 and example AGP/Gradle/Kotlin to 9.1.1/9.3.1/2.2.10.
-- Raise the candidate supported minimum to Flutter 3.44.4 / Dart 3.12.2 for
-  Flutter's documented temporary AGP 9 legacy-Kotlin integration.
-- Preserve minSdk 26, targetSdk 36, public Dart APIs and experimental incoming
-  RTC claims. Update the native WidgetInfo fixture for API Java 16.3.0.
-- See `doc/huawei-9.3.0-phase1-report.md` for acceptance status and blockers.
-  SEC-01 remains unresolved. No release is approved; recommend a future 2.0.0
-  because consumer Flutter and Android host build requirements change.
+- Upgrade Huawei Mobile Messaging Core, Inbox and Chat to 9.3.0; retain RTC
+  2.5.28 and WebRTC 1.0.45036.
+- **Breaking build requirements:** Flutter >=3.44.4, Dart ^3.12.2, compileSdk 37;
+  validated with AGP 9.1.1, Gradle 9.3.1 and legacy Kotlin 2.2.10.
+- Document required host AGP transition flags and the temporary shared vendor
+  namespace exception. Preserve minSdk 26, targetSdk 36 and public Dart APIs.
+- Adapt native Chat compatibility and update integration documentation.
+- SEC-01 remains unresolved and blocks release pending an explicit security
+  decision. Package version remains 1.1.0; this release is not published.
 
 ## 1.1.0
 

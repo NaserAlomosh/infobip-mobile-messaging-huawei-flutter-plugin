@@ -25,7 +25,8 @@ they do not certify backend authorization, device privacy or third-party SDKs.
 **SEC-01 remains PARTIALLY MITIGATED.** Both findings originate in upstream SDKs;
 no vendor binary is patched and no permanent fix is established.
 
-- Huawei Mobile Messaging **8.14.0** logs authorization headers through its
+- Huawei Mobile Messaging **8.14.0** (published 1.1.0) and **9.3.0**
+  (unreleased migration candidate) log authorization headers through its
   dependency's `AuthorizationUtils` (`System.out.println`). The owner reported
   release-device exposure; the upstream SDK remains unchanged.
 - Infobip RTC **2.5.28** logs raw signaling messages through
@@ -121,3 +122,20 @@ can receive sanitized non-sensitive reports. Never post credentials or exploit
 material requiring confidential handling there. No dedicated private security
 contact or security-response SLA is established by repository evidence; obtain an
 owner-approved private reporting channel before sending sensitive details.
+
+## Huawei 9.3.0 release review
+
+SEC-01 is a release blocker requiring an explicit owner security decision. Prior
+9.3.0 APK inspection found the authorization-header println retained in Debug
+and removed only in the example's optimized Release with its existing host rule.
+RTC 2.5.28 signaling printf remained in Release. This is partial artifact-specific
+mitigation, not vendor remediation or proof that runtime logs are safe. Consumer
+apps must assess their own optimized shipping artifact. Do not use real tokens
+for logging verification or distribute example APKs containing private constants.
+
+The developer reports successful Huawei functional testing; this does not
+independently verify security, every backend scenario, persisted-state rollback
+or physical 16 KB behavior. Release signing and AG Connect package/app-ID/certificate
+matching remain host responsibilities. Previous automated checks passed 1,107
+tests, R8/resource shrinking and ELF/ZIP alignment on the documented toolchain;
+these checks do not constitute production security acceptance.

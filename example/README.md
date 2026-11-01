@@ -25,8 +25,13 @@ initialization inputs for this plugin.
 
 ## Direct Dart test configuration
 
-Validated with Flutter 3.35.7 / Dart 3.9.2 and Java 21. Flutter 3.47.7
-requires newer Android tooling than this branch provides.
+This unreleased Huawei 9.3.0 candidate is automated-build validated with Flutter
+3.44.4 / Dart 3.12.2, JDK 21, AGP 9.1.1, Gradle 9.3.1 and legacy KGP 2.2.10.
+Use compileSdk 37, minSdk 26 and example targetSdk 36, with the host migration
+properties in the [root guide](../README.md#requirements). Physical Huawei and
+backend acceptance are not independently verified. The developer reports successful
+functional testing on a Huawei device; SEC-01 still requires a release security decision. Published 1.1.0 uses Huawei 8.14.0; a future
+2.0.0 is proposed and is not published.
 
 From a fresh checkout, perform this one-time setup:
 

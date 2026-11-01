@@ -3,7 +3,7 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout contains the pending Huawei 9.3.0 Phase 1 migration; the package
+This checkout contains the unreleased Huawei 9.3.0 migration candidate; the package
 version remains **1.1.0** pending review. Published 1.1.0 uses Huawei 8.14.0.
 Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
@@ -66,10 +66,14 @@ RTC Core has Firebase/GMS transitive dependencies; Google-free operation is not 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
 integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
 
-Huawei 9.3.0 migration is pending owner review; see the
-[Phase 1 report](doc/huawei-9.3.0-phase1-report.md) and
-[Phase 2 build validation](doc/huawei-9.3.0-phase2-report.md). This source checkout
-requires host Android build migration; the package version remains unchanged.
+The unreleased 2.0.0 candidate changes the host Android build requirements below;
+the package version remains 1.1.0. The developer reports successful functional
+testing on a Huawei device; this testing was not independently verified.
+Automated validation previously passed 1,107 tests, APK builds, R8 and alignment
+checks. SEC-01 remains a release blocker requiring an explicit security decision;
+see [security guidance](SECURITY.md). Before device installation, verify the host's
+AG Connect package/application ID, numeric Huawei app ID and signing certificate.
+Local example configuration alone does not establish backend authorization.
 
 For Flutter 3.44.4, use AGP 9.1.1 / Gradle 9.3.1 / KGP 2.2.10 and add to the
 host's `android/gradle.properties`:
@@ -350,7 +354,7 @@ plugins {
     id("com.huawei.agconnect")
 }
 android {
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 26
         targetSdk = 36 // example host target; follow your release target policy
