@@ -264,7 +264,7 @@ internal class ChatPlatformView(
             result.error("invalid_argument", error.message, null)
             return
         }
-        result.error("not_available", "Composer draft messages are not available in Huawei SDK 8.14.0", null)
+        result.error("not_available", "Composer draft messages are not available through this plugin", null)
     }
 
     private fun handleContextualData(call: MethodCall, result: MethodChannel.Result, current: InAppChatFragment) {

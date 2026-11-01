@@ -1,17 +1,9 @@
 # API Compatibility
 
-This document summarizes the public API coverage of
-`infobip_mobilemessaging_huawei` v1.0.0 against the Infobip Huawei
-Mobile Messaging Android SDK 8.14.0.
-
-## Initial public API for 1.0.0
-
-Version 1.0.0 is the first public release. This package has never been publicly
-released and has no consumers of the unpublished `main` API. The current
-`development` API defines the initial public contract. Differences from earlier
-branches are intentional pre-release evolution, not compatibility requirements.
-The comparisons below describe coverage of the referenced Infobip APIs; they
-do not promise source compatibility with earlier branches or other packages.
+The Huawei 9.3.0 migration preserves the public Dart API. Upcoming 2.0.0
+breaking changes concern Flutter/Dart and Android host build requirements; see
+[README](README.md#requirements). The detailed SDK parity comparisons below are
+historical 8.14.0 evidence, not a complete 9.3.0 API certification.
 
 Use `personalize(PersonalizeContext(...))`, `UserData`, `Message`,
 `InboxMessage`, and `FilterOptions` in new integrations. User birthdays are

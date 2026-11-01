@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, development]
+  push:
+    branches: [main, development]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_version:
+        description: Expected version for release validation
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify release ref and version
+        if: inputs.release_version != ''
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          version=$(sed -n 's/^version: *//p' pubspec.yaml)
+          test "$RELEASE_VERSION" = "$version"
+          test "$GITHUB_REF_TYPE" = tag
+          test "$GITHUB_REF_NAME" = "v$version"
+          git merge-base --is-ancestor HEAD origin/main
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+
+      - name: Install required Android SDK packages
+        shell: bash
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # yes may receive SIGPIPE once sdkmanager exits; require sdkmanager success.
+          yes | "$sdkmanager" --licenses || test "${PIPESTATUS[1]}" -eq 0
+          "$sdkmanager" --install 'platforms;android-37.0' 'build-tools;36.0.0'
+
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          # Cache dependencies, never project outputs/configuration or test results.
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          build-scan-publish: false
+
+      - name: Resolve plugin dependencies
+        run: flutter pub get --no-example
+
+      - name: Resolve example dependencies
+        working-directory: example
+        run: flutter pub get
+
+      - name: Create safe example configuration
+        working-directory: example
+        run: |
+          test ! -e lib/config/example_test_config.dart
+          test ! -e android/app/agconnect-services.json
+          dart run tool/setup_config.dart
+          cmp lib/config/example_test_config.template.dart lib/config/example_test_config.dart
+
+      - name: Analyze plugin and example
+        run: flutter analyze --no-pub
+
+      - name: Plugin Dart tests
+        run: flutter test --no-pub
+
+      - name: Example Dart tests
+        working-directory: example
+        run: flutter test --no-pub
+
+      - name: Android native Debug unit tests
+        working-directory: example/android
+        run: ./gradlew :infobip_mobilemessaging_huawei:testDebugUnitTest --console=plain
+
+      - name: Android native Release unit tests
+        working-directory: example/android
+        run: ./gradlew :infobip_mobilemessaging_huawei:testReleaseUnitTest --console=plain
+
+      - name: Example Debug APK
+        working-directory: example
+        run: flutter build apk --debug --no-pub
+
+      - name: Example Release APK
+        working-directory: example
+        run: flutter build apk --release --no-pub
+
+      - name: Validate pub.dev package
+        run: flutter pub publish --dry-run

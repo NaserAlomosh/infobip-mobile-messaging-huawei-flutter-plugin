@@ -1,3 +1,16 @@
+## 2.0.0
+
+- Upgrade Huawei Mobile Messaging Core, Inbox and Chat to 9.3.0; retain RTC
+  2.5.28 and WebRTC 1.0.45036.
+- **Breaking build requirements:** Flutter >=3.44.4, Dart ^3.12.2, compileSdk 37;
+  validated with AGP 9.1.1, Gradle 9.3.1 and legacy Kotlin 2.2.10.
+- Document required host AGP transition flags and the temporary shared vendor
+  namespace exception. Preserve minSdk 26, targetSdk 36 and public Dart APIs.
+- Adapt native Chat compatibility and update integration documentation.
+- SEC-01 remains unresolved upstream and only partially mitigated by the existing
+  optional host Release R8 rule. The owner acknowledges the logging risk and has
+  approved release preparation; this is not security certification.
+
 ## 1.1.0
 
 - Added opt-in `HuaweiRtcCallRequest.liveChatIdentity` with
