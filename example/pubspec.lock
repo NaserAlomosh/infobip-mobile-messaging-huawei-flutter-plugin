@@ -78,10 +78,11 @@ packages:
   infobip_mobilemessaging_huawei:
     dependency: "direct main"
     description:
-      path: ".."
-      relative: true
-    source: path
-    version: "1.0.0"
+      name: infobip_mobilemessaging_huawei
+      sha256: "1139535597437d13de9a21c1276b08d6ba8552dd06af932f92560c32816f915c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   leak_tracker:
     dependency: transitive
     description:
