@@ -1,0 +1,76 @@
+name: Publish to pub.dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version in pubspec.yaml; run on its existing v<version> tag'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pubdev-publication
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin' &&
+      github.ref_type == 'tag'
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_version: ${{ inputs.version }}
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: pubdev
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Verify approved version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          version=$(sed -n 's/^version: *//p' pubspec.yaml)
+          test "$RELEASE_VERSION" = "$version"
+          test "$GITHUB_REF_TYPE" = tag
+          test "$GITHUB_REF_NAME" = "v$version"
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+
+      - name: Resolve package dependencies
+        run: flutter pub get --no-example
+
+      - name: Recheck package
+        run: flutter pub publish --dry-run
+
+      # Same OIDC audience/token registration as dart-lang/setup-dart, using
+      # Flutter's bundled Dart instead of installing a second Dart SDK.
+      - name: Request short-lived pub.dev identity
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const token = await core.getIDToken('https://pub.dev');
+            core.setSecret(token);
+            core.exportVariable('PUB_TOKEN', token);
+
+      - name: Publish
+        run: |
+          dart pub token add https://pub.dev --env-var PUB_TOKEN
+          flutter pub publish --force

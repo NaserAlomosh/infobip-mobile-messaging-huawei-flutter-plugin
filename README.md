@@ -1,10 +1,11 @@
 # Infobip Mobile Messaging Huawei for Flutter
 
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
-8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
+9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This README describes version **1.1.0**, including opt-in Live Chat identity and
-experimental foreground incoming RTC. Version 1.0.1 does not include those APIs.
+This checkout prepares **2.0.0** for publication with Huawei SDK 9.3.0.
+The hosted installation below applies once 2.0.0 is published.
+Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
 
 ## Contents
@@ -32,7 +33,7 @@ For a release candidate not yet available on pub.dev, use the checkout path belo
 ## Features and support
 
 “Supported” describes implemented APIs, not certification of your device or account.
-Live Chat identity and foreground incoming APIs require version 1.1.0 or this checkout.
+Live Chat identity and foreground incoming APIs are included in 2.0.0.
 
 | Feature | Status | Entry point |
 | --- | --- | --- |
@@ -54,16 +55,54 @@ RTC Core has Firebase/GMS transitive dependencies; Google-free operation is not 
 
 | Component | Requirement |
 | --- | --- |
-| Dart / Flutter | `^3.9.0` / `>=3.35.7` |
-| Android | minSdk 26; compileSdk 36; example targetSdk 36 |
+| Dart / Flutter | `^3.12.2` / `>=3.44.4` |
+| Android | minSdk 26; compileSdk 37; example targetSdk 36 |
 | Screen sharing | Android 10 / API 29+ |
 | Java compilation | 17 |
-| Example tooling | AGP 8.13.0, Kotlin 2.1.0, Gradle 8.13 |
-| Infobip Huawei MM / Inbox / Chat | 8.14.0 |
+| Example tooling | AGP 9.1.1, Kotlin 2.2.10, Gradle 9.3.1 |
+| Infobip Huawei MM / Inbox / Chat | 9.3.0 |
 | Infobip RTC Core | 2.5.28 |
 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
 integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
+
+Version 2.0.0 changes the host Android build requirements below.
+The developer reports successful functional testing on a Huawei device; this
+testing was not independently verified.
+Automated validation previously passed 1,107 tests, APK builds, R8 and alignment
+checks. The owner acknowledges the unresolved upstream SEC-01 logging risk and
+has approved release preparation; see [security guidance](SECURITY.md).
+Before device installation, verify the host's
+AG Connect package/application ID, numeric Huawei app ID and signing certificate.
+Local example configuration alone does not establish backend authorization.
+
+For Flutter 3.44.4, use AGP 9.1.1 / Gradle 9.3.1 / KGP 2.2.10 and add to the
+host's `android/gradle.properties`:
+
+```properties
+android.builtInKotlin=false
+android.newDsl=false
+android.onlyEnableUnitTestForTheTestedBuildType=false
+android.uniquePackageNames=false
+```
+
+Every consuming application using AGP 9's default namespace validation with the
+retained RTC `2.5.28` and WebRTC `1.0.45036` artifacts needs the temporary
+`android.uniquePackageNames=false` setting in its own **`android/gradle.properties`**
+(the Android host project root). Both vendor AAR manifests declare `com.infobip`.
+AGP 9 otherwise rejects their shared namespace even though these AARs contain no
+colliding classes or manifest components. This project-wide exception relaxes
+library namespace uniqueness only; it does not fix vendor namespaces or certify
+other dependencies. Plugin-local properties do not configure consuming apps.
+AGP versions that do not enforce uniqueness do not require this opt-out. Remove it
+after separately approved vendor artifacts provide distinct namespaces and the
+host passes manifest, duplicate-class, APK and runtime validation with the default
+check restored. Future AGP support for this temporary opt-out is not guaranteed.
+
+Enable `android.buildFeatures.resValues` in hosts that generate `resValue`s.
+Use JDK 21 for the native test suites, with Java/Kotlin bytecode target 17.
+Flutter 3.47+ with built-in Kotlin is an alternative documented by Flutter,
+but is not the configuration validated for this migration.
 
 ## Installation
 
@@ -79,11 +118,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^1.1.0
+  infobip_mobilemessaging_huawei: ^2.0.0
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above once 1.1.0 is published. To evaluate this checkout,
+the hosted dependency above once 2.0.0 is published. To evaluate this candidate,
 clone this repository and point your host at that checkout instead:
 
 ```yaml
@@ -316,7 +355,7 @@ plugins {
     id("com.huawei.agconnect")
 }
 android {
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         minSdk = 26
         targetSdk = 36 // example host target; follow your release target policy
@@ -1154,10 +1193,75 @@ A production token endpoint, real account routing and physical device results
 must be supplied by the integrating team. See [contributing](CONTRIBUTING.md)
 for local checks and [CHANGELOG](CHANGELOG.md) for released/unreleased differences.
 
+## CI/CD
+
+CI runs for pull requests targeting `main` or `development`, pushes to those
+branches, and manual **CI** runs. Ubuntu, Java 21 and Flutter 3.44.4 validate
+plugin/example analysis and Dart tests, native Debug/Release unit tests, both
+example APK builds, and `flutter pub publish --dry-run`. Android SDK 37.0 is
+installed explicitly; the existing Gradle wrapper, AGP compatibility flags and
+Huawei repositories are retained. Safe example configuration is generated before
+analysis/tests/builds. No private Huawei configuration is needed for these builds;
+device/backend acceptance remains manual. No build artifacts or logs are uploaded.
+
+To validate this feature branch before merging, first commit/push the reviewed
+workflow changes, then open a PR targeting `main` (an existing PR runs again when
+updated):
+
+```sh
+gh pr create --base main --head feature/infobip-huawei-sdk-9.3.0-upgrade --fill
+```
+
+Manual dispatch requires `ci.yml` to exist on the default branch first. Once it
+does, validate the pushed feature branch without merging it:
+
+```sh
+gh workflow run ci.yml --ref feature/infobip-huawei-sdk-9.3.0-upgrade
+```
+
+One-time publication setup:
+
+- Merge the reviewed workflows onto `main`. Protect `main` with PRs and required
+  CI checks; protect `v*` release tags against unauthorized creation or changes.
+- Create GitHub environment `pubdev` with a **required reviewer** and disable
+  administrator bypass. For one maintainer, select yourself and leave **Prevent
+  self-review** unchecked: publication still needs a separate **Approve and
+  deploy** action after validation, but this is not independent review. Enable
+  self-review prevention only when another authorized reviewer is available.
+  Allow deployments only from selected **tags** matching `v*`, not branches.
+- In the package's [pub.dev Admin settings](https://pub.dev/packages/infobip_mobilemessaging_huawei/admin),
+  enable GitHub publishing for
+  `NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin`, tag pattern
+  `v{{version}}`, **workflow_dispatch** enabled, push publishing disabled, and
+  required environment `pubdev`. No credentials/secrets need to be stored.
+
+Release runs are manual and require an existing, separately approved version tag
+on a reviewed commit already merged into `main`. The workflow creates no tags or
+GitHub Releases. For version `2.0.0`, after that tag exists:
+
+```sh
+gh workflow run publish.yml --ref v2.0.0 -f version=2.0.0
+```
+
+Branch dispatches cannot publish. CI verifies the tag/version against
+`pubspec.yaml` and checks that its commit belongs to `main`, then runs all checks.
+Publication waits for `pubdev` approval; review the validated SHA before approving.
+The publish job checks out that same SHA and uses Flutter's bundled Dart with
+short-lived GitHub OIDC authentication (audience `https://pub.dev`).
+[pub.dev's authorization checks](https://github.com/dart-lang/pub-dev/blob/master/app/lib/package/backend.dart)
+require the configured repository, enabled event, matching version tag and
+required environment; manual dispatch must use a tag ref. Package settings do not
+pin a workflow filename, so tag and environment protection are required.
+
+Inspect **Actions → workflow run → failed job/step**, or use
+`gh run view <run-id> --log-failed`. GitHub environment protection must be configured
+before release: YAML alone does not require approval. Local validation does not
+prove GitHub-hosted execution or publication.
+
 ## Security
 
 **SEC-01 remains PARTIALLY MITIGATED; this package is not security-certified.**
-Huawei MM 8.14.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
+Huawei MM 9.3.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
 messages that may expose temporary TURN credentials; setting its logger to OFF
 does not disable direct stdout calls.
 
@@ -1165,7 +1269,9 @@ The optional host Release R8 workaround removes matching `print/println` calls
 **application-wide**, including functional stream/file output. It requires R8
 optimization, does not cover RTC `printf`, and does not guarantee removal of all
 sensitive logs. Read [SECURITY.md](SECURITY.md) before production integration.
-Vendor reporting is not a publication requirement and does not resolve this issue.
+The owner acknowledges this unresolved upstream risk and has approved release
+preparation. Vendor reporting is not a publication requirement and does not resolve
+this issue.
 
 Use backend-issued tokens; never embed production signing secrets or log tokens,
 headers, messages, raw SDK errors or captured content. Explain MediaProjection's

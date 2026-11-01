@@ -13,7 +13,11 @@ val huaweiAppId = if (agcFile.exists()) {
 
 android {
     namespace = "com.infobip.mobilemessaging.huawei.example"
-    compileSdk = 36
+    compileSdk = 37
+
+    buildFeatures {
+        resValues = true
+    }
 
     defaultConfig {
         applicationId = "com.infobip.mobilemessaging.huawei.example"
