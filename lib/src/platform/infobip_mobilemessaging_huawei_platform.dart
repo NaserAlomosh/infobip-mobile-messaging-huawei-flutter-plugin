@@ -54,6 +54,8 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
 
   Future<UserData> fetchUser() => throw UnimplementedError();
 
+  Future<UserData> patchUser(UserPatch patch) => throw UnimplementedError();
+
   Future<UserData> saveUser(UserData user) => throw UnimplementedError();
 
   Future<UserData> personalize(

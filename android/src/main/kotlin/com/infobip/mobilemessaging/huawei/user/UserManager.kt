@@ -51,6 +51,20 @@ internal class UserManager(
         }
     }
 
+    fun patchUser(
+        value: Any?,
+        callback: (Map<String, Any?>?, UserFailure?) -> Unit,
+    ) {
+        if (!initialized(callback)) return
+        execute("invalid_argument", callback) {
+            val user = UserMapper.toPatch(value)
+            mobileMessaging.saveUser(
+                user,
+                userListener(callback, "user_save_failed", "Unable to save user"),
+            )
+        }
+    }
+
     fun personalize(
         identityValue: Any?,
         attributesValue: Any?,

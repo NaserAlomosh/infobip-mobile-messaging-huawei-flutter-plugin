@@ -47,6 +47,7 @@ abstract final class ChannelContract {
   static const applicationCode = 'applicationCode';
   static const getUser = 'getUser';
   static const fetchUser = 'fetchUser';
+  static const patchUser = 'patchUser';
   static const saveUser = 'saveUser';
   static const personalize = 'personalize';
   static const depersonalize = 'depersonalize';

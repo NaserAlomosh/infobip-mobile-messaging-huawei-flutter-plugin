@@ -45,6 +45,7 @@ internal object ChannelContract {
     const val CONFIGURATION_ID = "configurationId"
     const val GET_USER = "getUser"
     const val FETCH_USER = "fetchUser"
+    const val PATCH_USER = "patchUser"
     const val SAVE_USER = "saveUser"
     const val PERSONALIZE = "personalize"
     const val DEPERSONALIZE = "depersonalize"

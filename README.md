@@ -1370,3 +1370,19 @@ separately. Do not replace the Calls ID with a Push ID, widget ID or guessed val
 
 If this plugin helps your project, consider supporting its ongoing development
 and maintenance through [GitHub Sponsors](https://github.com/sponsors/NaserAlomosh).
+
+### Partial user updates
+
+`saveUser(UserData)` retains its existing nullable-field serialization and native setter behavior for compatibility. Do not use a sparse `UserData` as a partial update: unspecified fields are sent as null. Use the additive `patchUser` API instead:
+
+```dart
+await InfobipMobileMessagingHuawei.patchUser(const UserPatch(
+  firstName: FieldUpdate.set('Michael'),
+  lastName: FieldUpdate.clear(),
+  customAttributes: FieldUpdate.set({'obsolete': null}),
+));
+```
+
+Fields default to `FieldUpdate.omitted()` and leave existing values unchanged. `FieldUpdate.set` requires a non-null value; empty strings and collections remain explicit values. `FieldUpdate.clear()` includes a null key in the SDK request map. Custom attributes are updated by key; a null attribute value requests deletion. Clearing the whole custom-attribute map is rejected with `invalid_argument`; use individual null entries. Type and installations are read-only and excluded from patches. Native SDK validation and error callbacks still apply.
+
+SDK 9.3.0 request-map semantics are checked locally. Backend deletion and server handling of empty values have not been demonstrated through controlled backend testing.

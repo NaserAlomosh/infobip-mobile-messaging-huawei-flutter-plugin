@@ -55,6 +55,48 @@ abstract final class UserCodec {
     ),
   };
 
+  static Map<String, Object?> encodePatch(UserPatch patch) {
+    if (patch.customAttributes.included &&
+        patch.customAttributes.value == null) {
+      throw PlatformException(
+        code: 'invalid_argument',
+        message: 'Clear custom attributes individually with null map values.',
+      );
+    }
+    final result = <String, Object?>{};
+    if (patch.externalUserId.included) {
+      result[ChannelContract.externalUserId] = patch.externalUserId.value;
+    }
+    if (patch.firstName.included) {
+      result[ChannelContract.firstName] = patch.firstName.value;
+    }
+    if (patch.lastName.included) {
+      result[ChannelContract.lastName] = patch.lastName.value;
+    }
+    if (patch.middleName.included) {
+      result[ChannelContract.middleName] = patch.middleName.value;
+    }
+    if (patch.gender.included) {
+      result[ChannelContract.gender] = _encodeGender(patch.gender.value);
+    }
+    if (patch.birthday.included) {
+      result[ChannelContract.birthday] = _birthday(patch.birthday.value);
+    }
+    if (patch.phones.included) {
+      result[ChannelContract.phones] = patch.phones.value;
+    }
+    if (patch.emails.included) {
+      result[ChannelContract.emails] = patch.emails.value;
+    }
+    if (patch.tags.included) result[ChannelContract.tags] = patch.tags.value;
+    if (patch.customAttributes.included) {
+      result[ChannelContract.customAttributes] = _encodeCustomAttributes(
+        patch.customAttributes.value,
+      );
+    }
+    return result;
+  }
+
   static UserData decode(Object? value) {
     if (value is! Map) {
       throw const FormatException('User payload must be a map.');

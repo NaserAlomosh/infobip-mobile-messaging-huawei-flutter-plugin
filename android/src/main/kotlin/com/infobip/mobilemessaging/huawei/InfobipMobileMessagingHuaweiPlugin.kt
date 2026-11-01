@@ -409,6 +409,13 @@ class InfobipMobileMessagingHuaweiPlugin :
                 ) ?: detached(result)
             }
 
+            ChannelContract.PATCH_USER -> {
+                userManager?.patchUser(
+                    call.argument<Any?>(ChannelContract.USER),
+                    { value, failure -> result.completeUser(value, failure) },
+                ) ?: detached(result)
+            }
+
             ChannelContract.PERSONALIZE -> {
                 personalize(call, result)
             }

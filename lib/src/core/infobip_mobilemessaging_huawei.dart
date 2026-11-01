@@ -215,6 +215,9 @@ final class InfobipMobileMessagingHuawei {
       InfobipMobileMessagingHuaweiPlatform.instance.fetchUser();
 
   /// Saves the supplied profile and completes with the resulting user.
+  static Future<UserData> patchUser(UserPatch patch) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.patchUser(patch);
+
   static Future<UserData> saveUser(UserData user) =>
       InfobipMobileMessagingHuaweiPlatform.instance.saveUser(user);
 
