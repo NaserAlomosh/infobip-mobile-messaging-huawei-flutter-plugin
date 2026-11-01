@@ -1,4 +1,4 @@
-## 2.0.0 (unreleased)
+## 2.0.0
 
 - Upgrade Huawei Mobile Messaging Core, Inbox and Chat to 9.3.0; retain RTC
   2.5.28 and WebRTC 1.0.45036.
@@ -7,8 +7,9 @@
 - Document required host AGP transition flags and the temporary shared vendor
   namespace exception. Preserve minSdk 26, targetSdk 36 and public Dart APIs.
 - Adapt native Chat compatibility and update integration documentation.
-- SEC-01 remains unresolved and blocks release pending an explicit security
-  decision. Package version remains 1.1.0; this release is not published.
+- SEC-01 remains unresolved upstream and only partially mitigated by the existing
+  optional host Release R8 rule. The owner acknowledges the logging risk and has
+  approved release preparation; this is not security certification.
 
 ## 1.1.0
 

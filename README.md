@@ -3,8 +3,8 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout contains the unreleased Huawei 9.3.0 migration candidate; the package
-version remains **1.1.0** pending review. Published 1.1.0 uses Huawei 8.14.0.
+This checkout prepares **2.0.0** for publication with Huawei SDK 9.3.0.
+The hosted installation below applies once 2.0.0 is published.
 Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
 
@@ -33,7 +33,7 @@ For a release candidate not yet available on pub.dev, use the checkout path belo
 ## Features and support
 
 “Supported” describes implemented APIs, not certification of your device or account.
-Live Chat identity and foreground incoming APIs require version 1.1.0 or this checkout.
+Live Chat identity and foreground incoming APIs are included in 2.0.0.
 
 | Feature | Status | Entry point |
 | --- | --- | --- |
@@ -66,12 +66,13 @@ RTC Core has Firebase/GMS transitive dependencies; Google-free operation is not 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
 integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
 
-The unreleased 2.0.0 candidate changes the host Android build requirements below;
-the package version remains 1.1.0. The developer reports successful functional
-testing on a Huawei device; this testing was not independently verified.
+Version 2.0.0 changes the host Android build requirements below.
+The developer reports successful functional testing on a Huawei device; this
+testing was not independently verified.
 Automated validation previously passed 1,107 tests, APK builds, R8 and alignment
-checks. SEC-01 remains a release blocker requiring an explicit security decision;
-see [security guidance](SECURITY.md). Before device installation, verify the host's
+checks. The owner acknowledges the unresolved upstream SEC-01 logging risk and
+has approved release preparation; see [security guidance](SECURITY.md).
+Before device installation, verify the host's
 AG Connect package/application ID, numeric Huawei app ID and signing certificate.
 Local example configuration alone does not establish backend authorization.
 
@@ -117,11 +118,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^1.1.0
+  infobip_mobilemessaging_huawei: ^2.0.0
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above once 1.1.0 is published. To evaluate this checkout,
+the hosted dependency above once 2.0.0 is published. To evaluate this candidate,
 clone this repository and point your host at that checkout instead:
 
 ```yaml
@@ -1203,7 +1204,9 @@ The optional host Release R8 workaround removes matching `print/println` calls
 **application-wide**, including functional stream/file output. It requires R8
 optimization, does not cover RTC `printf`, and does not guarantee removal of all
 sensitive logs. Read [SECURITY.md](SECURITY.md) before production integration.
-Vendor reporting is not a publication requirement and does not resolve this issue.
+The owner acknowledges this unresolved upstream risk and has approved release
+preparation. Vendor reporting is not a publication requirement and does not resolve
+this issue.
 
 Use backend-issued tokens; never embed production signing secrets or log tokens,
 headers, messages, raw SDK errors or captured content. Explain MediaProjection's

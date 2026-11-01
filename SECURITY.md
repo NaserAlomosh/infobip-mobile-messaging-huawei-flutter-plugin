@@ -26,7 +26,7 @@ they do not certify backend authorization, device privacy or third-party SDKs.
 no vendor binary is patched and no permanent fix is established.
 
 - Huawei Mobile Messaging **8.14.0** (published 1.1.0) and **9.3.0**
-  (unreleased migration candidate) log authorization headers through its
+  (2.0.0 release candidate) log authorization headers through its
   dependency's `AuthorizationUtils` (`System.out.println`). The owner reported
   release-device exposure; the upstream SDK remains unchanged.
 - Infobip RTC **2.5.28** logs raw signaling messages through
@@ -117,7 +117,7 @@ See [screen sharing](doc/screen-sharing.md) for background/resize behavior.
 
 ## Reporting
 
-The repository's [issue tracker](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/issues)
+The repository's [issue tracker](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/issues)
 can receive sanitized non-sensitive reports. Never post credentials or exploit
 material requiring confidential handling there. No dedicated private security
 contact or security-response SLA is established by repository evidence; obtain an
@@ -125,7 +125,9 @@ owner-approved private reporting channel before sending sensitive details.
 
 ## Huawei 9.3.0 release review
 
-SEC-01 is a release blocker requiring an explicit owner security decision. Prior
+The owner acknowledges the unresolved upstream SEC-01 logging risk and has
+approved 2.0.0 release preparation. SEC-01 remains PARTIALLY MITIGATED, not
+resolved or fully mitigated; this decision is not security certification. Prior
 9.3.0 APK inspection found the authorization-header println retained in Debug
 and removed only in the example's optimized Release with its existing host rule.
 RTC 2.5.28 signaling printf remained in Release. This is partial artifact-specific
