@@ -1,10 +1,11 @@
 # Infobip Mobile Messaging Huawei for Flutter
 
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
-8.14.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
+9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This README describes version **1.1.0**, including opt-in Live Chat identity and
-experimental foreground incoming RTC. Version 1.0.1 does not include those APIs.
+This checkout contains the pending Huawei 9.3.0 Phase 1 migration; the package
+version remains **1.1.0** pending review. Published 1.1.0 uses Huawei 8.14.0.
+Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
 
 ## Contents
@@ -54,16 +55,34 @@ RTC Core has Firebase/GMS transitive dependencies; Google-free operation is not 
 
 | Component | Requirement |
 | --- | --- |
-| Dart / Flutter | `^3.9.0` / `>=3.35.7` |
-| Android | minSdk 26; compileSdk 36; example targetSdk 36 |
+| Dart / Flutter | `^3.12.2` / `>=3.44.4` |
+| Android | minSdk 26; compileSdk 37; example targetSdk 36 |
 | Screen sharing | Android 10 / API 29+ |
 | Java compilation | 17 |
-| Example tooling | AGP 8.13.0, Kotlin 2.1.0, Gradle 8.13 |
-| Infobip Huawei MM / Inbox / Chat | 8.14.0 |
+| Example tooling | AGP 9.1.1, Kotlin 2.2.10, Gradle 9.3.1 |
+| Infobip Huawei MM / Inbox / Chat | 9.3.0 |
 | Infobip RTC Core | 2.5.28 |
 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
 integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
+
+Phase 1 migration is pending automated acceptance and owner review; see
+[the migration report](doc/huawei-9.3.0-phase1-report.md). This source checkout
+requires host Android build migration; the package version remains unchanged.
+
+For Flutter 3.44.4, use AGP 9.1.1 / Gradle 9.3.1 / KGP 2.2.10 and add to the
+host's `android/gradle.properties`:
+
+```properties
+android.builtInKotlin=false
+android.newDsl=false
+android.onlyEnableUnitTestForTheTestedBuildType=false
+```
+
+Enable `android.buildFeatures.resValues` in hosts that generate `resValue`s.
+Use JDK 21 for the native test suites, with Java/Kotlin bytecode target 17.
+Flutter 3.47+ with built-in Kotlin is an alternative documented by Flutter,
+but is not the configuration validated for this migration.
 
 ## Installation
 
@@ -1157,7 +1176,7 @@ for local checks and [CHANGELOG](CHANGELOG.md) for released/unreleased differenc
 ## Security
 
 **SEC-01 remains PARTIALLY MITIGATED; this package is not security-certified.**
-Huawei MM 8.14.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
+Huawei MM 9.3.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
 messages that may expose temporary TURN credentials; setting its logger to OFF
 does not disable direct stdout calls.
 

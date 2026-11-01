@@ -14,7 +14,7 @@ val rtcContractAar = configurations.create("rtcContractAar") {
 
 android {
     namespace = "com.infobip.mobilemessaging.huawei"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 26
@@ -65,11 +65,11 @@ dependencies {
     testImplementation("org.mockito:mockito-core:5.20.0")
     testImplementation("org.ow2.asm:asm-tree:9.8")
     testImplementation("org.robolectric:robolectric:4.16")
-    implementation("com.infobip:infobip-mobile-messaging-huawei-sdk:8.14.0@aar") {
+    implementation("com.infobip:infobip-mobile-messaging-huawei-sdk:9.3.0@aar") {
         isTransitive = true
     }
-    implementation("com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:8.14.0")
-    implementation("com.infobip:infobip-mobile-messaging-huawei-chat-sdk:8.14.0")
+    implementation("com.infobip:infobip-mobile-messaging-huawei-inbox-sdk:9.3.0")
+    implementation("com.infobip:infobip-mobile-messaging-huawei-chat-sdk:9.3.0")
     // Outgoing Huawei extension only. Keep Core's legitimate Firebase/GMS transitives.
     implementation("com.infobip:infobip-rtc:2.5.28")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")

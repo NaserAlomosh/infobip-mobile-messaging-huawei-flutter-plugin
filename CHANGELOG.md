@@ -1,3 +1,15 @@
+## Unreleased — Huawei 9.3.0 Phase 1 (pending owner review)
+
+- Align Huawei Core, Inbox and Chat on published 9.3.0; retain RTC 2.5.28.
+- Move compileSdk to 37 and example AGP/Gradle/Kotlin to 9.1.1/9.3.1/2.2.10.
+- Raise the candidate supported minimum to Flutter 3.44.4 / Dart 3.12.2 for
+  Flutter's documented temporary AGP 9 legacy-Kotlin integration.
+- Preserve minSdk 26, targetSdk 36, public Dart APIs and experimental incoming
+  RTC claims. Update the native WidgetInfo fixture for API Java 16.3.0.
+- See `doc/huawei-9.3.0-phase1-report.md` for acceptance status and blockers.
+  SEC-01 remains unresolved. No release is approved; recommend a future 2.0.0
+  because consumer Flutter and Android host build requirements change.
+
 ## 1.1.0
 
 - Added opt-in `HuaweiRtcCallRequest.liveChatIdentity` with
