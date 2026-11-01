@@ -50,9 +50,13 @@ jobs:
           channel: stable
           cache: true
 
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
       - name: Install required Android SDK packages
-        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+        shell: bash
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # yes may receive SIGPIPE once sdkmanager exits; require sdkmanager success.
+          yes | "$sdkmanager" --licenses || test "${PIPESTATUS[1]}" -eq 0
+          "$sdkmanager" --install 'platforms;android-37.0' 'build-tools;36.0.0'
 
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
