@@ -1385,4 +1385,6 @@ await InfobipMobileMessagingHuawei.patchUser(const UserPatch(
 
 Fields default to `FieldUpdate.omitted()` and leave existing values unchanged. `FieldUpdate.set` requires a non-null value; empty strings and collections remain explicit values. `FieldUpdate.clear()` includes a null key in the SDK request map. Custom attributes are updated by key; a null attribute value requests deletion. Clearing the whole custom-attribute map is rejected with `invalid_argument`; use individual null entries. Type and installations are read-only and excluded from patches. Native SDK validation and error callbacks still apply.
 
+An empty patch (`const UserPatch()`) is forwarded to the SDK as an empty map and is **not guaranteed to be a successful no-op**. In SDK 9.3.0, without pending user data it may result in `ERROR_SAVING_EMPTY_OBJECT`, following applicable registration checks. With pending unreported user data, it may retry those changes. SDK duplicate/debouncing behavior may also affect the callback. Avoid calling `patchUser` when no fields are selected for updating.
+
 SDK 9.3.0 request-map semantics are checked locally. Backend deletion and server handling of empty values have not been demonstrated through controlled backend testing.

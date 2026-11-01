@@ -17,7 +17,9 @@ void main() {
       ),
       {'firstName': 'Michael'},
     );
-    expect(UserCodec.encodePatch(const UserPatch()), isEmpty);
+  });
+  test('empty patch encodes no fields or null keys', () {
+    expect(UserCodec.encodePatch(const UserPatch()), <String, Object?>{});
   });
   test('clear, empty values and custom attribute deletion remain distinct', () {
     expect(
@@ -44,6 +46,26 @@ void main() {
       ),
       throwsA(isA<PlatformException>()),
     );
+  });
+  test('method channel forwards an empty patch without null keys', () async {
+    const channel = MethodChannel('com.infobip.mobilemessaging.huawei/methods');
+    final platform = MethodChannelInfobipMobileMessagingHuawei();
+    final calls = <MethodCall>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          calls.add(call);
+          return <String, Object?>{};
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null),
+    );
+
+    await platform.patchUser(const UserPatch());
+
+    expect(calls, hasLength(1));
+    expect(calls.single.method, 'patchUser');
+    expect(calls.single.arguments, {'user': <String, Object?>{}});
   });
   test('method channel preserves patch keys and null values', () async {
     const channel = MethodChannel('com.infobip.mobilemessaging.huawei/methods');

@@ -7,7 +7,10 @@ class UserPatchTest {
     @Test fun `legacy mismatch and sparse native request map`() {
         assertTrue(UserMapper.toUser(mapOf("firstName" to "Michael")).map.containsKey("lastName"))
         assertEquals(mapOf("firstName" to "Michael"), UserMapper.toPatch(mapOf("firstName" to "Michael")).map)
-        assertTrue(UserMapper.toPatch(emptyMap<String, Any>()).map.isEmpty())
+    }
+    @Test fun `empty patch produces no SDK fields or null keys`() {
+        val user = UserMapper.toPatch(emptyMap<String, Any?>())
+        assertEquals(emptyMap<String, Any?>(), user.map)
     }
     @Test fun `clear and empty values survive SDK setters`() {
         val native = UserMapper.toPatch(mapOf("lastName" to null, "firstName" to "", "tags" to emptyList<String>()))
