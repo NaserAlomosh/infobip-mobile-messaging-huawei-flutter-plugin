@@ -1195,50 +1195,68 @@ for local checks and [CHANGELOG](CHANGELOG.md) for released/unreleased differenc
 
 ## CI/CD
 
-CI runs for pull requests targeting `master` or `development`, pushes to those
-branches, and manual **CI** runs. It uses Ubuntu, Java 21 and Flutter 3.44.4 to
-resolve dependencies, analyze the plugin/example, run both Dart suites and both
-native Android unit-test variants, build Debug/Release example APKs, and run
-`flutter pub publish --dry-run`. The example setup script creates safe defaults;
-no private Dart configuration, AG Connect JSON or signing keys are needed. APKs,
-test reports and build logs are not uploaded as artifacts. Device/backend checks
-remain manual. The remote default branch is currently `main`; the requested CI
-branch filters intentionally remain `master` and `development`.
+CI runs for pull requests targeting `main` or `development`, pushes to those
+branches, and manual **CI** runs. Ubuntu, Java 21 and Flutter 3.44.4 validate
+plugin/example analysis and Dart tests, native Debug/Release unit tests, both
+example APK builds, and `flutter pub publish --dry-run`. Android SDK 37.0 is
+installed explicitly; the existing Gradle wrapper, AGP compatibility flags and
+Huawei repositories are retained. Safe example configuration is generated before
+analysis/tests/builds. No private Huawei configuration is needed for these builds;
+device/backend acceptance remains manual. No build artifacts or logs are uploaded.
 
-One-time owner setup:
+To validate this feature branch before merging, first commit/push the reviewed
+workflow changes, then open a PR targeting `main` (an existing PR runs again when
+updated):
 
-- Merge the workflows onto the default branch so manual runs are available.
-- In GitHub **Settings → Environments**, create `pubdev`, add required reviewers,
-  prevent self-review and disable administrator bypass. Restrict deployment tags
-  to `v*`; protect release tags and the default branch with repository rules.
+```sh
+gh pr create --base main --head feature/infobip-huawei-sdk-9.3.0-upgrade --fill
+```
+
+Manual dispatch requires `ci.yml` to exist on the default branch first. Once it
+does, validate the pushed feature branch without merging it:
+
+```sh
+gh workflow run ci.yml --ref feature/infobip-huawei-sdk-9.3.0-upgrade
+```
+
+One-time publication setup:
+
+- Merge the reviewed workflows onto `main`. Protect `main` with PRs and required
+  CI checks; protect `v*` release tags against unauthorized creation or changes.
+- Create GitHub environment `pubdev` with a **required reviewer** and disable
+  administrator bypass. For one maintainer, select yourself and leave **Prevent
+  self-review** unchecked: publication still needs a separate **Approve and
+  deploy** action after validation, but this is not independent review. Enable
+  self-review prevention only when another authorized reviewer is available.
+  Allow deployments only from selected **tags** matching `v*`, not branches.
 - In the package's [pub.dev Admin settings](https://pub.dev/packages/infobip_mobilemessaging_huawei/admin),
-  enable GitHub automated publishing for
-  `NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin`, set tag pattern
-  `v{{version}}`, enable **workflow_dispatch** publishing, disable push publishing,
-  and require the GitHub environment `pubdev`. No pub.dev access token is needed.
-  Manual publishing support is implemented in [pub.dev's authorization checks](https://github.com/dart-lang/pub-dev/blob/master/app/lib/package/backend.dart)
-  (tag refs are still required).
+  enable GitHub publishing for
+  `NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin`, tag pattern
+  `v{{version}}`, **workflow_dispatch** enabled, push publishing disabled, and
+  required environment `pubdev`. No credentials/secrets need to be stored.
 
-For a release, separately approve and create the version tag on a reviewed commit
-already merged into the default branch. This automation never creates tags or
-GitHub Releases. Then dispatch **Publish to pub.dev** on that existing tag, with
-`version` equal to `pubspec.yaml` (currently `2.0.0`):
+Release runs are manual and require an existing, separately approved version tag
+on a reviewed commit already merged into `main`. The workflow creates no tags or
+GitHub Releases. For version `2.0.0`, after that tag exists:
 
 ```sh
 gh workflow run publish.yml --ref v2.0.0 -f version=2.0.0
 ```
 
-A branch dispatch is skipped. A tag/version mismatch or a commit outside the
-default branch fails validation. All CI checks run against the selected commit;
-only after they pass does publication wait for `pubdev` approval. Review the SHA
-and validation results before approving. The publish job checks out that same
-SHA, rechecks the package, and uses short-lived OIDC credentials to publish.
+Branch dispatches cannot publish. CI verifies the tag/version against
+`pubspec.yaml` and checks that its commit belongs to `main`, then runs all checks.
+Publication waits for `pubdev` approval; review the validated SHA before approving.
+The publish job checks out that same SHA and uses Flutter's bundled Dart with
+short-lived GitHub OIDC authentication (audience `https://pub.dev`).
+[pub.dev's authorization checks](https://github.com/dart-lang/pub-dev/blob/master/app/lib/package/backend.dart)
+require the configured repository, enabled event, matching version tag and
+required environment; manual dispatch must use a tag ref. Package settings do not
+pin a workflow filename, so tag and environment protection are required.
 
-Inspect **Actions → workflow run → failed job/step** for errors, or use
-`gh run view <run-id> --log-failed`. No failing tests are skipped. Required reviewer
-protection and pub.dev settings must be configured before any release; declaring
-an environment in YAML alone does not enforce approval. GitHub-hosted execution
-and real publishing are not verified by local checks.
+Inspect **Actions → workflow run → failed job/step**, or use
+`gh run view <run-id> --log-failed`. GitHub environment protection must be configured
+before release: YAML alone does not require approval. Local validation does not
+prove GitHub-hosted execution or publication.
 
 ## Security
 

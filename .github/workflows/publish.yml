@@ -18,6 +18,7 @@ concurrency:
 jobs:
   validate:
     if: >-
+      github.event_name == 'workflow_dispatch' &&
       github.repository == 'NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin' &&
       github.ref_type == 'tag'
     uses: ./.github/workflows/ci.yml
@@ -53,16 +54,23 @@ jobs:
           channel: stable
           cache: true
 
-      # Official action configures short-lived pub.dev OIDC authentication.
-      # Match Flutter 3.44.4's Dart SDK; keep Flutter's SDK for Flutter commands.
-      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1
-        with:
-          sdk: '3.12.2'
-
       - name: Resolve package dependencies
         run: flutter pub get --no-example
 
-      - name: Recheck package and publish
+      - name: Recheck package
+        run: flutter pub publish --dry-run
+
+      # Same OIDC audience/token registration as dart-lang/setup-dart, using
+      # Flutter's bundled Dart instead of installing a second Dart SDK.
+      - name: Request short-lived pub.dev identity
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const token = await core.getIDToken('https://pub.dev');
+            core.setSecret(token);
+            core.exportVariable('PUB_TOKEN', token);
+
+      - name: Publish
         run: |
-          flutter pub publish --dry-run
+          dart pub token add https://pub.dev --env-var PUB_TOKEN
           flutter pub publish --force
