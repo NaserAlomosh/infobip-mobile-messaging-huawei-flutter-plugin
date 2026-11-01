@@ -66,8 +66,9 @@ RTC Core has Firebase/GMS transitive dependencies; Google-free operation is not 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
 integration on physical Huawei hardware. Android 36 Robolectric tests require Java 21.
 
-Phase 1 migration is pending automated acceptance and owner review; see
-[the migration report](doc/huawei-9.3.0-phase1-report.md). This source checkout
+Huawei 9.3.0 migration is pending owner review; see the
+[Phase 1 report](doc/huawei-9.3.0-phase1-report.md) and
+[Phase 2 build validation](doc/huawei-9.3.0-phase2-report.md). This source checkout
 requires host Android build migration; the package version remains unchanged.
 
 For Flutter 3.44.4, use AGP 9.1.1 / Gradle 9.3.1 / KGP 2.2.10 and add to the
@@ -77,7 +78,21 @@ host's `android/gradle.properties`:
 android.builtInKotlin=false
 android.newDsl=false
 android.onlyEnableUnitTestForTheTestedBuildType=false
+android.uniquePackageNames=false
 ```
+
+Every consuming application using AGP 9's default namespace validation with the
+retained RTC `2.5.28` and WebRTC `1.0.45036` artifacts needs the temporary
+`android.uniquePackageNames=false` setting in its own **`android/gradle.properties`**
+(the Android host project root). Both vendor AAR manifests declare `com.infobip`.
+AGP 9 otherwise rejects their shared namespace even though these AARs contain no
+colliding classes or manifest components. This project-wide exception relaxes
+library namespace uniqueness only; it does not fix vendor namespaces or certify
+other dependencies. Plugin-local properties do not configure consuming apps.
+AGP versions that do not enforce uniqueness do not require this opt-out. Remove it
+after separately approved vendor artifacts provide distinct namespaces and the
+host passes manifest, duplicate-class, APK and runtime validation with the default
+check restored. Future AGP support for this temporary opt-out is not guaranteed.
 
 Enable `android.buildFeatures.resValues` in hosts that generate `resValue`s.
 Use JDK 21 for the native test suites, with Java/Kotlin bytecode target 17.
