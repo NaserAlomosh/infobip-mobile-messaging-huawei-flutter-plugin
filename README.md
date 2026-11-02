@@ -1388,3 +1388,7 @@ Fields default to `FieldUpdate.omitted()` and leave existing values unchanged. `
 An empty patch (`const UserPatch()`) is forwarded to the SDK as an empty map and is **not guaranteed to be a successful no-op**. In SDK 9.3.0, without pending user data it may result in `ERROR_SAVING_EMPTY_OBJECT`, following applicable registration checks. With pending unreported user data, it may retry those changes. SDK duplicate/debouncing behavior may also affect the callback. Avoid calling `patchUser` when no fields are selected for updating.
 
 SDK 9.3.0 request-map semantics are checked locally. Backend deletion and server handling of empty values have not been demonstrated through controlled backend testing.
+
+### User validation privacy
+
+For `saveUser`, `patchUser`, and `personalize` (including the legacy `personalizeUser` alias), each supplied email is limited to 255 UTF-16 code units, matching SDK 9.3.0's existing length limit. The plugin rejects longer values before SDK submission with `PlatformException` code `-10` and a message that contains no submitted values. No syntax validation, trimming, or normalization is added. Null, omitted, empty-list, and multiple-email behavior is preserved. Accepted email values pass through unchanged. This protection applies to newly submitted overlong emails; previously pending SDK data and SDK-managed sync remain upstream risks. It does not suppress arbitrary SDK logging. See the [user validation privacy report](doc/user-validation-privacy-report.md).

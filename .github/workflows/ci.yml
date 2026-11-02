@@ -97,6 +97,17 @@ jobs:
         working-directory: example/android
         run: ./gradlew :infobip_mobilemessaging_huawei:testReleaseUnitTest --console=plain
 
+      - name: Upload Android native unit test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: android-native-unit-test-reports
+          path: |
+            example/build/infobip_mobilemessaging_huawei/test-results/test*UnitTest/**
+            example/build/infobip_mobilemessaging_huawei/reports/tests/test*UnitTest/**
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Example Debug APK
         working-directory: example
         run: flutter build apk --debug --no-pub
