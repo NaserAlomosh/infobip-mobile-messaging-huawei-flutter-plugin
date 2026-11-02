@@ -44,6 +44,7 @@ internal class UserManager(
         if (!initialized(callback)) return
         execute("invalid_argument", callback) {
             val user = UserMapper.toUser(value)
+            UserEmailPrivacy.validate(user)
             mobileMessaging.saveUser(
                 user,
                 userListener(callback, "user_save_failed", "Unable to save user"),
@@ -58,6 +59,7 @@ internal class UserManager(
         if (!initialized(callback)) return
         execute("invalid_argument", callback) {
             val user = UserMapper.toPatch(value)
+            UserEmailPrivacy.validate(user)
             mobileMessaging.saveUser(
                 user,
                 userListener(callback, "user_save_failed", "Unable to save user"),
@@ -163,6 +165,8 @@ internal class UserManager(
     ) {
         try {
             operation()
+        } catch (_: UserEmailLengthException) {
+            fail(callback, "-10", "Each email must contain at most 255 UTF-16 code units")
         } catch (_: IllegalArgumentException) {
             fail(callback, "invalid_argument", "Invalid user payload")
         } catch (_: Exception) {
