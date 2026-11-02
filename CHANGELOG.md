@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add typed `patchUser` updates that preserve omitted fields and explicit clears without changing `saveUser`.
+
 ## 2.0.0
 
 - Upgrade Huawei Mobile Messaging Core, Inbox and Chat to 9.3.0; retain RTC
