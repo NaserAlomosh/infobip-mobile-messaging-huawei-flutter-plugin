@@ -63,4 +63,70 @@ void main() {
       );
     }
   });
+
+  test(
+    'personalize preserves identity attributes and force flag on the channel',
+    () async {
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            calls.add(call);
+            return <String, Object?>{};
+          });
+      const emails = [
+        'valid@example.invalid',
+        'other@example.invalid',
+        ' spaced@example.invalid ',
+        '用户@example.invalid',
+        '',
+      ];
+      for (final force in [false, true]) {
+        await platform.personalize(
+          UserIdentity(
+            externalUserId: 'synthetic-id',
+            phones: ['synthetic-phone'],
+            emails: emails,
+          ),
+          UserAttributes(firstName: 'Synthetic'),
+          forceDepersonalize: force,
+        );
+        expect(calls.last.method, 'personalize');
+        final payload = calls.last.arguments as Map;
+        expect(payload['forceDepersonalize'], force);
+        expect(payload['userIdentity'], {
+          'externalUserId': 'synthetic-id',
+          'phones': ['synthetic-phone'],
+          'emails': emails,
+        });
+        expect((payload['userAttributes'] as Map)['firstName'], 'Synthetic');
+      }
+    },
+  );
+
+  test(
+    'personalize forwards private native errors without treating them as success',
+    () async {
+      final email = 'x' * 256;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (_) async {
+            throw PlatformException(
+              code: '-10',
+              message: 'Each email must contain at most 255 UTF-16 code units',
+            );
+          });
+      await expectLater(
+        platform.personalize(
+          UserIdentity(emails: [email]),
+          null,
+          forceDepersonalize: true,
+        ),
+        throwsA(
+          isA<PlatformException>()
+              .having((error) => error.code, 'code', '-10')
+              .having((error) => error.toString().contains(email), 'PII', false)
+              .having((error) => error.details, 'details', isNull),
+        ),
+      );
+    },
+  );
 }

@@ -1,11 +1,16 @@
 package com.infobip.mobilemessaging.huawei.user
 
 import org.infobip.mobile.messaging.User
+import org.infobip.mobile.messaging.UserIdentity
 
 /** Mirrors only SDK 9.3.0's per-email length rejection, which otherwise logs the value. */
 internal object UserEmailPrivacy {
-    fun validate(user: User) {
-        if (user.emails?.any { it.length > 255 } == true) {
+    fun validate(user: User) = validateEmails(user.emails)
+
+    fun validate(identity: UserIdentity) = validateEmails(identity.emails)
+
+    private fun validateEmails(emails: Set<String>?) {
+        if (emails?.any { it.length > 255 } == true) {
             throw UserEmailLengthException()
         }
     }

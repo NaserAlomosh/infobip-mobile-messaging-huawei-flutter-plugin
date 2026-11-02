@@ -76,6 +76,7 @@ internal class UserManager(
         if (!initialized(callback)) return
         execute("invalid_argument", callback) {
             val identity: UserIdentity = UserMapper.toIdentity(identityValue)
+            UserEmailPrivacy.validate(identity)
             val attributes: UserAttributes? = UserMapper.toAttributes(attributesValue)
             val listener =
                 userListener(
