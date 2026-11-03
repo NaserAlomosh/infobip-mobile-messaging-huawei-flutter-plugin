@@ -10,7 +10,7 @@ Files: `example/android/gradlew`, `example/android/gradlew.bat`, and
 
 These files are unmodified copies of Flutter's cached Gradle wrapper artifacts.
 The JAR identifies Gradle 2.10; `gradle-wrapper.properties` configures the Gradle
-8.13 distribution downloaded when the example is built. That distribution is not
+9.3.1 distribution downloaded when the example is built. That distribution is not
 included in this package.
 
 Sources: [Gradle 2.10 wrapper source](https://github.com/gradle/gradle/tree/v2.10/subprojects/wrapper),

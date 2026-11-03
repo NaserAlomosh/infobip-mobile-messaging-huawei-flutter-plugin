@@ -1,5 +1,10 @@
 # Robolectric CI runtime resolution investigation
 
+> **Historical engineering report.** This records the 2026-11-02 runtime-download investigation; its uncommitted status describes that snapshot, and the original CI root cause remains unconfirmed.
+> Use the [current contributor validation procedure](../CONTRIBUTING.md#formatting-and-validation) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Date: 2026-11-02. Changes are intentionally uncommitted.
 
 ## Evidence and limits

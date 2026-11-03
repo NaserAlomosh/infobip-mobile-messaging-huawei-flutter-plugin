@@ -1,5 +1,10 @@
 # Inbox set-seen investigation
 
+> **Historical engineering report.** This records the comparison of revisions 153b552 and 8e0316b; its backend/context hypotheses remain unproven.
+> Use the [current Inbox guidance](messaging-chat.md#inbox) and [example setup](../example/README.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 ## A. Executive conclusion
 
 **ROOT CAUSE NOT YET PROVEN.**

@@ -1,5 +1,10 @@
 # Huawei RTC outgoing implementation verification
 
+> **Historical engineering report.** This records the September 2026 initial outgoing implementation, before later rendering, controls and notification extensions.
+> Use the [current outgoing guide](huawei-rtc-outgoing.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Verification date: 8 September 2026. **READY FOR HUAWEI DEVICE TESTING** for the
 foreground outgoing extension, not a claim of device-verified production calls.
 

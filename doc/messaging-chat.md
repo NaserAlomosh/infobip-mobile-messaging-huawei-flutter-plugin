@@ -69,8 +69,11 @@ other MM events are not replayed. Treat deep links and payloads as untrusted inp
 final cached = await InfobipMobileMessagingHuawei.getUser();
 final current = await InfobipMobileMessagingHuawei.fetchUser();
 
-final saved = await InfobipMobileMessagingHuawei.saveUser(
-  UserData(firstName: 'Sam', lastName: 'Taylor'),
+final saved = await InfobipMobileMessagingHuawei.patchUser(
+  const UserPatch(
+    firstName: FieldUpdate.set('Sam'),
+    lastName: FieldUpdate.set('Taylor'),
+  ),
 );
 
 final personalized = await InfobipMobileMessagingHuawei.personalize(
@@ -82,6 +85,37 @@ final personalized = await InfobipMobileMessagingHuawei.personalize(
 
 await InfobipMobileMessagingHuawei.depersonalize();
 ```
+
+Use `patchUser(UserPatch(...))` for partial profile updates:
+
+- `FieldUpdate.omitted()` is the default: the field is absent from the native
+  request map and its setter is not called.
+- `FieldUpdate.set(value)` sends an explicit non-null value, including an empty
+  string or collection.
+- `FieldUpdate.clear()` sends an explicit null for the selected field.
+
+Custom attributes are updated by key; a null attribute value requests deletion.
+Clearing the whole custom-attribute map is rejected with `invalid_argument`; use
+individual null entries. Type and installations are read-only and excluded from
+patches. Avoid empty patches: they reach the SDK as an empty map and are not
+guaranteed successful no-ops. Native validation, pending data and SDK callback
+behavior still apply. Request-map semantics do not establish backend deletion or
+server handling of empty values; controlled backend verification remains required.
+
+Legacy `saveUser(UserData)` retains its nullable-field serialization and native
+setter behavior for compatibility. Unspecified fields are sent as null; a sparse
+`UserData` must not be treated as a partial update.
+
+Personalization also accepts `keepAsLead` and `setDeviceAsPrimary`, both defaulting
+to false. They are forwarded to SDK 9.3.0; backend lead and primary-device outcomes
+require physical Huawei/backend validation. See the
+[personalization example](../README.md#inbox-and-user-management).
+
+Newly submitted emails in save, patch and personalization requests are rejected
+before SDK entry when longer than 255 UTF-16 code units, with `PlatformException`
+code `-10` and a value-free message. This adds no syntax validation, trimming or
+normalization. Previously pending emails and SDK-managed synchronization remain
+upstream risks; this guard does not resolve [SEC-01](../SECURITY.md).
 
 `UserIdentity` supports an external user ID, phones, and emails. User attributes support names, gender, a date-only `String?` birthday in `YYYY-MM-DD` format, tags, and SDK-compatible custom attributes. Huawei custom lists use lists of records with consistent field names and scalar types; arbitrary nested JSON and scalar lists are not supported for writes. Record fields accept strings, numbers, booleans, and `DateTime`; Huawei serializes record dates as `YYYY-MM-DD` strings and date-times as ISO UTC strings, which remain strings when read back. Null values are retained where the native attribute container supports them.
 

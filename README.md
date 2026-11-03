@@ -20,6 +20,7 @@ For a release candidate not yet available on pub.dev, use the checkout path belo
 - [Push notifications](#push-notifications)
 - [Live Chat and lifecycle](#chat-integration)
 - [User, installation, Inbox and custom events](#inbox-and-user-management)
+- [Partial user updates](#partial-user-updates) and [email validation privacy](#user-validation-privacy)
 - [Outgoing RTC audio and video](#rtc-audio--video-calls)
 - [RTC rendering and controls](#rtc-rendering-and-controls)
 - [Experimental foreground incoming RTC](#experimental-foreground-incoming-rtc)
@@ -770,6 +771,28 @@ Application Code auth may omit `jwt`; a global `setJwt` value still takes
 precedence. `setInboxMessagesSeen` retains installation context and has no JWT
 parameter. See [user, installation and Inbox examples](doc/messaging-chat.md).
 
+### Partial user updates
+
+`saveUser(UserData)` retains its existing nullable-field serialization and native setter behavior for compatibility. Do not use a sparse `UserData` as a partial update: unspecified fields are sent as null. Use the additive `patchUser` API instead:
+
+```dart
+await InfobipMobileMessagingHuawei.patchUser(const UserPatch(
+  firstName: FieldUpdate.set('Michael'),
+  lastName: FieldUpdate.clear(),
+  customAttributes: FieldUpdate.set({'obsolete': null}),
+));
+```
+
+Fields default to `FieldUpdate.omitted()` and leave existing values unchanged. `FieldUpdate.set` requires a non-null value; empty strings and collections remain explicit values. `FieldUpdate.clear()` includes a null key in the SDK request map. Custom attributes are updated by key; a null attribute value requests deletion. Clearing the whole custom-attribute map is rejected with `invalid_argument`; use individual null entries. Type and installations are read-only and excluded from patches. Native SDK validation and error callbacks still apply.
+
+An empty patch (`const UserPatch()`) is forwarded to the SDK as an empty map and is **not guaranteed to be a successful no-op**. In SDK 9.3.0, without pending user data it may result in `ERROR_SAVING_EMPTY_OBJECT`, following applicable registration checks. With pending unreported user data, it may retry those changes. SDK duplicate/debouncing behavior may also affect the callback. Avoid calling `patchUser` when no fields are selected for updating.
+
+SDK 9.3.0 request-map semantics are checked locally. Backend deletion and server handling of empty values have not been demonstrated through controlled backend testing.
+
+### User validation privacy
+
+For `saveUser`, `patchUser`, and `personalize` (including the legacy `personalizeUser` alias), each supplied email is limited to 255 UTF-16 code units, matching SDK 9.3.0's existing length limit. The plugin rejects longer values before SDK submission with `PlatformException` code `-10` and a message that contains no submitted values. No syntax validation, trimming, or normalization is added. Null, omitted, empty-list, and multiple-email behavior is preserved. Accepted email values pass through unchanged. This protection applies to newly submitted overlong emails; previously pending SDK data and SDK-managed sync remain upstream risks. It does not suppress arbitrary SDK logging. See the [user validation privacy report](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/blob/fce54e801a0a1d92cdd5ab79b4bf5158d78fb102/doc/user-validation-privacy-report.md).
+
 ### Installation settings and custom events
 
 After initialization, inspect cached installation with `getInstallation()` or
@@ -1220,22 +1243,14 @@ example APK builds, and `flutter pub publish --dry-run`. Android SDK 37.0 is
 installed explicitly; the existing Gradle wrapper, AGP compatibility flags and
 Huawei repositories are retained. Safe example configuration is generated before
 analysis/tests/builds. No private Huawei configuration is needed for these builds;
-device/backend acceptance remains manual. No build artifacts or logs are uploaded.
+device/backend acceptance remains manual. CI attempts to upload native JUnit XML
+and HTML test reports as `android-native-unit-test-reports`, including after a
+failed step, with seven-day retention. If no report files exist, the upload warns;
+reports are not guaranteed when tests cannot start. APKs and full console logs
+are not uploaded as artifacts by this workflow. GitHub Actions job logs are
+separate from the report artifact.
 
-To validate this feature branch before merging, first commit/push the reviewed
-workflow changes, then open a PR targeting `main` (an existing PR runs again when
-updated):
-
-```sh
-gh pr create --base main --head feature/infobip-huawei-sdk-9.3.0-upgrade --fill
-```
-
-Manual dispatch requires `ci.yml` to exist on the default branch first. Once it
-does, validate the pushed feature branch without merging it:
-
-```sh
-gh workflow run ci.yml --ref feature/infobip-huawei-sdk-9.3.0-upgrade
-```
+For local validation commands, see [contributing](CONTRIBUTING.md#formatting-and-validation).
 
 One-time publication setup:
 
@@ -1296,6 +1311,9 @@ headers, messages, raw SDK errors or captured content. Explain MediaProjection's
 scope and provide Stop: it can capture private content outside your app.
 
 ## Documentation
+
+The [repository documentation index](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/tree/development/doc)
+also lists historical engineering reports and evidence retained outside the package.
 
 - [Messaging, Push, Chat, user management and Inbox](doc/messaging-chat.md)
 - [Outgoing RTC: events, rendering, controls and notifications](doc/huawei-rtc-outgoing.md)
@@ -1388,25 +1406,3 @@ separately. Do not replace the Calls ID with a Push ID, widget ID or guessed val
 
 If this plugin helps your project, consider supporting its ongoing development
 and maintenance through [GitHub Sponsors](https://github.com/sponsors/NaserAlomosh).
-
-### Partial user updates
-
-`saveUser(UserData)` retains its existing nullable-field serialization and native setter behavior for compatibility. Do not use a sparse `UserData` as a partial update: unspecified fields are sent as null. Use the additive `patchUser` API instead:
-
-```dart
-await InfobipMobileMessagingHuawei.patchUser(const UserPatch(
-  firstName: FieldUpdate.set('Michael'),
-  lastName: FieldUpdate.clear(),
-  customAttributes: FieldUpdate.set({'obsolete': null}),
-));
-```
-
-Fields default to `FieldUpdate.omitted()` and leave existing values unchanged. `FieldUpdate.set` requires a non-null value; empty strings and collections remain explicit values. `FieldUpdate.clear()` includes a null key in the SDK request map. Custom attributes are updated by key; a null attribute value requests deletion. Clearing the whole custom-attribute map is rejected with `invalid_argument`; use individual null entries. Type and installations are read-only and excluded from patches. Native SDK validation and error callbacks still apply.
-
-An empty patch (`const UserPatch()`) is forwarded to the SDK as an empty map and is **not guaranteed to be a successful no-op**. In SDK 9.3.0, without pending user data it may result in `ERROR_SAVING_EMPTY_OBJECT`, following applicable registration checks. With pending unreported user data, it may retry those changes. SDK duplicate/debouncing behavior may also affect the callback. Avoid calling `patchUser` when no fields are selected for updating.
-
-SDK 9.3.0 request-map semantics are checked locally. Backend deletion and server handling of empty values have not been demonstrated through controlled backend testing.
-
-### User validation privacy
-
-For `saveUser`, `patchUser`, and `personalize` (including the legacy `personalizeUser` alias), each supplied email is limited to 255 UTF-16 code units, matching SDK 9.3.0's existing length limit. The plugin rejects longer values before SDK submission with `PlatformException` code `-10` and a message that contains no submitted values. No syntax validation, trimming, or normalization is added. Null, omitted, empty-list, and multiple-email behavior is preserved. Accepted email values pass through unchanged. This protection applies to newly submitted overlong emails; previously pending SDK data and SDK-managed sync remain upstream risks. It does not suppress arbitrary SDK logging. See the [user validation privacy report](doc/user-validation-privacy-report.md).

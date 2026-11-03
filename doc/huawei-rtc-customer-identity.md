@@ -99,6 +99,7 @@ application calls are available through the separate
 [experimental foreground incoming flow](huawei-rtc-incoming.md); that flow does
 not establish Conversation reuse. No RTC UI dependency is added.
 
-This implementation uses the branch's pinned Huawei Core/Chat/Inbox **8.14.0**
-and RTC Core **2.5.28** SDK APIs. No dependency upgrade is required or performed;
-compatibility with other SDK versions is not certified here.
+The current dependency declarations pin Huawei Core/Chat/Inbox **9.3.0** and
+RTC Core **2.5.28**. The original identity implementation and supplied device
+evidence used Huawei **8.14.0**; those historical results do not certify every
+9.3.0 device/backend scenario. Revalidate the integration on the pinned versions.

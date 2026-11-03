@@ -1,5 +1,10 @@
 # Huawei RTC ongoing call notification (Phase 2)
 
+> **Historical engineering report.** This records the original Phase 2 ongoing-call notification implementation.
+> Use the [current outgoing guide](huawei-rtc-outgoing.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Implemented against RTC Core **2.5.28**, on `feature/huawei-rtc-core`, starting at
 `08f60d2802e62be319538072209f49e450caf4a3`. Local implementation and automated
 checks do not certify physical Huawei behavior. Phase 1 device results supplied

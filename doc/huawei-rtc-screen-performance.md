@@ -1,5 +1,10 @@
 # Phase 3.4.3 — Screen-as-Camera performance report
 
+> **Historical engineering report.** This records the 2026-10-12 capture-allocation optimization.
+> Use the [current screen-sharing guide](screen-sharing.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Date: 2026-10-12. Evidence labels: **VERIFIED** means local source, installed
 artifact inspection, or automated checks; **ESTIMATED** means a code-derived
 performance estimate; **UNVERIFIED** means runtime evidence is still required.

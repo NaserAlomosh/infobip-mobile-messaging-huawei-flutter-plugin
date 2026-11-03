@@ -1,5 +1,10 @@
 # Huawei RTC Core device validation plan
 
+> **Historical engineering report.** This records the September 2026 outgoing validation plan and earlier incoming-contract research; early feature-availability entries are superseded.
+> Use the [outgoing guide](huawei-rtc-outgoing.md), [foreground incoming guide](huawei-rtc-incoming.md) and [example checklist](../example/README.md#guided-execution-order) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 ## Outgoing extension update — 8 September 2026
 
 The separate [`HuaweiRtc` implementation](huawei-rtc-outgoing.md) is ready for

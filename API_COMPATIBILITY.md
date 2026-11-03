@@ -13,6 +13,21 @@ constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
 Historical audit reports excluded from the published package record their
 original verification snapshots, not the current release status.
 
+## Current user-management extensions (SDK 9.3.0)
+
+These additions supplement the historical parity tables below:
+
+| Extension | Current contract | Evidence boundary |
+| --- | --- | --- |
+| G-01: `patchUser(UserPatch)` | `FieldUpdate.omitted()` excludes a field; `set(value)` sends a non-null value; `clear()` sends null. Custom-attribute null entries request per-key deletion; whole-map clearing is rejected. Legacy `saveUser` still sends unspecified fields as null. | Native request-map semantics do not prove backend deletion. Empty patches reach the SDK and may fail or retry pending data. |
+| G-02: personalization flags | `PersonalizeContext.keepAsLead` and `setDeviceAsPrimary` both default to false. Native order is `identity, attributes, forceDepersonalize, keepAsLead, setDeviceAsPrimary, listener`. The legacy `personalizeUser` alias retains false defaults. | Forwarding does not certify backend lead retention, primary-device selection or persistence. |
+| Email privacy guard | `saveUser`, `patchUser`, `personalize` and legacy `personalizeUser` reject newly supplied emails longer than 255 UTF-16 code units before SDK entry, with code `-10` and a value-free message. No syntax validation, trimming or normalization is added. | Previously pending emails and SDK-managed synchronization remain upstream risks. SEC-01 remains unresolved upstream. |
+
+See [user-update recipes](doc/messaging-chat.md#user),
+[personalization](README.md#inbox-and-user-management),
+[email privacy](README.md#user-validation-privacy), and [security](SECURITY.md).
+These contracts do not represent newly executed device or backend tests.
+
 ## Huawei outgoing RTC extension (separate from official parity)
 
 [`HuaweiRtc`](doc/huawei-rtc-outgoing.md) adds outgoing application audio/video calls,
