@@ -106,60 +106,16 @@ Host configuration placement follows [Huawei's Flutter Android integration guide
 
 ## Configure Infobip RTC Calls Routing
 
-1. A **Calls Configuration ID** selects the application handling an outgoing RTC
-   call. It is not a callee, Chat widget ID, Application Code, or push identifier.
-   For a custom application, ask your backend administrator for the ID created
-   through the [Calls Configuration API](https://www.infobip.com/docs/voice-and-video/calls).
-2. Choose the destination with your administrator. Infobip documents
-   [a built-in Conversations destination](https://github.com/infobip/infobip-rtc-android/wiki/InfobipCallsConfiguration):
-   `InfobipCallsConfiguration.CONVERSATIONS.getCallsConfiguration()`. In the
-   pinned RTC Android 2.5.28 SDK its literal value is `conversations`.
-   This is a standard destination identifier, **not an account-generated ID**,
-   but it is **not a universal working default**: your account must have
-   Conversations calling enabled and the appropriate routing/receiving agents.
-   The empty example default requires an explicit choice; use `conversations`
-   only for an enabled Conversations integration, or your custom Calls ID.
-3. Ask the account administrator to enable Web and In-app Calls and confirm the
-   receiving destination. For Conversations, confirm the linked integration,
-   routing/assignment and an available agent able to accept the call. For a custom
-   Calls application, the backend needs event subscriptions and call-control logic
-   to accept and connect the call. Generic Calls API events do not expose calls
-   managed by Conversations. No unverified Portal menu path is assumed here.
-4. Set `rtcCallsConfigurationId` in the private `ExampleTestConfig` Dart class. The example passes
-   it unchanged to `HuaweiRtcCallRequest.callsConfigurationId`, through the channel
-   and native `CallApplicationRequest`. A consumer uses the public API as follows:
+Follow the [complete RTC routing setup and troubleshooting guide](../README.md#configure-infobip-rtc-calls-routing)
+with your account administrator. It explains custom Calls IDs, the conditional
+`conversations` destination, account prerequisites and physical-device verification.
 
-```dart
-import 'package:infobip_mobilemessaging_huawei/infobip_mobilemessaging_huawei.dart';
-
-Future<void> callConfiguredDestination(String callsConfigurationId) async {
-  // Initialize Mobile Messaging, wait for registration, and grant microphone
-  // permission first. Supply an administrator-confirmed destination ID.
-  await HuaweiRtc.callApplication(HuaweiRtcCallRequest(
-    callsConfigurationId: callsConfigurationId,
-    type: HuaweiRtcCallType.audio,
-  ));
-}
-```
-
-5. The RTC token is obtained natively through initialized Mobile Messaging;
-   there is no Dart RTC token field. Default caller identity is the registered
-   installation; an explicit identity must be authorized. MM/Chat JWTs remain
-   separate contracts. An **RTC Push Configuration ID** configures RTC push
-   registration (`WebRTCUI.configurationId`), not outgoing routing. Do not pass
-   it as this Calls ID. It does not enable background incoming HMS calls here.
-6. Test on a physical Huawei device: initialize/register, grant permissions,
-   have the intended agent ready, start audio, observe `established`, confirm
-   the intended agent receives it and verify two-way media. Hang up and wait for
-   `finished`. Repeat with video and camera permission. A returned call object
-   or successful token request alone is not proof of routing or media delivery.
-
-Troubleshooting: a blank ID is rejected locally; an unknown/unauthorized ID needs
-administrator verification. For token failures, check initialization, registration
-and authorized caller identity. If no agent receives the call, confirm the chosen
-application, account entitlement, routing, agent availability and backend handling.
-For permission/network/media errors, check device permissions and connectivity
-separately. Do not replace the Calls ID with a Push ID, widget ID or guessed value.
+For this example, set `rtcCallsConfigurationId` in your private
+`ExampleTestConfig`. The empty default requires an explicit destination choice.
+A Calls Configuration ID selects outgoing routing; it is not an RTC Push
+Configuration ID, widget ID or caller identity. Then follow the
+[guided execution order](#guided-execution-order) to verify establishment and
+two-way media; method completion alone does not prove successful routing.
 
 ## Guided execution order
 

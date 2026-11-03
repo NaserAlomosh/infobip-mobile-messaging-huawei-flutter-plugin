@@ -1,5 +1,11 @@
 # Phase 3.4.3 screen-as-camera horizontal orientation
 
+> **Historical engineering report.** This records the 2026-10-12 horizontal-orientation investigation, before the later local-preview changes.
+> Use the [screen-sharing guide](screen-sharing.md) for maintained guidance;
+> the [later quality report](huawei-rtc-screen-video-quality.md) records subsequent investigation.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Investigation date: 2026-10-12. Branch: `feature/huawei-rtc-core`.
 The user reports working physical Huawei sharing with horizontally mirrored text
 in Conversations Portal in portrait and landscape. Post-fix physical verification

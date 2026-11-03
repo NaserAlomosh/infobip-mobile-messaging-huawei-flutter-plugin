@@ -1,5 +1,10 @@
 # Phase 3.5.1 — Chat and API reliability hardening
 
+> **Historical engineering report.** This records the 2026-10-12 Chat activation, JWT deadline and cleanup hardening.
+> Use the [current messaging and Chat guide](messaging-chat.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Date: 2026-10-12. Branch: `release/rtc-production-certification`.
 Initial and final HEAD: `58ee312b12abea83c2d7204d466f1558a956e725`.
 Initial working tree: clean. Changes are local and uncommitted.

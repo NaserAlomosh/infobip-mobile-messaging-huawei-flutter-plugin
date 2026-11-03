@@ -1312,6 +1312,9 @@ scope and provide Stop: it can capture private content outside your app.
 
 ## Documentation
 
+The [repository documentation index](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/tree/development/doc)
+also lists historical engineering reports and evidence retained outside the package.
+
 - [Messaging, Push, Chat, user management and Inbox](doc/messaging-chat.md)
 - [Outgoing RTC: events, rendering, controls and notifications](doc/huawei-rtc-outgoing.md)
 - [RTC customer identity](doc/huawei-rtc-customer-identity.md)

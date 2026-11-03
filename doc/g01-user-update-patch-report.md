@@ -1,5 +1,10 @@
 # G-01 user update patch report
 
+> **Historical engineering report.** This records the original G-01 implementation snapshot; its uncommitted/review status describes that delivery.
+> Use the [current user-update guidance](messaging-chat.md#user) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 ## Repository baseline
 Both GitHub repository names resolve through the connected GitHub API to repository ID 1353253833, canonical name NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin. Origin remains unchanged. Branch: fix/user-update-patch-semantics. Starting and final HEAD: 7d2362659a7b1dcf62d2148792583004aef31104. Initially clean; final changes are uncommitted and limited to G-01.
 
