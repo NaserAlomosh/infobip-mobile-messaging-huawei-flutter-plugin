@@ -236,6 +236,8 @@ final class InfobipMobileMessagingHuawei {
         context.userIdentity,
         context.userAttributes,
         forceDepersonalize: context.forceDepersonalize,
+        keepAsLead: context.keepAsLead,
+        setDeviceAsPrimary: context.setDeviceAsPrimary,
       );
 
   /// Compatibility helper for the pre-v1 positional personalization API.

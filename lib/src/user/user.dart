@@ -87,10 +87,14 @@ typedef User = UserData;
 class PersonalizeContext {
   PersonalizeContext({
     this.forceDepersonalize = false,
+    this.keepAsLead = false,
+    this.setDeviceAsPrimary = false,
     required this.userIdentity,
     this.userAttributes,
   });
   final bool forceDepersonalize;
+  final bool keepAsLead;
+  final bool setDeviceAsPrimary;
   final UserIdentity userIdentity;
   final UserAttributes? userAttributes;
 }

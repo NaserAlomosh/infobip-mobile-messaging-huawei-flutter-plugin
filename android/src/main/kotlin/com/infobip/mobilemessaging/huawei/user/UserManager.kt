@@ -71,6 +71,8 @@ internal class UserManager(
         identityValue: Any?,
         attributesValue: Any?,
         forceDepersonalize: Boolean,
+        keepAsLead: Boolean = false,
+        setDeviceAsPrimary: Boolean = false,
         callback: (Map<String, Any?>?, UserFailure?) -> Unit,
     ) {
         if (!initialized(callback)) return
@@ -84,7 +86,7 @@ internal class UserManager(
                     "personalization_failed",
                     "Unable to personalize user",
                 )
-            mobileMessaging.personalize(identity, attributes, forceDepersonalize, listener)
+            mobileMessaging.personalize(identity, attributes, forceDepersonalize, keepAsLead, setDeviceAsPrimary, listener)
         }
     }
 
