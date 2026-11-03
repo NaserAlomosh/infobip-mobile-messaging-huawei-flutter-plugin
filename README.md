@@ -730,6 +730,24 @@ account changes and needs process recreation. Handle failures before moving on.
 
 ## Inbox and User Management
 
+Personalization accepts optional `keepAsLead` and `setDeviceAsPrimary` flags,
+both defaulting to `false`:
+
+```dart
+await InfobipMobileMessagingHuawei.personalize(PersonalizeContext(
+  userIdentity: UserIdentity(externalUserId: 'your-user-id'),
+  keepAsLead: false,
+  setDeviceAsPrimary: true,
+));
+```
+
+The native 9.3.0 mapping is `identity, attributes, forceDepersonalize,
+keepAsLead, setDeviceAsPrimary, listener`. Existing callers and the legacy
+`personalizeUser` API retain false defaults for the new flags. Email privacy
+validation still runs before SDK invocation. Lead and primary-device effects
+require physical Huawei device/backend testing; see
+[G-02 personalization flags](doc/G-02_PERSONALIZATION_FLAGS.md).
+
 Use `personalize(PersonalizeContext(...))` for a signed-in user's identity,
 `fetchUser()` for server refresh and `depersonalize()` at logout. Do not use SDK
 cleanup as a logout shortcut. Install `setJwt` before protected MM user requests.

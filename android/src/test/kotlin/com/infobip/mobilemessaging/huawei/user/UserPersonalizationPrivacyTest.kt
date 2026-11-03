@@ -20,91 +20,101 @@ import org.robolectric.shadows.ShadowLog
 @Config(sdk = [28])
 class UserPersonalizationPrivacyTest {
     private fun manager(sdk: MobileMessaging, initialized: Boolean = true): UserManager =
-        UserManager(RuntimeEnvironment.getApplication(), { initialized }).also {
-            it.javaClass.getDeclaredField("mobileMessaging\$delegate").apply {
-                isAccessible = true
-            }.set(it, lazy { sdk })
-        }
+    UserManager(RuntimeEnvironment.getApplication(), { initialized }).also {
+        it.javaClass.getDeclaredField("mobileMessaging\$delegate").apply {
+            isAccessible = true
+        }.set(it, lazy { sdk })
+    }
 
     @Test fun `overlong identity emails fail privately without SDK calls or forced depersonalization`() {
         for (email in listOf("x".repeat(256), "😀".repeat(128))) {
             for (force in listOf(false, true)) {
-                val sdk = mock(MobileMessaging::class.java)
-                ShadowLog.clear()
-                var callbacks = 0
-                var failure: UserFailure? = null
-                manager(sdk).personalize(
+                for (keep in listOf(false, true)) for (primary in listOf(false, true)) {
+                    val sdk = mock(MobileMessaging::class.java)
+                    ShadowLog.clear()
+                    var callbacks = 0
+                    var failure: UserFailure? = null
+                    manager(sdk).personalize(
                     mapOf("externalUserId" to "synthetic-id", "emails" to listOf("valid@example.invalid", email)),
-                    null, force,
-                ) { result, error ->
-                    assertNull(result)
-                    failure = error
-                    callbacks++
+                    null, force, keep, primary,
+                    ) { result, error ->
+                        assertNull(result)
+                        failure = error
+                        callbacks++
+                    }
+                    shadowOf(Looper.getMainLooper()).idle()
+                    assertEquals(1, callbacks)
+                    assertEquals("-10", failure?.code)
+                    assertEquals("Each email must contain at most 255 UTF-16 code units", failure?.message)
+                    assertFalse(failure.toString().contains(email))
+                    assertFalse(failure.toString().contains("synthetic-id"))
+                    assertTrue(ShadowLog.getLogs().isEmpty())
+                    verifyNoInteractions(sdk)
                 }
-                shadowOf(Looper.getMainLooper()).idle()
-                assertEquals(1, callbacks)
-                assertEquals("-10", failure?.code)
-                assertEquals("Each email must contain at most 255 UTF-16 code units", failure?.message)
-                assertFalse(failure.toString().contains(email))
-                assertFalse(failure.toString().contains("synthetic-id"))
-                assertTrue(ShadowLog.getLogs().isEmpty())
-                verifyNoInteractions(sdk)
             }
         }
     }
 
     @Test fun `accepted identities attributes force flag and success callback pass unchanged`() {
         val emails = listOf("valid@example.invalid", "other@example.invalid", " spaced@example.invalid ",
-            "用户@example.invalid", "", "malformed", "x".repeat(255), "😀".repeat(127) + "x")
+        "用户@example.invalid", "", "malformed", "x".repeat(255), "😀".repeat(127) + "x")
         for (force in listOf(false, true)) {
-            val sdk = mock(MobileMessaging::class.java)
-            var invocations = 0
-            doAnswer { call ->
-                val identity = call.arguments[0] as UserIdentity
-                val attributes = call.arguments[1] as UserAttributes
-                assertEquals(emails.toSet(), identity.emails)
-                assertEquals("synthetic-id", identity.externalUserId)
-                assertEquals(setOf("synthetic-phone"), identity.phones)
-                assertEquals("Synthetic", attributes.firstName)
-                assertEquals(force, call.arguments[2])
-                UserDataValidator.validate(identity)
-                @Suppress("UNCHECKED_CAST")
-                val listener = call.arguments[3] as MobileMessaging.ResultListener<User>
-                listener.onResult(Result(User().apply { firstName = "Synthetic" }))
-                invocations++
-                null
-            }.`when`(sdk).personalize(any(UserIdentity::class.java), any(UserAttributes::class.java), anyBoolean(), any<MobileMessaging.ResultListener<User>>())
-            var callbacks = 0
-            manager(sdk).personalize(mapOf("externalUserId" to "synthetic-id",
+            for (keep in listOf(false, true)) for (primary in listOf(false, true)) {
+                val sdk = mock(MobileMessaging::class.java)
+                var invocations = 0
+                doAnswer { call ->
+                    val identity = call.arguments[0] as UserIdentity
+                    val attributes = call.arguments[1] as UserAttributes
+                    assertEquals(emails.toSet(), identity.emails)
+                    assertEquals("synthetic-id", identity.externalUserId)
+                    assertEquals(setOf("synthetic-phone"), identity.phones)
+                    assertEquals("Synthetic", attributes.firstName)
+                    assertEquals(force, call.arguments[2])
+                    assertEquals(keep, call.arguments[3])
+                    assertEquals(primary, call.arguments[4])
+                    UserDataValidator.validate(identity)
+                    @Suppress("UNCHECKED_CAST")
+                    val listener = call.arguments[5] as MobileMessaging.ResultListener<User>
+                    listener.onResult(Result(User().apply { firstName = "Synthetic" }))
+                    invocations++
+                    null
+                }.`when`(sdk).personalize(any(UserIdentity::class.java), any(UserAttributes::class.java), anyBoolean(), anyBoolean(), anyBoolean(), any<MobileMessaging.ResultListener<User>>())
+                var callbacks = 0
+                manager(sdk).personalize(mapOf("externalUserId" to "synthetic-id",
                 "phones" to listOf("synthetic-phone"), "emails" to emails + emails.first()),
-                mapOf("firstName" to "Synthetic"), force) { result, error ->
-                assertNull(error)
-                assertEquals("Synthetic", result?.get("firstName"))
-                callbacks++
+                mapOf("firstName" to "Synthetic"), force, keep, primary) { result, error ->
+                    assertNull(error)
+                    assertEquals("Synthetic", result?.get("firstName"))
+                    callbacks++
+                }
+                shadowOf(Looper.getMainLooper()).idle()
+                assertEquals(1, invocations)
+                assertEquals(1, callbacks)
             }
-            shadowOf(Looper.getMainLooper()).idle()
-            assertEquals(1, invocations)
-            assertEquals(1, callbacks)
         }
     }
 
     @Test fun `null empty and omitted email collections keep identity representation`() {
         for (payload in listOf(mapOf("externalUserId" to "synthetic-id"),
-            mapOf("externalUserId" to "synthetic-id", "emails" to null),
-            mapOf("externalUserId" to "synthetic-id", "emails" to emptyList<String>()))) {
+        mapOf("externalUserId" to "synthetic-id", "emails" to null),
+        mapOf("externalUserId" to "synthetic-id", "emails" to emptyList<String>()))) {
             for (force in listOf(false, true)) {
-                val sdk = mock(MobileMessaging::class.java)
-                var invocations = 0
-                doAnswer { call ->
-                    val identity = call.arguments[0] as UserIdentity
-                    assertEquals(UserMapper.toIdentity(payload).map, identity.map)
-                    assertNull(call.arguments[1])
-                    assertEquals(force, call.arguments[2])
-                    invocations++
-                    null
-                }.`when`(sdk).personalize(any(UserIdentity::class.java), isNull<UserAttributes>(), anyBoolean(), any<MobileMessaging.ResultListener<User>>())
-                manager(sdk).personalize(payload, null, force) { _, _ -> }
-                assertEquals(1, invocations)
+                for (keep in listOf(false, true)) for (primary in listOf(false, true)) {
+                    val sdk = mock(MobileMessaging::class.java)
+                    var invocations = 0
+                    doAnswer { call ->
+                        val identity = call.arguments[0] as UserIdentity
+                        assertEquals(UserMapper.toIdentity(payload).map, identity.map)
+                        assertNull(call.arguments[1])
+                        assertEquals(force, call.arguments[2])
+                        assertEquals(keep, call.arguments[3])
+                        assertEquals(primary, call.arguments[4])
+                        invocations++
+                        null
+                    }.`when`(sdk).personalize(any(UserIdentity::class.java), isNull<UserAttributes>(), anyBoolean(), anyBoolean(), anyBoolean(), any<MobileMessaging.ResultListener<User>>())
+                    manager(sdk).personalize(payload, null, force, keep, primary) { _, _ -> }
+                    assertEquals(1, invocations)
+                }
             }
         }
     }
@@ -120,10 +130,10 @@ class UserPersonalizationPrivacyTest {
         verifyNoInteractions(sdk)
         doAnswer { call ->
             @Suppress("UNCHECKED_CAST")
-            val listener = call.arguments[3] as MobileMessaging.ResultListener<User>
+            val listener = call.arguments[5] as MobileMessaging.ResultListener<User>
             listener.onResult(Result(null, MobileMessagingError("denied", "synthetic-private-message")))
             null
-        }.`when`(sdk).personalize(any(UserIdentity::class.java), isNull<UserAttributes>(), anyBoolean(), any<MobileMessaging.ResultListener<User>>())
+        }.`when`(sdk).personalize(any(UserIdentity::class.java), isNull<UserAttributes>(), anyBoolean(), anyBoolean(), anyBoolean(), any<MobileMessaging.ResultListener<User>>())
         manager(sdk).personalize(mapOf("externalUserId" to "synthetic-id"), null, false) {
             result, error -> assertNull(result); failure = error
         }

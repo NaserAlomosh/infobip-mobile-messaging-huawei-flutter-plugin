@@ -62,6 +62,8 @@ abstract class InfobipMobileMessagingHuaweiPlatform extends PlatformInterface {
     UserIdentity userIdentity,
     UserAttributes? userAttributes, {
     required bool forceDepersonalize,
+    bool keepAsLead = false,
+    bool setDeviceAsPrimary = false,
   }) => throw UnimplementedError();
 
   Future<void> depersonalize() => throw UnimplementedError();

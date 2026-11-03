@@ -81,6 +81,8 @@ internal object ChannelContract {
     const val USER_IDENTITY = "userIdentity"
     const val USER_ATTRIBUTES = "userAttributes"
     const val FORCE_DEPERSONALIZE = "forceDepersonalize"
+    const val KEEP_AS_LEAD = "keepAsLead"
+    const val SET_DEVICE_AS_PRIMARY = "setDeviceAsPrimary"
     const val EXTERNAL_USER_ID = "externalUserId"
     const val FIRST_NAME = "firstName"
     const val LAST_NAME = "lastName"

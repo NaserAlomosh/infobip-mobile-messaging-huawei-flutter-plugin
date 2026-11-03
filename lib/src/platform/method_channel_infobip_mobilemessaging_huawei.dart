@@ -134,6 +134,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
     UserIdentity userIdentity,
     UserAttributes? userAttributes, {
     required bool forceDepersonalize,
+    bool keepAsLead = false,
+    bool setDeviceAsPrimary = false,
   }) async => UserCodec.decode(
     await methodChannel.invokeMethod<Object?>(ChannelContract.personalize, {
       ChannelContract.userIdentity: UserCodec.encodeIdentity(userIdentity),
@@ -141,6 +143,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
           ? null
           : UserCodec.encodeAttributes(userAttributes),
       ChannelContract.forceDepersonalize: forceDepersonalize,
+      ChannelContract.keepAsLead: keepAsLead,
+      ChannelContract.setDeviceAsPrimary: setDeviceAsPrimary,
     }),
   );
 

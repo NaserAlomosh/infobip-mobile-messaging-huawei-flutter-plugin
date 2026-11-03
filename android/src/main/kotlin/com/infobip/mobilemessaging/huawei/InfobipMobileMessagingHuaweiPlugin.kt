@@ -608,10 +608,21 @@ class InfobipMobileMessagingHuaweiPlugin :
             result.error("invalid_argument", "forceDepersonalize must be a boolean", null)
             return
         }
+        val keepAsLead = call.argument<Any?>(ChannelContract.KEEP_AS_LEAD)
+        val setDeviceAsPrimary = call.argument<Any?>(ChannelContract.SET_DEVICE_AS_PRIMARY)
+        for ((name, value) in listOf(ChannelContract.KEEP_AS_LEAD to keepAsLead,
+            ChannelContract.SET_DEVICE_AS_PRIMARY to setDeviceAsPrimary)) {
+            if (value != null && value !is Boolean) {
+                result.error("invalid_argument", "$name must be a boolean", null)
+                return
+            }
+        }
         userManager?.personalize(
             call.argument<Any?>(ChannelContract.USER_IDENTITY),
             call.argument<Any?>(ChannelContract.USER_ATTRIBUTES),
             force,
+            keepAsLead as? Boolean ?: false,
+            setDeviceAsPrimary as? Boolean ?: false,
             { value, failure -> result.completeUser(value, failure) },
         ) ?: detached(result)
     }
