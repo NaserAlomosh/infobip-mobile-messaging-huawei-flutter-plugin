@@ -20,6 +20,16 @@ they do not certify backend authorization, device privacy or third-party SDKs.
   messages or captured content. Redact device evidence before sharing. Host provider
   and view callbacks are responsible for their own safe error/content handling.
 
+## User email validation privacy
+
+The plugin rejects newly supplied emails longer than 255 UTF-16 code units before
+SDK entry in `saveUser`, `patchUser`, `personalize` and legacy `personalizeUser`,
+with code `-10` and a value-free message. See the
+[current privacy guidance](README.md#user-validation-privacy) for the contract and
+linked engineering report. Previously pending email data and SDK-managed
+synchronization remain upstream limitations; this guard does not suppress arbitrary
+SDK logging or resolve SEC-01.
+
 ## SEC-01: upstream Infobip SDK sensitive logging and optional R8 workaround
 
 **SEC-01 remains PARTIALLY MITIGATED.** Both findings originate in upstream SDKs;

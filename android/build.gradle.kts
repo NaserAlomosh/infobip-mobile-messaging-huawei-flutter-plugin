@@ -33,6 +33,12 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
+            // Robolectric downloads SDK runtimes independently of Gradle repositories.
+            // Use the same Maven Central endpoint as Gradle's mavenCentral().
+            it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+            it.testLogging {
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            }
             val testTask = it
             testTask.doFirst {
                 testTask.systemProperty("infobip.rtc.contractAar", rtcContractAar.singleFile.absolutePath)

@@ -52,6 +52,31 @@ internal object UserMapper {
         }
     }
 
+    fun toPatch(value: Any?): User {
+        val map = requireMap(value, ChannelContract.USER)
+        val supported = setOf(ChannelContract.EXTERNAL_USER_ID, ChannelContract.FIRST_NAME,
+            ChannelContract.LAST_NAME, ChannelContract.MIDDLE_NAME, ChannelContract.GENDER,
+            ChannelContract.BIRTHDAY, ChannelContract.PHONES, ChannelContract.EMAILS,
+            ChannelContract.TAGS, ChannelContract.CUSTOM_ATTRIBUTES)
+        require(map.keys.all { it in supported }) { "Unsupported user patch field" }
+        require(!map.containsKey(ChannelContract.CUSTOM_ATTRIBUTES) || map[ChannelContract.CUSTOM_ATTRIBUTES] != null) {
+            "Clear custom attributes individually"
+        }
+        return User().apply {
+            if (map.containsKey(ChannelContract.EXTERNAL_USER_ID)) externalUserId = string(map, ChannelContract.EXTERNAL_USER_ID)
+            if (map.containsKey(ChannelContract.FIRST_NAME)) firstName = string(map, ChannelContract.FIRST_NAME)
+            if (map.containsKey(ChannelContract.LAST_NAME)) lastName = string(map, ChannelContract.LAST_NAME)
+            if (map.containsKey(ChannelContract.MIDDLE_NAME)) middleName = string(map, ChannelContract.MIDDLE_NAME)
+            if (map.containsKey(ChannelContract.GENDER)) gender = gender(map[ChannelContract.GENDER])
+            if (map.containsKey(ChannelContract.BIRTHDAY)) birthday = date(map[ChannelContract.BIRTHDAY])
+            if (map.containsKey(ChannelContract.PHONES)) phones = strings(map, ChannelContract.PHONES)?.toSet()
+            if (map.containsKey(ChannelContract.EMAILS)) emails = strings(map, ChannelContract.EMAILS)?.toSet()
+            if (map.containsKey(ChannelContract.TAGS)) tags = strings(map, ChannelContract.TAGS)?.toSet()
+            if (map.containsKey(ChannelContract.CUSTOM_ATTRIBUTES)) customAttributes = toNativeCustomAttributes(map[ChannelContract.CUSTOM_ATTRIBUTES])
+        }
+    }
+
+
     fun toIdentity(value: Any?): UserIdentity {
         val map = requireMap(value, ChannelContract.USER_IDENTITY)
         return UserIdentity().apply {

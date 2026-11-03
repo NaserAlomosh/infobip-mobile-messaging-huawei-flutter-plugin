@@ -214,6 +214,18 @@ final class InfobipMobileMessagingHuawei {
   static Future<UserData> fetchUser() =>
       InfobipMobileMessagingHuaweiPlatform.instance.fetchUser();
 
+  /// Partially updates the user and completes with the resulting user.
+  ///
+  /// Omitted fields are absent from the native update map. Use
+  /// `FieldUpdate.set(value)` to update a field and `FieldUpdate.clear()` to
+  /// send an explicit null for supported fields. Clear custom attributes
+  /// individually with null map entries; clearing the entire map is unsupported.
+  /// Empty patches are forwarded to the SDK and may fail; avoid calling this
+  /// method when no fields are selected. Backend persistence and deletion
+  /// semantics depend on server behavior.
+  static Future<UserData> patchUser(UserPatch patch) =>
+      InfobipMobileMessagingHuaweiPlatform.instance.patchUser(patch);
+
   /// Saves the supplied profile and completes with the resulting user.
   static Future<UserData> saveUser(UserData user) =>
       InfobipMobileMessagingHuaweiPlatform.instance.saveUser(user);
@@ -224,6 +236,8 @@ final class InfobipMobileMessagingHuawei {
         context.userIdentity,
         context.userAttributes,
         forceDepersonalize: context.forceDepersonalize,
+        keepAsLead: context.keepAsLead,
+        setDeviceAsPrimary: context.setDeviceAsPrimary,
       );
 
   /// Compatibility helper for the pre-v1 positional personalization API.

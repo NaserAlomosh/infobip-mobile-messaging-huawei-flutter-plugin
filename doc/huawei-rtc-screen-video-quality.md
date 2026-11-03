@@ -1,5 +1,10 @@
 # Phase 3.4.4 — RTC Screen-as-Camera video quality and orientation
 
+> **Historical engineering report.** This records the 2026-10-12 resolution and local-preview investigation.
+> Use the [current screen-sharing guide](screen-sharing.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Date: 2026-10-12. **VERIFIED** denotes current source, installed-artifact
 inspection or automated tests. **ESTIMATED** denotes a code-derived expectation
 without measurements. **UNVERIFIED** denotes hardware, transport or Portal

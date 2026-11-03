@@ -44,6 +44,22 @@ internal class UserManager(
         if (!initialized(callback)) return
         execute("invalid_argument", callback) {
             val user = UserMapper.toUser(value)
+            UserEmailPrivacy.validate(user)
+            mobileMessaging.saveUser(
+                user,
+                userListener(callback, "user_save_failed", "Unable to save user"),
+            )
+        }
+    }
+
+    fun patchUser(
+        value: Any?,
+        callback: (Map<String, Any?>?, UserFailure?) -> Unit,
+    ) {
+        if (!initialized(callback)) return
+        execute("invalid_argument", callback) {
+            val user = UserMapper.toPatch(value)
+            UserEmailPrivacy.validate(user)
             mobileMessaging.saveUser(
                 user,
                 userListener(callback, "user_save_failed", "Unable to save user"),
@@ -55,11 +71,14 @@ internal class UserManager(
         identityValue: Any?,
         attributesValue: Any?,
         forceDepersonalize: Boolean,
+        keepAsLead: Boolean = false,
+        setDeviceAsPrimary: Boolean = false,
         callback: (Map<String, Any?>?, UserFailure?) -> Unit,
     ) {
         if (!initialized(callback)) return
         execute("invalid_argument", callback) {
             val identity: UserIdentity = UserMapper.toIdentity(identityValue)
+            UserEmailPrivacy.validate(identity)
             val attributes: UserAttributes? = UserMapper.toAttributes(attributesValue)
             val listener =
                 userListener(
@@ -67,7 +86,7 @@ internal class UserManager(
                     "personalization_failed",
                     "Unable to personalize user",
                 )
-            mobileMessaging.personalize(identity, attributes, forceDepersonalize, listener)
+            mobileMessaging.personalize(identity, attributes, forceDepersonalize, keepAsLead, setDeviceAsPrimary, listener)
         }
     }
 
@@ -149,6 +168,8 @@ internal class UserManager(
     ) {
         try {
             operation()
+        } catch (_: UserEmailLengthException) {
+            fail(callback, "-10", "Each email must contain at most 255 UTF-16 code units")
         } catch (_: IllegalArgumentException) {
             fail(callback, "invalid_argument", "Invalid user payload")
         } catch (_: Exception) {

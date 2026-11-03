@@ -1,5 +1,10 @@
 # Experimental screen-as-camera POC
 
+> **Historical engineering report.** This records the original RTC Core 2.5.28 Screen-as-Camera POC.
+> Use the [screen-sharing guide](screen-sharing.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 This is a device-test POC, **not production-ready and not native Infobip screen sharing**.
 Physical Huawei capture and Infobip Conversations delivery are **UNVERIFIED**.
 

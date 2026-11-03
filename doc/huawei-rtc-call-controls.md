@@ -1,5 +1,10 @@
 # Huawei RTC Phase 1 call controls
 
+> **Historical engineering report.** This records the original Phase 1 RTC controls implementation.
+> Use the [current outgoing guide](huawei-rtc-outgoing.md) for maintained guidance.
+> Results, test counts and conclusions below belong to the recorded baseline;
+> this notice adds no new validation or certification.
+
 Implemented on `feature/huawei-rtc-core` with Infobip RTC Core **2.5.28**. This is local client validation; Huawei hardware, Bluetooth behavior and live agent media remain to be tested.
 
 ## SDK evidence and exact APIs

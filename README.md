@@ -3,8 +3,8 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout prepares **2.0.0** for publication with Huawei SDK 9.3.0.
-The hosted installation below applies once 2.0.0 is published.
+This checkout prepares **2.1.0** for publication with Huawei SDK 9.3.0.
+The hosted installation below applies once 2.1.0 is published.
 Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
 
@@ -20,6 +20,7 @@ For a release candidate not yet available on pub.dev, use the checkout path belo
 - [Push notifications](#push-notifications)
 - [Live Chat and lifecycle](#chat-integration)
 - [User, installation, Inbox and custom events](#inbox-and-user-management)
+- [Partial user updates](#partial-user-updates) and [email validation privacy](#user-validation-privacy)
 - [Outgoing RTC audio and video](#rtc-audio--video-calls)
 - [RTC rendering and controls](#rtc-rendering-and-controls)
 - [Experimental foreground incoming RTC](#experimental-foreground-incoming-rtc)
@@ -69,9 +70,9 @@ integration on physical Huawei hardware. Android 36 Robolectric tests require Ja
 Version 2.0.0 changes the host Android build requirements below.
 The developer reports successful functional testing on a Huawei device; this
 testing was not independently verified.
-Automated validation previously passed 1,107 tests, APK builds, R8 and alignment
-checks. The owner acknowledges the unresolved upstream SEC-01 logging risk and
-has approved release preparation; see [security guidance](SECURITY.md).
+The 2.0.0 validation snapshot passed 1,107 tests, APK builds, R8 and alignment
+checks; it is historical evidence for that candidate. The owner acknowledges the
+unresolved upstream SEC-01 logging risk and has approved release preparation; see [security guidance](SECURITY.md).
 Before device installation, verify the host's
 AG Connect package/application ID, numeric Huawei app ID and signing certificate.
 Local example configuration alone does not establish backend authorization.
@@ -118,11 +119,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^2.0.0
+  infobip_mobilemessaging_huawei: ^2.1.0
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above once 2.0.0 is published. To evaluate this candidate,
+the hosted dependency above once 2.1.0 is published. To evaluate this candidate,
 clone this repository and point your host at that checkout instead:
 
 ```yaml
@@ -730,6 +731,24 @@ account changes and needs process recreation. Handle failures before moving on.
 
 ## Inbox and User Management
 
+Personalization accepts optional `keepAsLead` and `setDeviceAsPrimary` flags,
+both defaulting to `false`:
+
+```dart
+await InfobipMobileMessagingHuawei.personalize(PersonalizeContext(
+  userIdentity: UserIdentity(externalUserId: 'your-user-id'),
+  keepAsLead: false,
+  setDeviceAsPrimary: true,
+));
+```
+
+The native 9.3.0 mapping is `identity, attributes, forceDepersonalize,
+keepAsLead, setDeviceAsPrimary, listener`. Existing callers and the legacy
+`personalizeUser` API retain false defaults for the new flags. Email privacy
+validation still runs before SDK invocation. Lead and primary-device effects
+require physical Huawei device/backend testing; see
+[G-02 personalization flags](doc/G-02_PERSONALIZATION_FLAGS.md).
+
 Use `personalize(PersonalizeContext(...))` for a signed-in user's identity,
 `fetchUser()` for server refresh and `depersonalize()` at logout. Do not use SDK
 cleanup as a logout shortcut. Install `setJwt` before protected MM user requests.
@@ -751,6 +770,28 @@ user ID as sufficient backend authorization. A Sandbox profile configured for
 Application Code auth may omit `jwt`; a global `setJwt` value still takes
 precedence. `setInboxMessagesSeen` retains installation context and has no JWT
 parameter. See [user, installation and Inbox examples](doc/messaging-chat.md).
+
+### Partial user updates
+
+`saveUser(UserData)` retains its existing nullable-field serialization and native setter behavior for compatibility. Do not use a sparse `UserData` as a partial update: unspecified fields are sent as null. Use the additive `patchUser` API instead:
+
+```dart
+await InfobipMobileMessagingHuawei.patchUser(const UserPatch(
+  firstName: FieldUpdate.set('Michael'),
+  lastName: FieldUpdate.clear(),
+  customAttributes: FieldUpdate.set({'obsolete': null}),
+));
+```
+
+Fields default to `FieldUpdate.omitted()` and leave existing values unchanged. `FieldUpdate.set` requires a non-null value; empty strings and collections remain explicit values. `FieldUpdate.clear()` includes a null key in the SDK request map. Custom attributes are updated by key; a null attribute value requests deletion. Clearing the whole custom-attribute map is rejected with `invalid_argument`; use individual null entries. Type and installations are read-only and excluded from patches. Native SDK validation and error callbacks still apply.
+
+An empty patch (`const UserPatch()`) is forwarded to the SDK as an empty map and is **not guaranteed to be a successful no-op**. In SDK 9.3.0, without pending user data it may result in `ERROR_SAVING_EMPTY_OBJECT`, following applicable registration checks. With pending unreported user data, it may retry those changes. SDK duplicate/debouncing behavior may also affect the callback. Avoid calling `patchUser` when no fields are selected for updating.
+
+SDK 9.3.0 request-map semantics are checked locally. Backend deletion and server handling of empty values have not been demonstrated through controlled backend testing.
+
+### User validation privacy
+
+For `saveUser`, `patchUser`, and `personalize` (including the legacy `personalizeUser` alias), each supplied email is limited to 255 UTF-16 code units, matching SDK 9.3.0's existing length limit. The plugin rejects longer values before SDK submission with `PlatformException` code `-10` and a message that contains no submitted values. No syntax validation, trimming, or normalization is added. Null, omitted, empty-list, and multiple-email behavior is preserved. Accepted email values pass through unchanged. This protection applies to newly submitted overlong emails; previously pending SDK data and SDK-managed sync remain upstream risks. It does not suppress arbitrary SDK logging. See the [user validation privacy report](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/blob/fce54e801a0a1d92cdd5ab79b4bf5158d78fb102/doc/user-validation-privacy-report.md).
 
 ### Installation settings and custom events
 
@@ -1202,22 +1243,14 @@ example APK builds, and `flutter pub publish --dry-run`. Android SDK 37.0 is
 installed explicitly; the existing Gradle wrapper, AGP compatibility flags and
 Huawei repositories are retained. Safe example configuration is generated before
 analysis/tests/builds. No private Huawei configuration is needed for these builds;
-device/backend acceptance remains manual. No build artifacts or logs are uploaded.
+device/backend acceptance remains manual. CI attempts to upload native JUnit XML
+and HTML test reports as `android-native-unit-test-reports`, including after a
+failed step, with seven-day retention. If no report files exist, the upload warns;
+reports are not guaranteed when tests cannot start. APKs and full console logs
+are not uploaded as artifacts by this workflow. GitHub Actions job logs are
+separate from the report artifact.
 
-To validate this feature branch before merging, first commit/push the reviewed
-workflow changes, then open a PR targeting `main` (an existing PR runs again when
-updated):
-
-```sh
-gh pr create --base main --head feature/infobip-huawei-sdk-9.3.0-upgrade --fill
-```
-
-Manual dispatch requires `ci.yml` to exist on the default branch first. Once it
-does, validate the pushed feature branch without merging it:
-
-```sh
-gh workflow run ci.yml --ref feature/infobip-huawei-sdk-9.3.0-upgrade
-```
+For local validation commands, see [contributing](CONTRIBUTING.md#formatting-and-validation).
 
 One-time publication setup:
 
@@ -1237,10 +1270,10 @@ One-time publication setup:
 
 Release runs are manual and require an existing, separately approved version tag
 on a reviewed commit already merged into `main`. The workflow creates no tags or
-GitHub Releases. For version `2.0.0`, after that tag exists:
+GitHub Releases. For version `2.1.0`, after that tag exists:
 
 ```sh
-gh workflow run publish.yml --ref v2.0.0 -f version=2.0.0
+gh workflow run publish.yml --ref v2.1.0 -f version=2.1.0
 ```
 
 Branch dispatches cannot publish. CI verifies the tag/version against
@@ -1278,6 +1311,9 @@ headers, messages, raw SDK errors or captured content. Explain MediaProjection's
 scope and provide Stop: it can capture private content outside your app.
 
 ## Documentation
+
+The [repository documentation index](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/tree/development/doc)
+also lists historical engineering reports and evidence retained outside the package.
 
 - [Messaging, Push, Chat, user management and Inbox](doc/messaging-chat.md)
 - [Outgoing RTC: events, rendering, controls and notifications](doc/huawei-rtc-outgoing.md)

@@ -116,6 +116,13 @@ final class MethodChannelInfobipMobileMessagingHuawei
   );
 
   @override
+  Future<UserData> patchUser(UserPatch patch) async => UserCodec.decode(
+    await methodChannel.invokeMethod<Object?>(ChannelContract.patchUser, {
+      ChannelContract.user: UserCodec.encodePatch(patch),
+    }),
+  );
+
+  @override
   Future<UserData> saveUser(UserData user) async => UserCodec.decode(
     await methodChannel.invokeMethod<Object?>(ChannelContract.saveUser, {
       ChannelContract.user: UserCodec.encode(user),
@@ -127,6 +134,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
     UserIdentity userIdentity,
     UserAttributes? userAttributes, {
     required bool forceDepersonalize,
+    bool keepAsLead = false,
+    bool setDeviceAsPrimary = false,
   }) async => UserCodec.decode(
     await methodChannel.invokeMethod<Object?>(ChannelContract.personalize, {
       ChannelContract.userIdentity: UserCodec.encodeIdentity(userIdentity),
@@ -134,6 +143,8 @@ final class MethodChannelInfobipMobileMessagingHuawei
           ? null
           : UserCodec.encodeAttributes(userAttributes),
       ChannelContract.forceDepersonalize: forceDepersonalize,
+      ChannelContract.keepAsLead: keepAsLead,
+      ChannelContract.setDeviceAsPrimary: setDeviceAsPrimary,
     }),
   );
 

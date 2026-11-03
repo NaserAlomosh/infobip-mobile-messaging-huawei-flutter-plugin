@@ -1,3 +1,19 @@
+## 2.1.0
+
+- Add typed `patchUser` updates that preserve omitted fields and explicit clears without changing `saveUser`.
+- Add optional `PersonalizeContext.keepAsLead` and `setDeviceAsPrimary`, both
+  defaulting to false, forwarded to Huawei SDK 9.3.0. Backend lead retention,
+  primary-device selection and persistence still require device/backend validation.
+- Reject newly supplied emails longer than 255 UTF-16 code units in `saveUser`,
+  `patchUser`, `personalize` and legacy `personalizeUser` before SDK entry, with
+  code `-10` and a value-free message. Accepted values remain unchanged; no syntax
+  validation, trimming or normalization is added. Previously pending emails and
+  SDK-managed synchronization remain upstream risks; SEC-01 remains unresolved.
+- Correct API/setup documentation, distinguish current guides from historical
+  reports, and retain native CI test reports for failure diagnosis.
+- Preserve SDK versions, host requirements, and the PARTIALLY MITIGATED SEC-01
+  classification; automated checks do not establish device/backend acceptance.
+
 ## 2.0.0
 
 - Upgrade Huawei Mobile Messaging Core, Inbox and Chat to 9.3.0; retain RTC

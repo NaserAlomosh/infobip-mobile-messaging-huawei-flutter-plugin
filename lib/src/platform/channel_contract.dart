@@ -47,6 +47,7 @@ abstract final class ChannelContract {
   static const applicationCode = 'applicationCode';
   static const getUser = 'getUser';
   static const fetchUser = 'fetchUser';
+  static const patchUser = 'patchUser';
   static const saveUser = 'saveUser';
   static const personalize = 'personalize';
   static const depersonalize = 'depersonalize';
@@ -81,6 +82,8 @@ abstract final class ChannelContract {
   static const userIdentity = 'userIdentity';
   static const userAttributes = 'userAttributes';
   static const forceDepersonalize = 'forceDepersonalize';
+  static const keepAsLead = 'keepAsLead';
+  static const setDeviceAsPrimary = 'setDeviceAsPrimary';
   static const externalUserId = 'externalUserId';
   static const firstName = 'firstName';
   static const lastName = 'lastName';

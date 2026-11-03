@@ -1,7 +1,7 @@
 # API Compatibility
 
-The Huawei 9.3.0 migration preserves the public Dart API. Upcoming 2.0.0
-breaking changes concern Flutter/Dart and Android host build requirements; see
+The Huawei 9.3.0 migration preserves the public Dart API. The 2.0.0
+breaking changes concerned Flutter/Dart and Android host build requirements; see
 [README](README.md#requirements). The detailed SDK parity comparisons below are
 historical 8.14.0 evidence, not a complete 9.3.0 API certification.
 
@@ -12,6 +12,33 @@ nullable `YYYY-MM-DD` strings; message timestamps are numeric epoch milliseconds
 constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
 Historical audit reports excluded from the published package record their
 original verification snapshots, not the current release status.
+
+## 2.1.0 compatibility assessment
+
+Compared with published 2.0.0, the documented public API adds `UserPatch`,
+`FieldUpdate`, `patchUser`, and optional personalization flags with false defaults.
+Existing `saveUser` semantics and legacy personalization signatures remain intact.
+The email guard preserves the SDK length limit and error code while removing
+submitted values from the rejection path. SDK versions and build requirements
+are unchanged. A minor version is appropriate under [SemVer](https://semver.org/).
+Internal `src/platform` overrides of `personalize` must accept the two new optional
+named parameters; these implementation classes are not exported by the package
+entry point. Consumers should use the documented public entry point.
+
+## Current user-management extensions (SDK 9.3.0)
+
+These additions supplement the historical parity tables below:
+
+| Extension | Current contract | Evidence boundary |
+| --- | --- | --- |
+| G-01: `patchUser(UserPatch)` | `FieldUpdate.omitted()` excludes a field; `set(value)` sends a non-null value; `clear()` sends null. Custom-attribute null entries request per-key deletion; whole-map clearing is rejected. Legacy `saveUser` still sends unspecified fields as null. | Native request-map semantics do not prove backend deletion. Empty patches reach the SDK and may fail or retry pending data. |
+| G-02: personalization flags | `PersonalizeContext.keepAsLead` and `setDeviceAsPrimary` both default to false. Native order is `identity, attributes, forceDepersonalize, keepAsLead, setDeviceAsPrimary, listener`. The legacy `personalizeUser` alias retains false defaults. | Forwarding does not certify backend lead retention, primary-device selection or persistence. |
+| Email privacy guard | `saveUser`, `patchUser`, `personalize` and legacy `personalizeUser` reject newly supplied emails longer than 255 UTF-16 code units before SDK entry, with code `-10` and a value-free message. No syntax validation, trimming or normalization is added. | Previously pending emails and SDK-managed synchronization remain upstream risks. SEC-01 remains unresolved upstream. |
+
+See [user-update recipes](doc/messaging-chat.md#user),
+[personalization](README.md#inbox-and-user-management),
+[email privacy](README.md#user-validation-privacy), and [security](SECURITY.md).
+These contracts do not represent newly executed device or backend tests.
 
 ## Huawei outgoing RTC extension (separate from official parity)
 

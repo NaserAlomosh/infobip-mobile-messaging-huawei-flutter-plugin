@@ -87,10 +87,50 @@ typedef User = UserData;
 class PersonalizeContext {
   PersonalizeContext({
     this.forceDepersonalize = false,
+    this.keepAsLead = false,
+    this.setDeviceAsPrimary = false,
     required this.userIdentity,
     this.userAttributes,
   });
   final bool forceDepersonalize;
+  final bool keepAsLead;
+  final bool setDeviceAsPrimary;
   final UserIdentity userIdentity;
   final UserAttributes? userAttributes;
+}
+
+/// One explicit patch operation. Null is represented only by [FieldUpdate.clear].
+class FieldUpdate<T extends Object> {
+  const FieldUpdate.omitted() : included = false, value = null;
+  const FieldUpdate.set(T this.value) : included = true;
+  const FieldUpdate.clear() : included = true, value = null;
+  final bool included;
+  final T? value;
+}
+
+/// Partial user update. Unspecified fields remain unchanged.
+/// Clear custom attributes individually with null map values.
+class UserPatch {
+  const UserPatch({
+    this.externalUserId = const FieldUpdate.omitted(),
+    this.firstName = const FieldUpdate.omitted(),
+    this.lastName = const FieldUpdate.omitted(),
+    this.middleName = const FieldUpdate.omitted(),
+    this.gender = const FieldUpdate.omitted(),
+    this.birthday = const FieldUpdate.omitted(),
+    this.phones = const FieldUpdate.omitted(),
+    this.emails = const FieldUpdate.omitted(),
+    this.tags = const FieldUpdate.omitted(),
+    this.customAttributes = const FieldUpdate.omitted(),
+  });
+  final FieldUpdate<String> externalUserId;
+  final FieldUpdate<String> firstName;
+  final FieldUpdate<String> lastName;
+  final FieldUpdate<String> middleName;
+  final FieldUpdate<Gender> gender;
+  final FieldUpdate<String> birthday;
+  final FieldUpdate<List<String>> phones;
+  final FieldUpdate<List<String>> emails;
+  final FieldUpdate<List<String>> tags;
+  final FieldUpdate<Map<String, Object?>> customAttributes;
 }
