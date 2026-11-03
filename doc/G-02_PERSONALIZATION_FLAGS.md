@@ -52,7 +52,7 @@ Android counts come from the 57 JUnit XML suite reports per variant. Flag combin
 
 Physical Huawei device and backend testing remains required to establish lead retention/conversion, primary-device selection across multiple registered devices, force-depersonalization effects, backend responses, offline/retry behavior, persisted state, and upgrade behavior. Automated tests do not certify HMS delivery or Portal state. Previously pending emails and SDK-managed synchronization remain upstream privacy limitations described in [the privacy report](user-validation-privacy-report.md).
 
-RTC, SEC-01, SDK versions, dependencies, and unrelated functionality are outside this change. No commit, push, or PR is created.
+RTC, SEC-01, SDK versions, dependencies, and unrelated functionality are outside this change.
 
 ## Changed files
 
