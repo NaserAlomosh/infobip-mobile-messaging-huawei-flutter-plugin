@@ -3,8 +3,8 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout prepares **2.0.0** for publication with Huawei SDK 9.3.0.
-The hosted installation below applies once 2.0.0 is published.
+This checkout prepares **2.1.0** for publication with Huawei SDK 9.3.0.
+The hosted installation below applies once 2.1.0 is published.
 Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
 
@@ -70,9 +70,9 @@ integration on physical Huawei hardware. Android 36 Robolectric tests require Ja
 Version 2.0.0 changes the host Android build requirements below.
 The developer reports successful functional testing on a Huawei device; this
 testing was not independently verified.
-Automated validation previously passed 1,107 tests, APK builds, R8 and alignment
-checks. The owner acknowledges the unresolved upstream SEC-01 logging risk and
-has approved release preparation; see [security guidance](SECURITY.md).
+The 2.0.0 validation snapshot passed 1,107 tests, APK builds, R8 and alignment
+checks; it is historical evidence for that candidate. The owner acknowledges the
+unresolved upstream SEC-01 logging risk and has approved release preparation; see [security guidance](SECURITY.md).
 Before device installation, verify the host's
 AG Connect package/application ID, numeric Huawei app ID and signing certificate.
 Local example configuration alone does not establish backend authorization.
@@ -119,11 +119,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^2.0.0
+  infobip_mobilemessaging_huawei: ^2.1.0
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above once 2.0.0 is published. To evaluate this candidate,
+the hosted dependency above once 2.1.0 is published. To evaluate this candidate,
 clone this repository and point your host at that checkout instead:
 
 ```yaml
@@ -1270,10 +1270,10 @@ One-time publication setup:
 
 Release runs are manual and require an existing, separately approved version tag
 on a reviewed commit already merged into `main`. The workflow creates no tags or
-GitHub Releases. For version `2.0.0`, after that tag exists:
+GitHub Releases. For version `2.1.0`, after that tag exists:
 
 ```sh
-gh workflow run publish.yml --ref v2.0.0 -f version=2.0.0
+gh workflow run publish.yml --ref v2.1.0 -f version=2.1.0
 ```
 
 Branch dispatches cannot publish. CI verifies the tag/version against

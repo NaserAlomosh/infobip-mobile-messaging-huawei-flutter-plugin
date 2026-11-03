@@ -1,7 +1,7 @@
 # API Compatibility
 
-The Huawei 9.3.0 migration preserves the public Dart API. Upcoming 2.0.0
-breaking changes concern Flutter/Dart and Android host build requirements; see
+The Huawei 9.3.0 migration preserves the public Dart API. The 2.0.0
+breaking changes concerned Flutter/Dart and Android host build requirements; see
 [README](README.md#requirements). The detailed SDK parity comparisons below are
 historical 8.14.0 evidence, not a complete 9.3.0 API certification.
 
@@ -12,6 +12,18 @@ nullable `YYYY-MM-DD` strings; message timestamps are numeric epoch milliseconds
 constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
 Historical audit reports excluded from the published package record their
 original verification snapshots, not the current release status.
+
+## 2.1.0 compatibility assessment
+
+Compared with published 2.0.0, the documented public API adds `UserPatch`,
+`FieldUpdate`, `patchUser`, and optional personalization flags with false defaults.
+Existing `saveUser` semantics and legacy personalization signatures remain intact.
+The email guard preserves the SDK length limit and error code while removing
+submitted values from the rejection path. SDK versions and build requirements
+are unchanged. A minor version is appropriate under [SemVer](https://semver.org/).
+Internal `src/platform` overrides of `personalize` must accept the two new optional
+named parameters; these implementation classes are not exported by the package
+entry point. Consumers should use the documented public entry point.
 
 ## Current user-management extensions (SDK 9.3.0)
 

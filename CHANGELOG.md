@@ -1,4 +1,4 @@
-## Unreleased
+## 2.1.0
 
 - Add typed `patchUser` updates that preserve omitted fields and explicit clears without changing `saveUser`.
 - Add optional `PersonalizeContext.keepAsLead` and `setDeviceAsPrimary`, both
@@ -9,6 +9,10 @@
   code `-10` and a value-free message. Accepted values remain unchanged; no syntax
   validation, trimming or normalization is added. Previously pending emails and
   SDK-managed synchronization remain upstream risks; SEC-01 remains unresolved.
+- Correct API/setup documentation, distinguish current guides from historical
+  reports, and retain native CI test reports for failure diagnosis.
+- Preserve SDK versions, host requirements, and the PARTIALLY MITIGATED SEC-01
+  classification; automated checks do not establish device/backend acceptance.
 
 ## 2.0.0
 
