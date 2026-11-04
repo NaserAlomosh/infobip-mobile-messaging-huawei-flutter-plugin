@@ -10,7 +10,7 @@
 
 ## Dependencies
 
-The native implementation targets Infobip Huawei Mobile Messaging Core, Inbox and Chat SDKs 9.3.0 (RTC Core remains 2.5.28). Do not upgrade Infobip, Huawei, Flutter, Kotlin, Gradle, or Android Gradle Plugin dependencies silently. Review release notes, transitive dependencies, repository requirements, host impact, and `API_COMPATIBILITY.md` for every SDK change. Do not add copied AARs, application-specific SDKs, signing configuration, or unrelated build plugins.
+The native implementation targets Infobip Huawei Mobile Messaging Core, Inbox and Chat SDKs 9.4.0 (RTC Core remains 2.5.28). Do not upgrade Infobip, Huawei, Flutter, Kotlin, Gradle, or Android Gradle Plugin dependencies silently. Review release notes, transitive dependencies, repository requirements, host impact, and `API_COMPATIBILITY.md` for every SDK change. Do not add copied AARs, application-specific SDKs, signing configuration, or unrelated build plugins.
 
 ## Formatting and validation
 

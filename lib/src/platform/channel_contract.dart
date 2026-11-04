@@ -67,6 +67,14 @@ abstract final class ChannelContract {
   static const setChatCustomization = 'setChatCustomization';
   static const setChatPushTitle = 'setChatPushTitle';
   static const setChatPushBody = 'setChatPushBody';
+  static const getPendingChatNotificationNavigation =
+      'getPendingChatNotificationNavigation';
+  static const acknowledgeChatNotificationNavigation =
+      'acknowledgeChatNotificationNavigation';
+  static const chatNotificationNavigationRequested =
+      'chat_notification_navigation_requested';
+  static const setChatNotificationPresentationMode =
+      'setChatNotificationPresentationMode';
   static const showChat = 'showChat';
   static const resolveChatJwt = 'resolveChatJwt';
   static const rejectChatJwt = 'rejectChatJwt';

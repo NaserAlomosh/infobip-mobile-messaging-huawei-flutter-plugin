@@ -55,6 +55,7 @@ class ExampleController extends ChangeNotifier {
       ? config.chatAuth
       : 'unconfigured';
   bool get initialized => _initialized;
+  bool get chatPrepared => _chatPrepared;
   bool get busy => _busy;
   Installation? get installation => _installation;
   UserData? get user => _user;

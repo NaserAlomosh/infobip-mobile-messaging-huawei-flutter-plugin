@@ -40,8 +40,26 @@ internal class ChatPlatformView(
     private var fragmentActivity: FragmentActivity? = activity as? FragmentActivity
     private var fragment: InAppChatFragment? = null
     private var currentWidgetView: LivechatWidgetView? = null
+    private var pendingNotificationThread: String? = null
+    private val notificationTarget: (String) -> Unit = ::deliverNotificationThread
+    private fun deliverNotificationThread(threadId: String) {
+        pendingNotificationThread = threadId
+        mainHandler.post {
+            if (disposed || pendingNotificationThread != threadId) return@post
+            val current = fragment ?: return@post
+            if (!current.isAdded) return@post
+            pendingNotificationThread = null
+            if (current.isMultiThread) current.showThread(threadId)
+        }
+    }
     private var disposed = false
     private var flutterReady = false
+    private val loadingTimeout = Runnable {
+        if (!disposed) {
+            Log.w(TAG, "Chat loading deadline exceeded (30s); visual readiness is unconfirmed")
+            reportError(ChatViewError("native_error", "Chat loading timed out; check connectivity and widget configuration"))
+        }
+    }
     private val root: View
 
     init {
@@ -63,6 +81,9 @@ internal class ChatPlatformView(
             else -> createFragmentContainer(activity)
         }
         channel.setMethodCallHandler(this)
+        if (fragmentActivity != null && failure == null) {
+            mainHandler.postDelayed(loadingTimeout, 30_000L)
+        }
         Log.d(TAG, "ChatPlatformView ready")
     }
 
@@ -95,10 +116,14 @@ internal class ChatPlatformView(
                         }
                     }
                     override fun onChatLoadingFinished(result: LivechatWidgetResult<Unit>) {
+                        if (disposed) return
+                        mainHandler.removeCallbacks(loadingTimeout)
+                        Log.d(TAG, "Chat loading callback success=${result.isSuccess}; visual rendering unverified")
                         publishRuntimeEvent(
                             ChannelContract.CHAT_LOADED,
                             result.isSuccess,
                         )
+                        if (result.isSuccess) ChatNotificationRouting.targets.listen(notificationTarget)
                         if (!result.isSuccess) {
                             reportError(ChatViewError("chat_runtime_error", "Chat loading failed"))
                         }
@@ -152,10 +177,11 @@ internal class ChatPlatformView(
             currentWidgetView = null
             fragment = created
             manager.beginTransaction()
-                .replace(container.id, created, fragmentTag(container.id))
+                .add(container, created, fragmentTag(container.id))
                 .runOnCommit {
                     if (!disposed && fragment === created) {
                         Log.d(TAG, "InAppChatFragment attached")
+                        ChatNotificationRouting.activeCorrelationId?.let { ChatNotificationTrace.log("CHAT_FRAGMENT_ATTACHED", it) }
                     }
                 }
                 .commit()
@@ -313,19 +339,23 @@ internal class ChatPlatformView(
     override fun dispose() {
         if (disposed) return
         disposed = true
+        ChatNotificationRouting.targets.cancel(notificationTarget)
+        pendingNotificationThread?.let(ChatNotificationRouting.targets::offer)
+        pendingNotificationThread = null
         runtimeEvents.dispose()
         mainHandler.removeCallbacksAndMessages(null)
         channel.setMethodCallHandler(null)
         val current = fragment
         fragment = null
+        current?.eventsListener = null
         currentWidgetView = null
         val manager = fragmentActivity?.supportFragmentManager
         fragmentActivity = null
-        if (current != null && manager != null && current.isAdded && !manager.isDestroyed) {
+        if (current != null && manager != null && !manager.isDestroyed) {
             try {
                 val transaction = manager.beginTransaction().remove(current)
                 if (manager.isStateSaved) transaction.commitAllowingStateLoss() else transaction.commit()
-                Log.d(TAG, "InAppChatFragment removed")
+                Log.d(TAG, "InAppChatFragment removal queued")
             } catch (error: RuntimeException) {
                 Log.w(TAG, "InAppChatFragment could not be removed")
             }
@@ -334,6 +364,8 @@ internal class ChatPlatformView(
     }
 
     private fun reportError(error: ChatViewError) {
+        if (disposed) return
+        mainHandler.removeCallbacks(loadingTimeout)
         if (flutterReady) channel.invokeMethod(ChannelContract.CHAT_ON_ERROR, error.toMap()) else pendingError.set(error)
     }
 

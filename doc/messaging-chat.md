@@ -107,7 +107,7 @@ setter behavior for compatibility. Unspecified fields are sent as null; a sparse
 `UserData` must not be treated as a partial update.
 
 Personalization also accepts `keepAsLead` and `setDeviceAsPrimary`, both defaulting
-to false. They are forwarded to SDK 9.3.0; backend lead and primary-device outcomes
+to false. They are forwarded to SDK 9.4.0; backend lead and primary-device outcomes
 require physical Huawei/backend validation. See the
 [personalization example](../README.md#inbox-and-user-management).
 
@@ -344,3 +344,35 @@ Cancel your own view/event subscriptions when disposing their owner.
 | Screen stops on rotation | Resize-triggered Stop is intentional; restart with new consent |
 | Tiny portrait text | 640×480 output and aspect-preserving bars; use landscape or larger text |
 | `screen_stop_uncertain` | Inspect projection/resource state; retry Stop or use OS capture controls |
+
+## Chat notification routing
+
+Native SDK-owned presentation is the default in 2.2.0. Fresh and existing
+installations with no saved preference retain the SDK default interaction handler
+and need no Flutter navigation handler. Opt into embedded presentation explicitly;
+it brings the Flutter host forward and your application must open its own Chat route:
+
+```dart
+await InfobipMobileMessagingHuawei.chat.setNotificationPresentationMode(
+  ChatNotificationPresentationMode.embedded, // or .native
+);
+```
+
+Subscribe once at app level to `chat.onNotificationNavigationRequested`, and query
+`chat.getPendingNotificationNavigation()` after subscribing, on resume and after
+Chat setup recovers. Serialize processing; wait for a resumed app, Navigator and
+authenticated Chat setup. Open or reuse a single embedded route, then call
+`chat.acknowledgeNotificationNavigation(request.correlationId)`. Acknowledgement
+hands the SDK-parsed thread target to the fragment; reading or receiving a request
+does not consume it. Generic notification taps remain informational.
+
+Mode selection persists across restarts; previously saved native or embedded
+choices are preserved without migration. Pending requests and duplicate suppression
+are process-local; they survive engine recreation but not another process death
+after interception. Cleanup clears pending state. Threadless taps are supported.
+Native mode delegates to the SDK default handler, whose destination depends on
+the payload. Explicit `showChat()` always opens native Chat.
+
+See the [example handler](../example/lib/app.dart) and
+[README routing guidance](../README.md#push-notifications). Real Huawei delivery,
+correct thread selection and visual readiness require device/backend acceptance.

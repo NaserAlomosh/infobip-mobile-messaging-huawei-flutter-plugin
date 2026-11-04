@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application>
+        <provider android:name="com.infobip.mobilemessaging.huawei.chat.ChatNotificationRoutingProvider"
+            android:authorities="${applicationId}.infobip-huawei-chat-navigation"
+            android:exported="false" />
         <service android:name="com.infobip.mobilemessaging.huawei.rtc.HuaweiRtcScreenCaptureService"
             android:exported="false" android:stopWithTask="true"
             android:foregroundServiceType="mediaProjection" />

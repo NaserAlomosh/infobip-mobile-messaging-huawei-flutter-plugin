@@ -36,7 +36,8 @@ SDK logging or resolve SEC-01.
 no vendor binary is patched and no permanent fix is established.
 
 - Huawei Mobile Messaging **8.14.0** (published 1.1.0) and **9.3.0**
-  (2.0.0 release candidate) log authorization headers through its
+  (2.0.0 release candidate), and **9.4.0** (2.2.0 candidate) retain
+  authorization-header logging through the
   dependency's `AuthorizationUtils` (`System.out.println`). The owner reported
   release-device exposure; the upstream SDK remains unchanged.
 - Infobip RTC **2.5.28** logs raw signaling messages through

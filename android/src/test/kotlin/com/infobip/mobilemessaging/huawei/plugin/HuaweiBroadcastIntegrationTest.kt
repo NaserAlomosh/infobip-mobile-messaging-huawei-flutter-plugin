@@ -43,7 +43,7 @@ class HuaweiBroadcastIntegrationTest {
         override fun error(code: String, message: String?, details: Any?) { throw AssertionError(code) }
         override fun endOfStream() {}
     }
-    @After fun detach() { bridge.detach() }
+    @After fun detach() { bridge.detach(); com.infobip.mobilemessaging.huawei.chat.ChatNotificationRouting.navigation.clear() }
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
     private fun message() = Message().apply {
         messageId = "1788547032704145206"
@@ -53,6 +53,28 @@ class HuaweiBroadcastIntegrationTest {
         customPayload = JSONObject().put("nested", JSONObject().put("flag", true))
     }
     private fun payload(type: String) = events.single { it["type"] == type }["payload"] as Map<*, *>
+
+    @Test fun `chat navigation replays after engine detach until Flutter route acknowledges`() {
+        val navigation = com.infobip.mobilemessaging.huawei.chat.ChatNotificationRouting.navigation
+        val request = navigation.enqueue("fixture-chat-push", "fixture-thread")!!
+        bridge.listen(sink)
+        idle()
+        val navigationPayload = payload("chat_notification_navigation_requested")
+        assertEquals(request.correlationId, navigationPayload["correlationId"])
+        assertEquals("fixture-thread", navigationPayload["threadId"])
+        assertNotNull(navigation.peek())
+        bridge.cancel()
+        events.clear()
+        bridge.listen(sink)
+        idle()
+        assertEquals(1, events.size)
+        assertTrue(navigation.acknowledge(request.correlationId))
+        bridge.cancel()
+        events.clear()
+        bridge.listen(sink)
+        idle()
+        assertTrue(events.isEmpty())
+    }
 
     @Test fun `published Huawei broadcasters decode messages installation user registration and unread`() {
         bridge.register()

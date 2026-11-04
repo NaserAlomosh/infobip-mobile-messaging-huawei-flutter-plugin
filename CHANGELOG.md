@@ -1,3 +1,43 @@
+## 2.2.0 (unreleased)
+
+### Added
+
+- Public Chat notification presentation modes and pending-navigation query,
+  event and acknowledgement APIs for host-owned Flutter navigation.
+- Example app startup/resume recovery, ordered request handling, duplicate
+  suppression and reuse of the embedded Chat route.
+
+### Changed
+
+- Upgrade Infobip Huawei Core, Inbox and Chat from 9.3.0 to 9.4.0.
+  RTC Core remains 2.5.28; Flutter/Android build requirements are unchanged.
+- Native SDK-owned notification presentation remains the default when no mode
+  is saved. Embedded routing requires explicit opt-in and a host navigation handler;
+  previously saved native or embedded choices remain unchanged.
+  Pending navigation survives engine recreation, but is not persisted across
+  another process death after interception.
+
+### Fixed
+
+- Use hybrid composition and container-based fragment attachment for embedded
+  Chat; report a 30-second loading timeout and detach callbacks during disposal.
+- Preserve SDK-parsed thread targets until route acknowledgement, including
+  threadless notification requests and delayed Flutter startup.
+
+### Security
+
+- Preserve pre-SDK email validation and existing logging mitigations. SEC-01
+  remains PARTIALLY MITIGATED; SDK 9.4.0 does not resolve upstream sensitive logging.
+
+### Documentation
+
+- Align current SDK/version references and document native versus embedded
+  notification ownership, lifecycle limitations and release validation evidence.
+
+No public API removals or new host build requirements. Physical Huawei push,
+visual Chat readiness, backend behavior and signed upgrade/rollback remain
+unverified by automated checks.
+
 ## 2.1.0
 
 - Add typed `patchUser` updates that preserve omitted fields and explicit clears without changing `saveUser`.

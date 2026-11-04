@@ -8,6 +8,8 @@ import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.infobip.mobilemessaging.huawei.chat.ChatNotificationRouting
+import com.infobip.mobilemessaging.huawei.chat.ChatNotificationTrace
 import com.infobip.mobilemessaging.huawei.chat.ChatManager
 import com.infobip.mobilemessaging.huawei.chat.ChatPlatformViewFactory
 import com.infobip.mobilemessaging.huawei.core.CleanupManager
@@ -177,6 +179,9 @@ class InfobipMobileMessagingHuaweiPlugin :
                 isInitialized = { initializer?.isInitialized == true },
                 clearPluginJwtState = {
                     eventBridge?.clearPendingTaps()
+                    ChatNotificationRouting.targets.clear()
+                    ChatNotificationRouting.navigation.clear()
+                    ChatNotificationRouting.activeCorrelationId = null
                     inboxManager?.clearJwtState()
                     chatManager?.clearJwtProvider()
                     chatManager?.clearExceptionHandler()
@@ -487,6 +492,38 @@ class InfobipMobileMessagingHuaweiPlugin :
                 val failure = manager.setChatPushBody(call.arguments as String?)
                 if (failure == null) result.success(null)
                 else result.error(failure.code, failure.message, null)
+            }
+
+            ChannelContract.GET_PENDING_CHAT_NOTIFICATION_NAVIGATION -> {
+                val request = ChatNotificationRouting.navigation.peek()
+                request?.let {
+                    ChatNotificationRouting.activeCorrelationId = it.correlationId
+                    ChatNotificationTrace.log("CHAT_EVENT_DELIVERED_TO_FLUTTER", it.correlationId)
+                }
+                result.success(request?.toMap())
+            }
+            ChannelContract.ACKNOWLEDGE_CHAT_NOTIFICATION_NAVIGATION -> {
+                val correlationId = call.arguments as? String
+                val routing = ChatNotificationRouting
+                val request = routing.navigation.peek()
+                if (correlationId == null || request?.correlationId != correlationId) {
+                    result.success(false)
+                } else {
+                    routing.activeCorrelationId = correlationId
+                    if (routing.targets.isListening()) ChatNotificationTrace.log("CHAT_FRAGMENT_ATTACHED", correlationId)
+                    request.threadId?.let(routing.targets::offer)
+                    result.success(routing.navigation.acknowledge(correlationId))
+                }
+            }
+
+            ChannelContract.SET_CHAT_NOTIFICATION_PRESENTATION_MODE -> {
+                val context = applicationContext ?: return detached(result)
+                try {
+                    if (ChatNotificationRouting.configure(context, call.arguments)) result.success(null)
+                    else result.error("invalid_argument", "Expected embedded or native", null)
+                } catch (_: Exception) {
+                    result.error("native_error", "Unable to configure Chat notification navigation", null)
+                }
             }
 
             ChannelContract.SHOW_CHAT -> {

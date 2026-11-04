@@ -43,6 +43,7 @@ internal class ChatManager(
         Log.d(TAG, "InAppChat activation started")
         return try {
             inAppChat.activate()
+            inAppChat.setNotificationInteractionHandler(ChatNotificationRouting(applicationContext))
             if (disposed || generation != activationGeneration) return ChatFailure("chat_unavailable", "Chat activation was invalidated")
             inAppChat.inAppChatScreen().errorHandler = exceptionBridge
             if (disposed || generation != activationGeneration) return ChatFailure("chat_unavailable", "Chat activation was invalidated")

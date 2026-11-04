@@ -1,5 +1,8 @@
 # User Validation Privacy — Engineering Report
 
+> Historical evidence: SDK 9.3.0 implementation snapshot; current dependencies use 9.4.0. Preserve the original evidence and upstream-risk boundaries below. See the [current guides](README.md).
+
+
 ## 1. Executive Summary
 
 The plugin protects newly submitted emails in `saveUser`, `patchUser`, `personalize`, and the legacy `personalizeUser` alias from a confirmed SDK validation-log exposure. Huawei Mobile Messaging SDK 9.3.0 includes the full email in validation diagnostics when its length exceeds 255 UTF-16 code units. The plugin rejects those values before SDK entry with error code `-10` and a value-free message, while preserving accepted input values and existing API contracts.

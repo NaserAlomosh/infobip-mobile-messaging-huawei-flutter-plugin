@@ -25,7 +25,7 @@ initialization inputs for this plugin.
 
 ## Direct Dart test configuration
 
-The 2.1.0 candidate retains the Huawei SDK 9.3.0 toolchain validated for 2.0.0
+The 2.2.0 candidate uses Huawei SDK 9.4.0 and retains the host toolchain introduced in 2.0.0
 with Flutter 3.44.4 / Dart 3.12.2, JDK 21, AGP 9.1.1, Gradle 9.3.1 and legacy
 KGP 2.2.10.
 Use compileSdk 37, minSdk 26 and example targetSdk 36, with the host migration
