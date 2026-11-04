@@ -3,10 +3,10 @@
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
 9.4.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout prepares **2.2.0** for publication with Huawei SDK 9.4.0.
-The hosted installation below applies once 2.2.0 is published.
+Version **2.2.1** is a maintenance release dated **2026-11-04**, correcting
+metadata and documentation with no runtime changes from 2.2.0.
+Huawei SDK 9.4.0 and RTC Core 2.5.28 are unchanged.
 Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
-For a release candidate not yet available on pub.dev, use the checkout path below.
 
 ## Contents
 
@@ -119,12 +119,12 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^2.2.0
+  infobip_mobilemessaging_huawei: ^2.2.1
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above once 2.2.0 is published. To evaluate this candidate,
-clone this repository and point your host at that checkout instead:
+the hosted dependency above for v2.2.1 after publication. To use this release
+from source, clone this repository and point your host at that checkout instead:
 
 ```yaml
 dependencies:
@@ -1304,10 +1304,10 @@ One-time publication setup:
 
 Release runs are manual and require an existing, separately approved version tag
 on a reviewed commit already merged into `main`. The workflow creates no tags or
-GitHub Releases. For version `2.2.0`, after that tag exists:
+GitHub Releases. For version `2.2.1`, after that tag exists:
 
 ```sh
-gh workflow run publish.yml --ref v2.2.0 -f version=2.2.0
+gh workflow run publish.yml --ref v2.2.1 -f version=2.2.1
 ```
 
 Branch dispatches cannot publish. CI verifies the tag/version against

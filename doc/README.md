@@ -38,6 +38,10 @@ repository index and engineering reports are excluded from the pub.dev package.
 - [Email privacy engineering evidence](user-validation-privacy-report.md), including
   persisted pending data and SDK-managed synchronization risks
 
+## Current release preparation
+
+- [2.2.1 maintenance release preparation and proposed notes](release-2.2.1-preparation.md)
+
 ## Historical engineering reports and evidence
 
 These are implementation snapshots, investigations or test plans. Follow the
