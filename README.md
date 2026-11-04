@@ -1,10 +1,10 @@
 # Infobip Mobile Messaging Huawei for Flutter
 
 A community-maintained Android Flutter plugin for Infobip Huawei Mobile Messaging
-9.3.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
+9.4.0 and RTC Core 2.5.28. This is not an official Infobip-maintained Flutter
 package. Install the [published package on pub.dev](https://pub.dev/packages/infobip_mobilemessaging_huawei).
-This checkout prepares **2.1.0** for publication with Huawei SDK 9.3.0.
-The hosted installation below applies once 2.1.0 is published.
+This checkout prepares **2.2.0** for publication with Huawei SDK 9.4.0.
+The hosted installation below applies once 2.2.0 is published.
 Opt-in Live Chat identity and experimental foreground incoming RTC are retained.
 For a release candidate not yet available on pub.dev, use the checkout path below.
 
@@ -61,7 +61,7 @@ RTC Core has Firebase/GMS transitive dependencies; Google-free operation is not 
 | Screen sharing | Android 10 / API 29+ |
 | Java compilation | 17 |
 | Example tooling | AGP 9.1.1, Kotlin 2.2.10, Gradle 9.3.1 |
-| Infobip Huawei MM / Inbox / Chat | 9.3.0 |
+| Infobip Huawei MM / Inbox / Chat | 9.4.0 |
 | Infobip RTC Core | 2.5.28 |
 
 HMS Push requires a compatible Huawei Mobile Services environment. Validate your
@@ -119,11 +119,11 @@ Or add it to your host application's `pubspec.yaml`, then run `flutter pub get`:
 dependencies:
   flutter:
     sdk: flutter
-  infobip_mobilemessaging_huawei: ^2.1.0
+  infobip_mobilemessaging_huawei: ^2.2.0
 ```
 
 The example uses a local path dependency to test the repository checkout. Use
-the hosted dependency above once 2.1.0 is published. To evaluate this candidate,
+the hosted dependency above once 2.2.0 is published. To evaluate this candidate,
 clone this repository and point your host at that checkout instead:
 
 ```yaml
@@ -554,7 +554,8 @@ The [example app](example/lib/app.dart) includes this route handler. Generic
 Chat navigation in the dedicated handler to avoid duplicate routes. Native mode
 delegates to the SDK's original default interaction handler. Explicit `showChat()`
 still opens the native Activity. See the [regression report and physical-device
-verification steps](doc/chat-notification-routing.md).
+verification steps](https://github.com/NaserAlomosh/infobip-mobile-messaging-huawei-flutter-plugin/blob/15a1466db4bec90805c9ed41d3f77e725657aabf/doc/chat-notification-routing.md).
+For the shipped contract, see [Chat notification routing](doc/messaging-chat.md#chat-notification-routing).
 
 ### Receive messages, taps and actions
 
@@ -631,6 +632,10 @@ Future<bool> openChat() async {
   }
 }
 ```
+
+Embedded Chat uses Android hybrid composition to keep the SDK WebView in the
+native view hierarchy. A 30-second loading deadline reports an error; a successful
+SDK callback still requires visual and connectivity checks on a device.
 
 For embedded Chat, use `InfobipHuaweiChatView` with one
 `InfobipHuaweiChatController` per attached view, bounded layout and a
@@ -769,7 +774,7 @@ await InfobipMobileMessagingHuawei.personalize(PersonalizeContext(
 ));
 ```
 
-The native 9.3.0 mapping is `identity, attributes, forceDepersonalize,
+The native 9.4.0 mapping is `identity, attributes, forceDepersonalize,
 keepAsLead, setDeviceAsPrimary, listener`. Existing callers and the legacy
 `personalizeUser` API retain false defaults for the new flags. Email privacy
 validation still runs before SDK invocation. Lead and primary-device effects
@@ -1297,10 +1302,10 @@ One-time publication setup:
 
 Release runs are manual and require an existing, separately approved version tag
 on a reviewed commit already merged into `main`. The workflow creates no tags or
-GitHub Releases. For version `2.1.0`, after that tag exists:
+GitHub Releases. For version `2.2.0`, after that tag exists:
 
 ```sh
-gh workflow run publish.yml --ref v2.1.0 -f version=2.1.0
+gh workflow run publish.yml --ref v2.2.0 -f version=2.2.0
 ```
 
 Branch dispatches cannot publish. CI verifies the tag/version against
@@ -1321,7 +1326,7 @@ prove GitHub-hosted execution or publication.
 ## Security
 
 **SEC-01 remains PARTIALLY MITIGATED; this package is not security-certified.**
-Huawei MM 9.3.0 logs authorization headers upstream. RTC 2.5.28 logs signaling
+Huawei MM 9.4.0 retains upstream logging of authorization headers. RTC 2.5.28 logs signaling
 messages that may expose temporary TURN credentials; setting its logger to OFF
 does not disable direct stdout calls.
 

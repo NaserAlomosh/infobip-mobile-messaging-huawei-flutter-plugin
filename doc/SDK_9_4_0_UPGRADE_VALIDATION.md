@@ -1,5 +1,8 @@
 # Infobip Huawei SDK 9.4.0 — controlled upgrade
 
+> Historical evidence: Upgrade-only snapshot, preceding the embedded composition and notification routing fixes. Its statement that no Flutter navigation override exists is superseded by the current routing guide. See the [current guides](README.md).
+
+
 Date: 2026-11-04. Recommendation: **READY FOR DEVICE VALIDATION**. No physical Huawei or backend runtime validation was performed. This is not release approval.
 
 ## Baseline and preservation

@@ -63,3 +63,7 @@ Thumbs.db
 /example/config/example_config.local.json
 /example/lib/config/example_test_config.dart
 /example/lib/main_local.dart
+
+# Local SDK and Kotlin caches
+.fvm/
+.kotlin/

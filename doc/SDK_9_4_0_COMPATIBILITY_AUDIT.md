@@ -1,5 +1,8 @@
 # FIN-HUAWEI-940 — SDK 9.4.0 compatibility audit
 
+> Historical evidence: Pre-upgrade snapshot; dependency and version statements below describe its recorded baseline. See the [current guides](README.md).
+
+
 Audit date: 2026-11-04. Research only; repository dependencies, production code and release metadata are unchanged. Target plugin release 2.2.0 is provisional.
 
 ## 1. Baseline and scope
