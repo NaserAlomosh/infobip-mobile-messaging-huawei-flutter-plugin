@@ -3,3 +3,6 @@
 /android/app/agconnect-services.json
 /test-results.local.json
 /config/example_config.local.json
+
+# FVM Version Cache
+.fvm/

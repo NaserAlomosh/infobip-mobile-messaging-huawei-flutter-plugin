@@ -12,6 +12,11 @@ final class ChatPushPlatform extends InfobipMobileMessagingHuaweiPlatform
     with MockPlatformInterfaceMixin {
   final titles = <String?>[];
   final bodies = <String?>[];
+  final modes = <String>[];
+
+  @override
+  Future<void> setChatNotificationPresentationMode(String mode) async =>
+      modes.add(mode);
 
   @override
   Stream<Object?> get events => const Stream.empty();
@@ -32,6 +37,43 @@ final class ChatPushPlatform extends InfobipMobileMessagingHuaweiPlatform
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('notification presentation is forwarded to the platform', () async {
+    final platform = ChatPushPlatform();
+    InfobipMobileMessagingHuaweiPlatform.instance = platform;
+    for (final mode in ChatNotificationPresentationMode.values) {
+      await InfobipMobileMessagingHuawei.chat.setNotificationPresentationMode(
+        mode,
+      );
+    }
+    expect(platform.modes, ['embedded', 'native']);
+  });
+
+  test(
+    'notification presentation method channel preserves the selected mode',
+    () async {
+      const channel = MethodChannel('chat-presentation-test');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      final platform = MethodChannelInfobipMobileMessagingHuawei(
+        methodChannel: channel,
+        eventChannel: const EventChannel('chat-presentation-events'),
+      );
+      await platform.setChatNotificationPresentationMode('embedded');
+      await platform.setChatNotificationPresentationMode('native');
+      expect(
+        calls.map((call) => call.method),
+        everyElement('setChatNotificationPresentationMode'),
+      );
+      expect(calls.map((call) => call.arguments), ['embedded', 'native']);
+    },
+  );
 
   test(
     'global APIs forward values without a Chat controller or view',

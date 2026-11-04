@@ -8,6 +8,7 @@ import '../setup/example_controller.dart';
 import '../setup/safe_display.dart';
 
 class ChatScreen extends StatefulWidget {
+  static const routeName = '/embedded-chat';
   const ChatScreen({this.controller, super.key});
 
   final ExampleController? controller;

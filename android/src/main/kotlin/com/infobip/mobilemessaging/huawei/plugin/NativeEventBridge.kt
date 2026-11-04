@@ -7,6 +7,9 @@ import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.infobip.mobilemessaging.huawei.chat.ChatNavigationRequest
+import com.infobip.mobilemessaging.huawei.chat.ChatNotificationRouting
+import com.infobip.mobilemessaging.huawei.chat.ChatNotificationTrace
 import com.infobip.mobilemessaging.huawei.installation.InstallationMapper
 import com.infobip.mobilemessaging.huawei.user.UserMapper
 import io.flutter.plugin.common.EventChannel
@@ -92,14 +95,28 @@ internal class NativeEventBridge(
         registered = true
     }
 
+    private val chatNavigationListener: (ChatNavigationRequest) -> Unit = { request ->
+        val eventSink = sink
+        if (eventSink != null) mainHandler.post {
+            if (sink === eventSink) {
+                ChatNotificationTrace.log("CHAT_EVENT_DELIVERED_TO_FLUTTER", request.correlationId)
+                eventSink.success(EventEnvelope.create(ChannelContract.CHAT_NOTIFICATION_NAVIGATION_REQUESTED, request.toMap()))
+            }
+        }
+    }
+
     private val tapListener: (Map<String, Any?>) -> Unit = { event -> sink?.success(event) }
 
     fun listen(eventSink: EventChannel.EventSink?) {
         sink = eventSink
-        if (eventSink != null) tapStore.listen(tapListener)
+        if (eventSink != null) {
+            tapStore.listen(tapListener)
+            ChatNotificationRouting.navigation.listen(chatNavigationListener)
+        }
     }
 
     fun cancel() {
+        ChatNotificationRouting.navigation.cancel(chatNavigationListener)
         tapStore.cancel(tapListener)
         sink = null
     }

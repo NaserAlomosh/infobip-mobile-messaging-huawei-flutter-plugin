@@ -76,6 +76,28 @@ class ChatPlatformViewTest {
         assertNull(pending(view))
         view.dispose()
     }
+    @Test fun `notification thread is shown once after loading and retained if view is disposed before dispatch`() {
+        ChatNotificationRouting.targets.clear()
+        val view = create()
+        val original = attach(view)
+        val current = mock(InAppChatFragment::class.java)
+        `when`(current.isAdded).thenReturn(true)
+        `when`(current.isMultiThread).thenReturn(true)
+        view.javaClass.getDeclaredField("fragment").apply { isAccessible = true }.set(view, current)
+        ChatNotificationRouting.targets.offer("existing-thread")
+        original.eventsListener!!.onChatLoadingFinished(LivechatWidgetResult.Success(Unit))
+        shadowOf(Looper.getMainLooper()).idle()
+        verify(current, times(1)).showThread("existing-thread")
+        ChatNotificationRouting.targets.offer("next-thread")
+        view.dispose()
+        shadowOf(Looper.getMainLooper()).idle()
+        verify(current, never()).showThread("next-thread")
+        val retained = mutableListOf<String>()
+        val listener: (String) -> Unit = retained::add
+        ChatNotificationRouting.targets.listen(listener)
+        ChatNotificationRouting.targets.cancel(listener)
+        assertEquals(listOf("next-thread"), retained)
+    }
     @Test fun `failed loading reports a safe error and cancels deadline`() {
         val view = create()
         attach(view).eventsListener!!.onChatLoadingFinished(

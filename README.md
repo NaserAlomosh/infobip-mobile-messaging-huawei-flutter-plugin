@@ -529,6 +529,33 @@ belongs to the native SDK. A pending notification tap can replay once on subscri
 other MM events do not replay. Treat payloads and deep links as untrusted input.
 See [notification event examples](doc/messaging-chat.md#hms-push-and-notification-events).
 
+Chat notification navigation defaults to the Flutter host Activity, including
+notifications targeting an existing thread. Configure a different presentation
+with:
+
+```dart
+await InfobipMobileMessagingHuawei.chat.setNotificationPresentationMode(
+  ChatNotificationPresentationMode.embedded, // or .native
+);
+```
+
+The choice persists across process restarts. Embedded navigation needs one
+app-level Flutter handler. Subscribe to
+`chat.onNotificationNavigationRequested`, query
+`chat.getPendingNotificationNavigation()` on startup/resume and on each signal,
+then open or reuse your Chat route when the app, Navigator and Chat setup are
+ready. Call `chat.acknowledgeNotificationNavigation(request.correlationId)` only
+after the route opens. Reading a request or receiving the signal does not consume
+it; it survives Flutter engine detachment within the process. The thread target
+is handed to the loaded fragment after route acknowledgement.
+
+The [example app](example/lib/app.dart) includes this route handler. Generic
+`notifications.onNotificationTapped` remains an informational SDK event; keep
+Chat navigation in the dedicated handler to avoid duplicate routes. Native mode
+delegates to the SDK's original default interaction handler. Explicit `showChat()`
+still opens the native Activity. See the [regression report and physical-device
+verification steps](doc/chat-notification-routing.md).
+
 ### Receive messages, taps and actions
 
 Create this owner once for your app/session before initialization so early events

@@ -40,6 +40,18 @@ internal class ChatPlatformView(
     private var fragmentActivity: FragmentActivity? = activity as? FragmentActivity
     private var fragment: InAppChatFragment? = null
     private var currentWidgetView: LivechatWidgetView? = null
+    private var pendingNotificationThread: String? = null
+    private val notificationTarget: (String) -> Unit = ::deliverNotificationThread
+    private fun deliverNotificationThread(threadId: String) {
+        pendingNotificationThread = threadId
+        mainHandler.post {
+            if (disposed || pendingNotificationThread != threadId) return@post
+            val current = fragment ?: return@post
+            if (!current.isAdded) return@post
+            pendingNotificationThread = null
+            if (current.isMultiThread) current.showThread(threadId)
+        }
+    }
     private var disposed = false
     private var flutterReady = false
     private val loadingTimeout = Runnable {
@@ -111,6 +123,7 @@ internal class ChatPlatformView(
                             ChannelContract.CHAT_LOADED,
                             result.isSuccess,
                         )
+                        if (result.isSuccess) ChatNotificationRouting.targets.listen(notificationTarget)
                         if (!result.isSuccess) {
                             reportError(ChatViewError("chat_runtime_error", "Chat loading failed"))
                         }
@@ -168,6 +181,7 @@ internal class ChatPlatformView(
                 .runOnCommit {
                     if (!disposed && fragment === created) {
                         Log.d(TAG, "InAppChatFragment attached")
+                        ChatNotificationRouting.activeCorrelationId?.let { ChatNotificationTrace.log("CHAT_FRAGMENT_ATTACHED", it) }
                     }
                 }
                 .commit()
@@ -325,6 +339,9 @@ internal class ChatPlatformView(
     override fun dispose() {
         if (disposed) return
         disposed = true
+        ChatNotificationRouting.targets.cancel(notificationTarget)
+        pendingNotificationThread?.let(ChatNotificationRouting.targets::offer)
+        pendingNotificationThread = null
         runtimeEvents.dispose()
         mainHandler.removeCallbacksAndMessages(null)
         channel.setMethodCallHandler(null)
