@@ -18,6 +18,39 @@ Future<T> withTargetPlatform<T>(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  final platformCalls = <MethodCall>[];
+  Future<Object?> Function(MethodCall)? chatHandler;
+  var channelName = '';
+  void setChatHandler(Future<Object?> Function(MethodCall)? handler) {
+    chatHandler = handler;
+    if (channelName.isNotEmpty) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(MethodChannel(channelName), handler);
+    }
+  }
+
+  setUp(() {
+    platformCalls.clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform_views, (call) async {
+          platformCalls.add(call);
+          if (call.method == 'create') {
+            channelName =
+                'com.infobip.mobilemessaging.huawei/chat_view/${(call.arguments as Map)['id']}';
+            setChatHandler(chatHandler ?? (_) async => null);
+          }
+          return null;
+        });
+  });
+
+  Future<AndroidViewController> createView(WidgetTester tester) async {
+    await tester.pump();
+    final controller = tester
+        .widget<AndroidViewSurface>(find.byType(AndroidViewSurface))
+        .controller;
+
+    return controller;
+  }
 
   test('controller is safe before attachment', () async {
     final controller = InfobipHuaweiChatController();
@@ -104,12 +137,19 @@ void main() {
           child: InfobipHuaweiChatView(),
         ),
       );
-      final view = tester.widget<AndroidView>(find.byType(AndroidView));
-      expect(view.creationParams, <String, bool>{
-        'withInput': true,
-        'withToolbar': false,
-      });
-      expect(view.creationParamsCodec, isA<StandardMessageCodec>());
+      final controller = await createView(tester);
+      expect(controller, isA<ExpensiveAndroidViewController>());
+      final creation =
+          platformCalls.lastWhere((call) => call.method == 'create').arguments
+              as Map;
+      expect(creation['hybrid'], true);
+      expect(
+        const StandardMessageCodec().decodeMessage(
+          ByteData.sublistView(creation['params'] as Uint8List),
+        ),
+        <String, bool>{'withInput': true, 'withToolbar': false},
+      );
+      await tester.pumpWidget(const SizedBox());
     });
   });
 
@@ -121,16 +161,21 @@ void main() {
           child: InfobipHuaweiChatView(withInput: false, withToolbar: true),
         ),
       );
+      await createView(tester);
+      final creation =
+          platformCalls.lastWhere((call) => call.method == 'create').arguments
+              as Map;
       expect(
-        tester.widget<AndroidView>(find.byType(AndroidView)).creationParams,
+        const StandardMessageCodec().decodeMessage(
+          ByteData.sublistView(creation['params'] as Uint8List),
+        ),
         <String, bool>{'withInput': false, 'withToolbar': true},
       );
+      await tester.pumpWidget(const SizedBox());
     });
   });
 
   group('embedded Chat errors', () {
-    const viewId = 42;
-    const channelName = 'com.infobip.mobilemessaging.huawei/chat_view/42';
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
@@ -147,6 +192,7 @@ void main() {
       WidgetTester tester, {
       InfobipHuaweiChatController? controller,
       void Function(InfobipHuaweiChatError)? onError,
+      void Function(InfobipHuaweiChatEvent)? onEvent,
     }) async {
       await tester.pumpWidget(
         Directionality(
@@ -154,17 +200,11 @@ void main() {
           child: InfobipHuaweiChatView(
             controller: controller,
             onError: onError,
+            onEvent: onEvent,
           ),
         ),
       );
-      if (tester
-              .widget<AndroidView>(find.byType(AndroidView))
-              .onPlatformViewCreated !=
-          null) {
-        tester
-            .widget<AndroidView>(find.byType(AndroidView))
-            .onPlatformViewCreated!(viewId);
-      }
+      await createView(tester);
 
       await tester.pump();
     }
@@ -177,17 +217,13 @@ void main() {
     }
 
     setUp(() {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
+      setChatHandler(
         (call) async => call.method == 'navigateBackOrCloseChat' ? true : null,
       );
     });
 
     tearDown(() {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
-        null,
-      );
+      setChatHandler(null);
     });
 
     for (final entry in <String, InfobipHuaweiChatErrorCode>{
@@ -209,6 +245,40 @@ void main() {
         expect(received?.message, 'Unavailable');
       });
     }
+
+    androidTest('loading results and repeated reopen use independent bridges', (
+      tester,
+    ) async {
+      final events = <InfobipHuaweiChatEvent>[];
+      final controller = InfobipHuaweiChatController();
+      final ids = <int>{};
+      for (var cycle = 0; cycle < 10; cycle++) {
+        await mountView(tester, controller: controller, onEvent: events.add);
+        final surface = tester.widget<AndroidViewSurface>(
+          find.byType(AndroidViewSurface),
+        );
+        expect(ids.add(surface.controller.viewId), isTrue);
+        final data = const StandardMethodCodec().encodeMethodCall(
+          MethodCall('onRuntimeEvent', {
+            'event': 'loaded',
+            'value': cycle.isEven,
+          }),
+        );
+        await messenger.handlePlatformMessage(channelName, data, (_) {});
+        expect(
+          (events.last as InfobipHuaweiChatLoadedEvent).success,
+          cycle.isEven,
+        );
+        await tester.pumpWidget(const SizedBox());
+        expect(controller.isAttached, isFalse);
+        await messenger.handlePlatformMessage(channelName, data, (_) {});
+        expect(events.length, cycle + 1);
+      }
+      expect(
+        platformCalls.where((call) => call.method == 'dispose'),
+        hasLength(10),
+      );
+    });
 
     androidTest('malformed payload maps to unknown', (tester) async {
       InfobipHuaweiChatError? received;
@@ -240,9 +310,7 @@ void main() {
 
     androidTest('draft message is forwarded unchanged', (tester) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return null;
       });
@@ -259,9 +327,7 @@ void main() {
 
     androidTest('empty draft clears the native draft', (tester) async {
       MethodCall? draftCall;
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         if (call.method == 'setChatDraftMessage') draftCall = call;
         return null;
       });
@@ -274,9 +340,7 @@ void main() {
     });
 
     androidTest('draft platform errors propagate', (tester) async {
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         if (call.method == 'setChatDraftMessage') {
           throw PlatformException(code: 'native_error');
         }
@@ -301,9 +365,7 @@ void main() {
       tester,
     ) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return null;
       });
@@ -322,9 +384,7 @@ void main() {
     androidTest('thread list request forwards a native platform error', (
       tester,
     ) async {
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         if (call.method == 'showThreadsList') {
           throw PlatformException(
             code: 'native_error',
@@ -349,8 +409,7 @@ void main() {
     });
 
     androidTest('controller accepts a false navigation result', (tester) async {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
+      setChatHandler(
         (call) async => call.method == 'navigateBackOrCloseChat' ? false : null,
       );
       final controller = InfobipHuaweiChatController();
@@ -363,8 +422,7 @@ void main() {
       androidTest('controller returns $value for multithread state', (
         tester,
       ) async {
-        messenger.setMockMethodCallHandler(
-          const MethodChannel(channelName),
+        setChatHandler(
           (call) async => call.method == 'isMultithread' ? value : null,
         );
         final controller = InfobipHuaweiChatController();
@@ -377,10 +435,7 @@ void main() {
     androidTest('controller rejects malformed multithread state', (
       tester,
     ) async {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
-        (call) async => call.method == 'isMultithread' ? 1 : null,
-      );
+      setChatHandler((call) async => call.method == 'isMultithread' ? 1 : null);
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
 
@@ -389,9 +444,7 @@ void main() {
 
     androidTest('controller sends text on its view channel', (tester) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return null;
       });
@@ -410,9 +463,7 @@ void main() {
       tester,
     ) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return null;
       });
@@ -432,9 +483,7 @@ void main() {
       tester,
     ) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return null;
       });
@@ -457,9 +506,7 @@ void main() {
       'contextual data validation happens before channel invocation',
       (tester) async {
         var invocationCount = 0;
-        messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-          _,
-        ) async {
+        setChatHandler((_) async {
           invocationCount++;
           return null;
         });
@@ -478,9 +525,7 @@ void main() {
     androidTest('contextual data native failures propagate unchanged', (
       tester,
     ) async {
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         if (call.method == 'sendContextualData') {
           throw PlatformException(
             code: 'native_error',
@@ -511,9 +556,7 @@ void main() {
       tester,
     ) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return call.method == 'getLanguage' ? 'en-US' : null;
       });
@@ -529,9 +572,7 @@ void main() {
 
     androidTest('controller sets and gets the widget theme', (tester) async {
       final calls = <MethodCall>[];
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         calls.add(call);
         return call.method == 'getWidgetTheme' ? 'support' : null;
       });
@@ -553,10 +594,7 @@ void main() {
     });
 
     androidTest('navigation rejects a missing native boolean', (tester) async {
-      messenger.setMockMethodCallHandler(
-        const MethodChannel(channelName),
-        (_) async => null,
-      );
+      setChatHandler((_) async => null);
       final controller = InfobipHuaweiChatController();
       await mountView(tester, controller: controller);
 
@@ -578,9 +616,7 @@ void main() {
     });
 
     androidTest('controller command forwards a native error', (tester) async {
-      messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
-        call,
-      ) async {
+      setChatHandler((call) async {
         if (call.method == 'send') {
           throw PlatformException(code: 'native_error');
         }

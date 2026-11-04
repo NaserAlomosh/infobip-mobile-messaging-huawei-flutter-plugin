@@ -41,8 +41,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _loading = false;
   bool _handlingBack = false;
 
-  String _result =
-      'The native Chat composer and attachments remain available below.';
+  String _result = 'Waiting for the Chat loading callback…';
 
   @override
   void initState() {
@@ -482,7 +481,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       case InfobipHuaweiChatLoadedEvent(:final success):
                         setState(() {
                           _result = success
-                              ? 'Chat loaded'
+                              ? 'Chat SDK loaded • verify rendering and connectivity'
                               : 'Chat failed to load';
                         });
 
