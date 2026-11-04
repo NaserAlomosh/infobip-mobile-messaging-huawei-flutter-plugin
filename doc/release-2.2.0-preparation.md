@@ -1,5 +1,8 @@
 # 2.2.0 local release preparation — 2026-11-04
 
+The original preparation evidence below is a historical snapshot. The final section
+records the subsequent native-default compatibility fix and its validation.
+
 ## Decision
 
 **CONDITIONAL GO for local release preparation and owner review.** Publication is
@@ -95,8 +98,9 @@ remain ignored. No credential values were printed or copied into this report.
 
 - Upgrade Infobip Huawei Core, Inbox and Chat from 9.3.0 to 9.4.0.
   RTC Core remains 2.5.28; Flutter/Android build requirements are unchanged.
-- Embedded notification presentation is the default; hosts must integrate the
-  navigation handler or explicitly select native mode for SDK-owned routing.
+- Native SDK-owned notification presentation remains the default when no mode
+  is saved. Embedded routing requires explicit opt-in and a host navigation handler;
+  previously saved native or embedded choices remain unchanged.
   Pending navigation survives engine recreation, but is not persisted across
   another process death after interception.
 
@@ -181,3 +185,48 @@ Final `git status --short` (this report is the sole created file):
  M pubspec.yaml
 ?? doc/release-2.2.0-preparation.md
 ```
+
+
+## Native-default compatibility fix — 2026-11-04
+
+The notification handler now reads a missing saved presentation preference as
+`native`, preserving SDK-owned routing for both fresh installations and upgrades
+without a saved mode. Explicit `embedded` and `native` selections are preserved;
+no preference migration or reset is performed. Embedded routing remains available
+through `setNotificationPresentationMode(ChatNotificationPresentationMode.embedded)`.
+A pre-release installation that explicitly saved embedded mode retains that choice.
+
+Only the preference fallback changes in executable production code. Pending queues,
+thread selection, duplicate suppression, lifecycle handling and explicit `showChat()`
+are unchanged. The public API comment and current routing guidance are corrected.
+Native mode retains the SDK's payload-dependent destinations and informational tap
+events; it does not enqueue or emit an embedded Flutter navigation request.
+
+Regression coverage now explicitly selects embedded mode and exercises fresh and
+existing installations without preferences, explicit native selection, handler/provider
+recreation and saved embedded selection after simulated transient process-state loss.
+Pending requests survive handler recreation but remain process-local. These are unit
+simulations, not a real process-kill or physical Huawei acceptance test.
+
+Validation used Flutter 3.44.4 / Dart 3.12.2 and JDK 21. Logs are under
+`/private/tmp/huawei-native-default/` and are not packaged.
+
+| Check | Result |
+| --- | --- |
+| Flutter analysis (including example) | PASS; no issues |
+| Plugin Flutter tests | PASS; 259 tests |
+| Example Flutter tests | PASS; 57 tests, including navigation/lifecycle coverage |
+| Android Debug unit tests | PASS; 456 tests, zero failures/errors/skips |
+| Android Release unit tests | PASS; 456 tests, zero failures/errors/skips |
+| Publication dry run in working checkout | Exit 65; 1010 KB; one warning for seven modified packaged Git files; no other package warnings |
+
+All 1,228 test executions passed with no skipped tests. Existing AGP/Kotlin and
+Android API deprecation warnings remain. The dry-run dirty-tree warning is expected
+while changes remain local for review; no commit or publication was performed.
+Version 2.2.0 and all dependencies are unchanged.
+
+The default-routing compatibility blocker is addressed. Physical Huawei/backend,
+visual Chat, signed upgrade/rollback and shipping-artifact logging acceptance remain
+outstanding. SEC-01 remains PARTIALLY MITIGATED and unresolved. This fix does not
+constitute release approval. Earlier preparation counts and Git-status excerpts
+above describe their original snapshot, not this follow-up working tree.

@@ -84,6 +84,7 @@ class ChatNotificationRoutingTest {
         }
     }
     @Test fun `embedded routes both payloads to Flutter before exactly one SDK event with thread intact`() {
+        assertTrue(ChatNotificationRouting.configure(context, "embedded"))
         sdk.setNotificationInteractionHandler(ChatNotificationRouting(context) { settings })
         for (thread in listOf(null, "existing-thread")) {
             assertTrue(sdk.messageTapped(message(thread)))
@@ -100,7 +101,17 @@ class ChatNotificationRoutingTest {
         assertEquals("existing-thread", ChatNotificationRouting.navigation.peek()!!.threadId)
     }
     @Test fun `native preference survives handler recreation for first and existing conversation`() {
-        context.getSharedPreferences("infobip_huawei_chat_navigation", 0).edit().putString("presentation", "native").commit()
+        assertTrue(ChatNotificationRouting.configure(context, "native"))
+        ChatNotificationRouting.navigation.clear()
+        ChatNotificationRouting.targets.clear()
+        org.robolectric.Robolectric.buildContentProvider(ChatNotificationRoutingProvider::class.java).create()
+        assertEquals("native", context.getSharedPreferences("infobip_huawei_chat_navigation", 0).getString("presentation", null))
+        assertNativeRoutingWithoutFlutterNavigation()
+    }
+    private fun assertNativeRoutingWithoutFlutterNavigation() {
+        val requests = mutableListOf<ChatNavigationRequest>()
+        val observer: (ChatNavigationRequest) -> Unit = requests::add
+        ChatNotificationRouting.navigation.listen(observer)
         for (thread in listOf(null, "existing-thread")) {
             sdk.setNotificationInteractionHandler(ChatNotificationRouting(context, nativeHandler = { sdk.getDefaultNotificationInteractionHandler() }) { settings })
             sdk.messageTapped(message(thread))
@@ -110,6 +121,40 @@ class ChatNotificationRoutingTest {
         }
         assertEquals(2, launches.size)
         assertEquals(2, events.size)
+        assertNull(ChatNotificationRouting.navigation.peek())
+        assertTrue(requests.isEmpty())
+        ChatNotificationRouting.navigation.cancel(observer)
+    }
+    @Test fun `fresh installation defaults to SDK native routing without Flutter navigation`() {
+        assertFalse(context.getSharedPreferences("infobip_huawei_chat_navigation", 0).contains("presentation"))
+        assertNativeRoutingWithoutFlutterNavigation()
+    }
+    @Test fun `existing installation without mode remains native after provider recreation`() {
+        val preferences = context.getSharedPreferences("infobip_huawei_chat_navigation", 0)
+        preferences.edit().putBoolean("existing-installation", true).commit()
+        org.robolectric.Robolectric.buildContentProvider(ChatNotificationRoutingProvider::class.java).create()
+        ChatNotificationRouting.install(context)
+        assertFalse(preferences.contains("presentation"))
+        assertNativeRoutingWithoutFlutterNavigation()
+    }
+    @Test fun `saved embedded mode survives handler recreation and simulated process state loss`() {
+        assertTrue(ChatNotificationRouting.configure(context, "embedded"))
+        sdk.setNotificationInteractionHandler(ChatNotificationRouting(context) { settings })
+        sdk.messageTapped(message("existing-thread"))
+        val pending = ChatNotificationRouting.navigation.peek()!!
+        // Engine recreation retains the process-local pending request.
+        ChatNotificationRouting.install(context)
+        assertEquals(pending, ChatNotificationRouting.navigation.peek())
+        // Simulate process loss: transient requests disappear, saved mode remains.
+        ChatNotificationRouting.navigation.clear()
+        ChatNotificationRouting.targets.clear()
+        org.robolectric.Robolectric.buildContentProvider(ChatNotificationRoutingProvider::class.java).create()
+        assertNull(ChatNotificationRouting.navigation.peek())
+        assertEquals("embedded", context.getSharedPreferences("infobip_huawei_chat_navigation", 0).getString("presentation", null))
+        sdk.setNotificationInteractionHandler(ChatNotificationRouting(context) { settings })
+        sdk.messageTapped(message("existing-thread"))
+        assertEquals(listOf(FlutterHost::class.java.name, FlutterHost::class.java.name), launches.map { it.component!!.className })
+        assertEquals("existing-thread", ChatNotificationRouting.navigation.peek()!!.threadId)
     }
     @Test fun `cold process provider installs routing before any Flutter engine exists`() {
         val provider = org.robolectric.Robolectric.buildContentProvider(ChatNotificationRoutingProvider::class.java).create().get()

@@ -347,8 +347,10 @@ Cancel your own view/event subscriptions when disposing their owner.
 
 ## Chat notification routing
 
-Embedded presentation is the default in 2.2.0. It brings the Flutter host forward;
-your application must open its own Chat route. Configure the mode explicitly:
+Native SDK-owned presentation is the default in 2.2.0. Fresh and existing
+installations with no saved preference retain the SDK default interaction handler
+and need no Flutter navigation handler. Opt into embedded presentation explicitly;
+it brings the Flutter host forward and your application must open its own Chat route:
 
 ```dart
 await InfobipMobileMessagingHuawei.chat.setNotificationPresentationMode(
@@ -364,7 +366,8 @@ authenticated Chat setup. Open or reuse a single embedded route, then call
 hands the SDK-parsed thread target to the fragment; reading or receiving a request
 does not consume it. Generic notification taps remain informational.
 
-Mode selection persists across restarts. Pending requests and duplicate suppression
+Mode selection persists across restarts; previously saved native or embedded
+choices are preserved without migration. Pending requests and duplicate suppression
 are process-local; they survive engine recreation but not another process death
 after interception. Cleanup clears pending state. Threadless taps are supported.
 Native mode delegates to the SDK default handler, whose destination depends on

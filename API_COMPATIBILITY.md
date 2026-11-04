@@ -22,11 +22,12 @@ RTC Core 2.5.28 remain unchanged. Public additions are
 `getPendingNotificationNavigation`, and `acknowledgeNotificationNavigation`.
 Existing public signatures remain available.
 
-Embedded notification presentation is the default. Hosts must own the Flutter
-route handler: subscribe, query on startup/resume, open or reuse Chat, then
-acknowledge. Selecting native mode delegates to the SDK default handler.
-This behavior change requires host integration review even though APIs are
-additive. See [notification routing](doc/messaging-chat.md#chat-notification-routing).
+Native notification presentation is the default when no preference is saved,
+preserving SDK-owned routing for fresh and existing installations. Explicit saved
+native or embedded selections survive restarts unchanged. Only hosts opting into
+embedded mode must own the Flutter route handler: subscribe, query on startup/resume,
+open or reuse Chat, then acknowledge. Existing hosts need no new navigation handler.
+See [notification routing](doc/messaging-chat.md#chat-notification-routing).
 Automated tests do not establish Huawei push or visual WebView acceptance.
 
 ## 2.1.0 compatibility assessment

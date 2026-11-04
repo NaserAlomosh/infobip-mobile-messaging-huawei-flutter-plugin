@@ -11,8 +11,9 @@
 
 - Upgrade Infobip Huawei Core, Inbox and Chat from 9.3.0 to 9.4.0.
   RTC Core remains 2.5.28; Flutter/Android build requirements are unchanged.
-- Embedded notification presentation is the default; hosts must integrate the
-  navigation handler or explicitly select native mode for SDK-owned routing.
+- Native SDK-owned notification presentation remains the default when no mode
+  is saved. Embedded routing requires explicit opt-in and a host navigation handler;
+  previously saved native or embedded choices remain unchanged.
   Pending navigation survives engine recreation, but is not persisted across
   another process death after interception.
 

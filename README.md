@@ -529,9 +529,9 @@ belongs to the native SDK. A pending notification tap can replay once on subscri
 other MM events do not replay. Treat payloads and deep links as untrusted input.
 See [notification event examples](doc/messaging-chat.md#hms-push-and-notification-events).
 
-Chat notification navigation defaults to the Flutter host Activity, including
-notifications targeting an existing thread. Configure a different presentation
-with:
+Chat notifications default to the SDK-owned native interaction handler, preserving
+existing routing without a Flutter navigation handler. Opt into embedded routing
+explicitly:
 
 ```dart
 await InfobipMobileMessagingHuawei.chat.setNotificationPresentationMode(
@@ -539,7 +539,9 @@ await InfobipMobileMessagingHuawei.chat.setNotificationPresentationMode(
 );
 ```
 
-The choice persists across process restarts. Embedded navigation needs one
+The choice persists across process restarts. Missing saved preferences resolve to
+native mode on fresh and existing installations; previously saved native or embedded
+choices are preserved. Embedded navigation needs one
 app-level Flutter handler. Subscribe to
 `chat.onNotificationNavigationRequested`, query
 `chat.getPendingNotificationNavigation()` on startup/resume and on each signal,

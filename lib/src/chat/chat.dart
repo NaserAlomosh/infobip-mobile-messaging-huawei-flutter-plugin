@@ -39,7 +39,8 @@ final class InfobipHuaweiChat {
 
   /// Persists notification presentation across process restarts.
   ///
-  /// Embedded is the default. Handle [onNotificationNavigationRequested] at app level,
+  /// Native is the default. When opting into embedded routing, handle
+  /// [onNotificationNavigationRequested] at app level,
   /// query pending requests on startup/resume, then acknowledge after route opening.
   /// Native mode delegates navigation to the SDK; generic tap events remain informational.
   Future<void> setNotificationPresentationMode(

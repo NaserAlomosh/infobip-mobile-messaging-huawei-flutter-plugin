@@ -21,7 +21,7 @@ internal class ChatNotificationRouting(
 ) : InAppChatNotificationInteractionHandler {
     override fun onNotificationInteracted(message: Message) {
         val native = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getString(MODE, EMBEDDED) == NATIVE
+            .getString(MODE, NATIVE) == NATIVE
         if (native) {
             // Preserve the SDK's own message/action distinction in native mode.
             val correlationId = java.util.UUID.randomUUID().toString()
