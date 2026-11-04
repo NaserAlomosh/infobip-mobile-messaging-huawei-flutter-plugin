@@ -138,6 +138,8 @@ class _TestSectionScreenState extends State<TestSectionScreen> {
     MaterialPageRoute(
       settings: screen is HuaweiRtcScreen
           ? const RouteSettings(name: HuaweiRtcScreen.routeName)
+          : screen is ChatScreen
+          ? const RouteSettings(name: ChatScreen.routeName)
           : null,
       builder: (_) => screen,
     ),

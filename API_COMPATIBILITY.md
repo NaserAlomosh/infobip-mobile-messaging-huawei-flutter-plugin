@@ -13,6 +13,23 @@ constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
 Historical audit reports excluded from the published package record their
 original verification snapshots, not the current release status.
 
+## 2.2.0 compatibility assessment
+
+Core, Inbox and Chat now use Huawei SDK 9.4.0; host toolchain requirements and
+RTC Core 2.5.28 remain unchanged. Public additions are
+`ChatNotificationPresentationMode`, `ChatNotificationNavigationRequest`, and
+`chat.setNotificationPresentationMode`, `onNotificationNavigationRequested`,
+`getPendingNotificationNavigation`, and `acknowledgeNotificationNavigation`.
+Existing public signatures remain available.
+
+Native notification presentation is the default when no preference is saved,
+preserving SDK-owned routing for fresh and existing installations. Explicit saved
+native or embedded selections survive restarts unchanged. Only hosts opting into
+embedded mode must own the Flutter route handler: subscribe, query on startup/resume,
+open or reuse Chat, then acknowledge. Existing hosts need no new navigation handler.
+See [notification routing](doc/messaging-chat.md#chat-notification-routing).
+Automated tests do not establish Huawei push or visual WebView acceptance.
+
 ## 2.1.0 compatibility assessment
 
 Compared with published 2.0.0, the documented public API adds `UserPatch`,
@@ -25,7 +42,7 @@ Internal `src/platform` overrides of `personalize` must accept the two new optio
 named parameters; these implementation classes are not exported by the package
 entry point. Consumers should use the documented public entry point.
 
-## Current user-management extensions (SDK 9.3.0)
+## Current user-management extensions (SDK 9.4.0)
 
 These additions supplement the historical parity tables below:
 

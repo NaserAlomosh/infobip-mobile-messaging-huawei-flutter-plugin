@@ -20,6 +20,8 @@ repository index and engineering reports are excluded from the pub.dev package.
 - [Inbox authentication and seen requests](messaging-chat.md#inbox)
 - [Chat authentication and unread counters](messaging-chat.md#chat-unread-counters-and-jwt-authentication)
 
+- [Chat notification routing](messaging-chat.md#chat-notification-routing)
+
 ## RTC and screen sharing
 
 - [Outgoing calls, events, rendering and controls](huawei-rtc-outgoing.md)
@@ -46,7 +48,8 @@ observations and publication decisions apply only to their recorded baselines.
 | --- | --- |
 | User management | [G-01 patch semantics](g01-user-update-patch-report.md); [G-02 native flags](G-02_PERSONALIZATION_FLAGS.md); [email privacy](user-validation-privacy-report.md) |
 | Inbox and Chat | [Inbox seen-context investigation](inbox-set-seen-investigation.md); [Chat/API reliability](huawei-chat-api-reliability.md); [example configuration/authentication audit](../example/CONFIG_AUTH_AUDIT.md) |
-| Release and CI | [Production-readiness resolution](production-readiness-resolution.md); [production validation audit](final-production-certification.md); [Huawei 8.14 dependency assessment](android-release-verification.md); [Robolectric CI investigation](robolectric-ci-resolution.md) |
+| SDK 9.4.0 and Chat routing | [Pre-upgrade audit](SDK_9_4_0_COMPATIBILITY_AUDIT.md); [upgrade snapshot](SDK_9_4_0_UPGRADE_VALIDATION.md); [notification regression evidence](chat-notification-routing.md) |
+| Release and CI | [2.1.0 preparation](release-2.1.0-preparation.md); [2.2.0 preparation](release-2.2.0-preparation.md); [Production-readiness resolution](production-readiness-resolution.md); [production validation audit](final-production-certification.md); [Huawei 8.14 dependency assessment](android-release-verification.md); [Robolectric CI investigation](robolectric-ci-resolution.md) |
 | RTC feasibility and outgoing implementation | [Core feasibility research](webrtc-core-research.md); [device-validation plan](webrtc-core-device-validation.md); [initial outgoing verification](huawei-rtc-outgoing-verification.md); [call controls](huawei-rtc-call-controls.md); [ongoing-call notification](huawei-rtc-ongoing-call.md) |
 | Incoming RTC | [Foreground experiment chronology](huawei-rtc-incoming-foreground-experiment.md); [background incoming investigation](huawei-rtc-background-investigation.md) |
 | Screen sharing | [Original POC](huawei-rtc-screen-as-camera-poc.md); [orientation](huawei-rtc-screen-orientation.md); [performance](huawei-rtc-screen-performance.md); [video quality and preview](huawei-rtc-screen-video-quality.md) |

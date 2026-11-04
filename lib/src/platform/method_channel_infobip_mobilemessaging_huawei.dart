@@ -228,6 +228,29 @@ final class MethodChannelInfobipMobileMessagingHuawei
       methodChannel.invokeMethod<void>(ChannelContract.setChatPushBody, body);
 
   @override
+  Future<Object?> getPendingChatNotificationNavigation() =>
+      methodChannel.invokeMethod<Object?>(
+        ChannelContract.getPendingChatNotificationNavigation,
+      );
+
+  @override
+  Future<bool> acknowledgeChatNotificationNavigation(
+    String correlationId,
+  ) async =>
+      await methodChannel.invokeMethod<bool>(
+        ChannelContract.acknowledgeChatNotificationNavigation,
+        correlationId,
+      ) ??
+      false;
+
+  @override
+  Future<void> setChatNotificationPresentationMode(String mode) =>
+      methodChannel.invokeMethod<void>(
+        ChannelContract.setChatNotificationPresentationMode,
+        mode,
+      );
+
+  @override
   Future<void> showChat({required bool shouldBePresentedModallyIOS}) =>
       methodChannel.invokeMethod<void>(
         ChannelContract.showChat,

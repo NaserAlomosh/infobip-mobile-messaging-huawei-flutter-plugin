@@ -45,6 +45,8 @@ class FakeSdk {
   };
   Object? initializeError;
   bool failClearJwt = false;
+  final chatNavigation = <Map<String, Object?>>[];
+  bool failChatNavigationAck = false;
   int chatGeneration = 0;
   List<Object?> inboxMessages = [];
   final messenger =
@@ -65,6 +67,20 @@ class FakeSdk {
     messenger.setMockMethodCallHandler(methods, (call) async {
       calls.add(call);
       switch (call.method) {
+        case 'getPendingChatNotificationNavigation':
+          return chatNavigation.isEmpty ? null : chatNavigation.first;
+        case 'acknowledgeChatNotificationNavigation':
+          if (failChatNavigationAck) {
+            throw PlatformException(code: 'test_ack_failed');
+          }
+          if (chatNavigation.isNotEmpty &&
+              chatNavigation.first['correlationId'] == call.arguments) {
+            chatNavigation.removeAt(0);
+            return true;
+          }
+          return false;
+        case 'getChatUnreadMessageCount':
+          return 0;
         case 'initialize':
           if (initializeError != null) throw initializeError!;
           return null;

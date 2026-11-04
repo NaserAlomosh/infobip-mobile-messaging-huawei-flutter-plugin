@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../platform/channel_contract.dart';
@@ -207,7 +208,8 @@ InfobipHuaweiChatError _decodeError(Object? payload) {
     'activity_fragment_unavailable' =>
       InfobipHuaweiChatErrorCode.activityFragmentUnavailable,
     'chat_unavailable' => InfobipHuaweiChatErrorCode.chatUnavailable,
-    'native_error' => InfobipHuaweiChatErrorCode.nativeError,
+    'native_error' ||
+    'chat_runtime_error' => InfobipHuaweiChatErrorCode.nativeError,
     _ => InfobipHuaweiChatErrorCode.unknown,
   };
   final message = payload[ChannelContract.message];
@@ -464,30 +466,47 @@ class _InfobipHuaweiChatViewState extends State<InfobipHuaweiChatView> {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return const Center(child: Text('Chat is available on Android only.'));
     }
-    return AndroidView(
+    return PlatformViewLink(
       viewType: ChannelContract.chatView,
-      creationParams: <String, bool>{
-        'withInput': widget.withInput,
-        'withToolbar': widget.withToolbar,
-      },
-      creationParamsCodec: const StandardMessageCodec(),
-
-      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
-      },
-
-      onPlatformViewCreated: (viewId) {
-        widget.controller?._detach(_viewId);
-        _bridge?.dispose();
-
-        _viewId = viewId;
-
-        final bridge = _ChatViewBridge(viewId, widget.onError, widget.onEvent);
-
-        _bridge = bridge;
-        widget.controller?._attach(bridge);
+      surfaceFactory: (context, controller) => AndroidViewSurface(
+        controller: controller as AndroidViewController,
+        hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+        gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+          Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+        },
+      ),
+      onCreatePlatformView: (params) {
+        // Keep the SDK WebView in the Android view hierarchy. The texture path
+        // redirects its rendering through an offscreen surface on Huawei.
+        final controller = PlatformViewsService.initExpensiveAndroidView(
+          id: params.id,
+          viewType: ChannelContract.chatView,
+          layoutDirection: Directionality.of(context),
+          creationParams: <String, bool>{
+            'withInput': widget.withInput,
+            'withToolbar': widget.withToolbar,
+          },
+          creationParamsCodec: const StandardMessageCodec(),
+          onFocus: () => params.onFocusChanged(true),
+        );
+        controller.addOnPlatformViewCreatedListener(
+          params.onPlatformViewCreated,
+        );
+        controller.addOnPlatformViewCreatedListener(_onPlatformViewCreated);
+        unawaited(controller.create());
+        return controller;
       },
     );
+  }
+
+  void _onPlatformViewCreated(int viewId) {
+    if (!mounted) return;
+    widget.controller?._detach(_viewId);
+    _bridge?.dispose();
+    _viewId = viewId;
+    final bridge = _ChatViewBridge(viewId, widget.onError, widget.onEvent);
+    _bridge = bridge;
+    widget.controller?._attach(bridge);
   }
 
   @override

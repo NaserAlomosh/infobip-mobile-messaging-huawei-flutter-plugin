@@ -37,9 +37,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ExampleFeature.user => UserScreen(controller: c),
       ExampleFeature.installation => const InstallationScreen(),
     };
-    await Navigator.of(
-      context,
-    ).push<void>(MaterialPageRoute(builder: (_) => screen));
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        settings: screen is ChatScreen
+            ? const RouteSettings(name: ChatScreen.routeName)
+            : null,
+        builder: (_) => screen,
+      ),
+    );
     await c.refresh();
   }
 
