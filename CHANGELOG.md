@@ -1,4 +1,14 @@
-## 2.2.0 (unreleased)
+## 2.2.1 - 2026-11-04
+
+### Fixed
+
+- Corrected release metadata and documentation inconsistencies.
+
+### Changed
+
+- Updated package documentation for the v2.2.1 release.
+
+## 2.2.0 - 2026-11-04
 
 ### Added
 

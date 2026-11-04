@@ -13,6 +13,13 @@ constructors. `Gender` defines `Male` and `Female`; it has no `unknown` value.
 Historical audit reports excluded from the published package record their
 original verification snapshots, not the current release status.
 
+## 2.2.1 compatibility assessment
+
+This metadata and documentation patch preserves the public APIs, runtime behavior,
+SDK versions and Flutter/Dart/Android requirements of 2.2.0. Native Chat notification
+routing remains the default; embedded routing remains explicit opt-in. SEC-01
+remains partially mitigated and unresolved; see [security guidance](SECURITY.md).
+
 ## 2.2.0 compatibility assessment
 
 Core, Inbox and Chat now use Huawei SDK 9.4.0; host toolchain requirements and

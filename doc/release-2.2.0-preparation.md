@@ -1,5 +1,8 @@
 # 2.2.0 local release preparation — 2026-11-04
 
+Version 2.2.0 was published on 2026-11-04. Unreleased labels and approval
+statements below describe preparation-time status, not current publication status.
+
 The original preparation evidence below is a historical snapshot. The final section
 records the subsequent native-default compatibility fix and its validation.
 

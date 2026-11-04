@@ -36,7 +36,7 @@ SDK logging or resolve SEC-01.
 no vendor binary is patched and no permanent fix is established.
 
 - Huawei Mobile Messaging **8.14.0** (published 1.1.0) and **9.3.0**
-  (2.0.0 release candidate), and **9.4.0** (2.2.0 candidate) retain
+  (2.0.0 release candidate), and **9.4.0** (2.2.0 and 2.2.1) retain
   authorization-header logging through the
   dependency's `AuthorizationUtils` (`System.out.println`). The owner reported
   release-device exposure; the upstream SDK remains unchanged.
@@ -58,8 +58,9 @@ own shipping artifacts. **The workaround does not cover RTC `printf` or guarante
 removal of all sensitive logs.** Signed-device verification remains UNVERIFIED.
 
 Vendor disclosure, acknowledgment or remediation is **not a publication requirement**.
-The owner decided not to send the retained optional draft before publication.
-Vendor acknowledgment/fix status is UNVERIFIED; this decision does not resolve SEC-01.
+The earlier preparation record states that the owner chose not to send the retained
+optional draft at that time; this is historical context, not current disclosure status.
+Vendor acknowledgment/fix status is UNVERIFIED; disclosure does not resolve SEC-01.
 Historical [artifact verification](https://github.com/NaserAlomosh/mobile-messaging-huawei-flutter-plugin/blob/b5eba8081a8d4867e2b101fde2e5b58a2bcdf0c7/docs/sec01-release-logging-mitigation.md)
 remains in Git and is excluded from the package.
 
